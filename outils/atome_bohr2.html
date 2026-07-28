@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau Périodique Interactif 3D - Modèle de Bohr</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #000000 0%, #1a1a2e 100%);
+            color: #fff;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+        .subtitle {
+            text-align: center;
+            color: #aaa;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+        
+        /* Tableau périodique */
+        .periodic-table {
+            display: grid;
+            grid-template-columns: repeat(18, 1fr);
+            gap: 3px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+        }
+        .element {
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, #2a2a3e 0%, #1a1a2e 100%);
+            border: 2px solid #444;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 5px;
+            position: relative;
+        }
+        .element:hover {
+            transform: scale(1.1);
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+            z-index: 10;
+        }
+        .element.active {
+            border-color: #00ffff;
+            background: linear-gradient(135deg, #00ffff22 0%, #00ff8822 100%);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.7);
+        }
+        .element-number {
+            font-size: 0.7em;
+            color: #888;
+            position: absolute;
+            top: 2px;
+            left: 4px;
+        }
+        .element-symbol {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 2px 0;
+        }
+        .element-name {
+            font-size: 0.65em;
+            color: #aaa;
+            text-align: center;
+        }
+        .element-mass {
+            font-size: 0.6em;
+            color: #666;
+        }
+        .empty {
+            background: transparent;
+            border: none;
+            cursor: default;
+        }
+        .empty:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* Section visualisation */
+        .visualization-section {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        .visualization-section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .viz-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .viz-header h2 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        .viz-header .atom-info {
+            color: #aaa;
+            font-size: 1.2em;
+        }
+        .content-wrapper {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #canvas-container {
+            border: 2px solid #444;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+        .info-panel {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 25px;
+            max-width: 500px;
+            flex: 1;
+            min-width: 300px;
+        }
+        .info-panel h3 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #00ff88;
+        }
+        .particle-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .particle-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .proton { background-color: #FF0000; border: 2px solid #FF6666; }
+        .neutron { background-color: #4444FF; border: 2px solid #8888FF; }
+        .electron { 
+            background-color: #00FF00; 
+            border: 2px solid #66FF66;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        .config-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #444;
+        }
+        .config-section p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        .small-text {
+            font-size: 0.9em;
+            color: #888;
+            margin-top: 10px;
+        }
+        button {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 5px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+        }
+        .button-group {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .periodic-table {
+                font-size: 0.75em;
+                padding: 15px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .periodic-table {
+                font-size: 0.65em;
+                gap: 2px;
+                padding: 10px;
+            }
+            .content-wrapper {
+                flex-direction: column;
+                align-items: center;
+            }
+            #canvas-container {
+                width: 100%;
+                max-width: 600px;
+            }
+            .info-panel {
+                max-width: 600px;
+                width: 100%;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 1.5em;
+            }
+            .subtitle {
+                font-size: 0.9em;
+            }
+            .periodic-table {
+                font-size: 0.55em;
+                gap: 1px;
+                padding: 8px;
+            }
+            .element {
+                border-radius: 4px;
+                border-width: 1px;
+            }
+            .element:hover {
+                transform: scale(1.05);
+            }
+            .viz-header h2 {
+                font-size: 1.5em;
+            }
+            .viz-header .atom-info {
+                font-size: 1em;
+            }
+            #canvas-container {
+                max-width: 100%;
+            }
+            .info-panel {
+                padding: 20px;
+            }
+            .info-panel h3 {
+                font-size: 1.2em;
+            }
+            button {
+                padding: 10px 18px;
+                font-size: 0.9em;
+                width: 100%;
+                max-width: 250px;
+            }
+            .button-group {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                align-items: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.2em;
+            }
+            .subtitle {
+                font-size: 0.8em;
+            }
+            .periodic-table {
+                font-size: 0.45em;
+                gap: 1px;
+                padding: 5px;
+            }
+            .element-symbol {
+                font-size: 1.2em;
+            }
+            .element-name {
+                font-size: 0.55em;
+            }
+            .viz-header h2 {
+                font-size: 1.2em;
+            }
+            .particle-info {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚛️ Tableau Périodique Interactif 3D</h1>
+        <p class="subtitle">Modèle de Bohr - Cliquez sur un élément pour visualiser sa structure atomique</p>
+        
+        <!-- Tableau périodique -->
+        <div class="periodic-table" id="periodicTable"></div>
+        
+        <!-- Section de visualisation 3D -->
+        <div class="visualization-section" id="vizSection">
+            <div class="viz-header">
+                <h2 id="atomTitle">Oxygène-16 (¹⁶O)</h2>
+                <p class="atom-info" id="atomSubtitle">Modèle de Bohr - Z=8, A=16</p>
+            </div>
+            
+            <div class="content-wrapper">
+                <div id="canvas-container"></div>
+                
+                <div class="info-panel">
+                    <h3>Configuration atomique</h3>
+                    <div id="atomicInfo"></div>
+                    <div class="button-group">
+                        <button id="toggleRotation">Pause rotation</button>
+                        <button id="backButton">← Retour au tableau</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<footer class="footer">
+    <p>© 2026 - Ressources Pédagogiques | Lycée Professionnel</p>
+    <p>Site conçu pour l'enseignement des mathématiques et des sciences</p>
+    <p style="margin-top: 15px; font-size: 0.8em; color: #a0aec0;">
+        <strong>Licence MIT</strong> - Créé par <a href="mailto:lessavoirfaire.partager@gmail.com" style="color: #667eea;">lessavoirfaire.partager@gmail.com</a><br>
+        Ce projet est sous licence libre. 
+        <a href="#" onclick="alert('MIT License\n\nCopyright (c) 2025 lessavoirfaire.partager@gmail.com\n\nPermission is hereby granted, free of charge...')" style="color: #667eea;">Voir licence complète</a>
+    </p>
+</footer>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Données des éléments (Z, A, nom, symbole, configuration)
+        const elements = {
+            1: { z: 1, a: 1, name: "Hydrogène", symbol: "H", config: [1] },
+            2: { z: 2, a: 4, name: "Hélium", symbol: "He", config: [2] },
+            3: { z: 3, a: 7, name: "Lithium", symbol: "Li", config: [2, 1] },
+            4: { z: 4, a: 9, name: "Béryllium", symbol: "Be", config: [2, 2] },
+            5: { z: 5, a: 11, name: "Bore", symbol: "B", config: [2, 3] },
+            6: { z: 6, a: 12, name: "Carbone", symbol: "C", config: [2, 4] },
+            7: { z: 7, a: 14, name: "Azote", symbol: "N", config: [2, 5] },
+            8: { z: 8, a: 16, name: "Oxygène", symbol: "O", config: [2, 6] },
+            9: { z: 9, a: 19, name: "Fluor", symbol: "F", config: [2, 7] },
+            10: { z: 10, a: 20, name: "Néon", symbol: "Ne", config: [2, 8] },
+            11: { z: 11, a: 23, name: "Sodium", symbol: "Na", config: [2, 8, 1] },
+            12: { z: 12, a: 24, name: "Magnésium", symbol: "Mg", config: [2, 8, 2] },
+            13: { z: 13, a: 27, name: "Aluminium", symbol: "Al", config: [2, 8, 3] },
+            14: { z: 14, a: 28, name: "Silicium", symbol: "Si", config: [2, 8, 4] },
+            15: { z: 15, a: 31, name: "Phosphore", symbol: "P", config: [2, 8, 5] },
+            16: { z: 16, a: 32, name: "Soufre", symbol: "S", config: [2, 8, 6] },
+            17: { z: 17, a: 35, name: "Chlore", symbol: "Cl", config: [2, 8, 7] },
+            18: { z: 18, a: 40, name: "Argon", symbol: "Ar", config: [2, 8, 8] },
+            19: { z: 19, a: 39, name: "Potassium", symbol: "K", config: [2, 8, 8, 1] },
+            20: { z: 20, a: 40, name: "Calcium", symbol: "Ca", config: [2, 8, 8, 2] }
+        };
+
+        // Structure du tableau périodique (positions)
+        const tableStructure = [
+            [1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 2],
+            [3, 4, null, null, null, null, null, null, null, null, null, null, 5, 6, 7, 8, 9, 10],
+            [11, 12, null, null, null, null, null, null, null, null, null, null, 13, 14, 15, 16, 17, 18],
+            [19, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+        ];
+
+        // Créer le tableau périodique
+        const periodicTable = document.getElementById('periodicTable');
+        tableStructure.forEach(row => {
+            row.forEach(z => {
+                const cell = document.createElement('div');
+                if (z === null) {
+                    cell.className = 'element empty';
+                } else {
+                    const el = elements[z];
+                    cell.className = 'element';
+                    cell.innerHTML = `
+                        <span class="element-number">${el.z}</span>
+                        <div class="element-symbol">${el.symbol}</div>
+                        <div class="element-name">${el.name}</div>
+                        <div class="element-mass">${el.a}</div>
+                    `;
+                    cell.onclick = () => showAtom(z);
+                }
+                periodicTable.appendChild(cell);
+            });
+        });
+
+        // Variables globales pour Three.js
+        let scene, camera, renderer, nucleusGroup, electrons, orbits;
+        let isRotating = true;
+        let animationId;
+
+        // Afficher un atome
+        function showAtom(z) {
+            const el = elements[z];
+            if (!el) return;
+
+            // Mettre à jour l'interface
+            document.querySelectorAll('.element').forEach(e => e.classList.remove('active'));
+            event.target.closest('.element').classList.add('active');
+            
+            document.getElementById('atomTitle').textContent = `${el.name}-${el.a} (${el.a}${el.symbol})`;
+            document.getElementById('atomSubtitle').textContent = `Modèle de Bohr - Z=${el.z}, A=${el.a}`;
+            
+            // Afficher la section de visualisation
+            document.getElementById('vizSection').classList.add('active');
+            document.getElementById('vizSection').scrollIntoView({ behavior: 'smooth' });
+            
+            // Générer les infos atomiques
+            generateAtomicInfo(el);
+            
+            // Nettoyer et créer la nouvelle visualisation 3D
+            if (renderer) {
+                cancelAnimationFrame(animationId);
+                document.getElementById('canvas-container').innerHTML = '';
+            }
+            create3DVisualization(el);
+        }
+
+        // Générer les informations atomiques
+        function generateAtomicInfo(el) {
+            const neutrons = el.a - el.z;
+            let configText = '';
+            const layers = ['K', 'L', 'M', 'N'];
+            el.config.forEach((e, i) => {
+                if (i > 0) configText += ' ';
+                configText += `${layers[i]}${e > 1 ? '⁰¹²³⁴⁵⁶⁷⁸'.charAt(e) : ''}`;
+            });
+
+            let html = `
+                <div class="particle-info">
+                    <div class="particle-dot proton"></div>
+                    <span><strong>Noyau :</strong> ${el.z} proton${el.z > 1 ? 's' : ''} (p⁺) + ${neutrons} neutron${neutrons > 1 ? 's' : ''} (n) = ${el.a} nucléons</span>
+                </div>
+                <div class="particle-info">
+                    <div class="particle-dot neutron"></div>
+                    <span style="margin-left: 31px;">${neutrons} neutron${neutrons > 1 ? 's' : ''} (charge neutre)</span>
+                </div>
+            `;
+
+            el.config.forEach((count, i) => {
+                html += `
+                    <div class="particle-info">
+                        <div class="particle-dot electron"></div>
+                        <span><strong>Couche ${layers[i]} (n=${i+1}) :</strong> ${count} électron${count > 1 ? 's' : ''} (e⁻)</span>
+                    </div>
+                `;
+            });
+
+            html += `
+                <div class="config-section">
+                    <p><strong>Configuration électronique :</strong> ${configText}</p>
+                    <p class="small-text">Total : ${el.z} e⁻ = charge neutre (${el.z} p⁺)</p>
+                </div>
+            `;
+
+            document.getElementById('atomicInfo').innerHTML = html;
+        }
+
+        // Créer la visualisation 3D
+        function create3DVisualization(el) {
+            // Configuration de la scène
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            
+            camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+            const maxRadius = el.config.length * 4 + 5;
+            camera.position.set(maxRadius * 1.2, maxRadius * 0.8, maxRadius * 1.2);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(700, 700);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Lumières
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            directionalLight.position.set(-10, 5, 5);
+            scene.add(directionalLight);
+
+            const pointLight = new THREE.PointLight(0xffffff, 0.5);
+            scene.add(pointLight);
+
+            // Étoiles de fond
+            const starGeometry = new THREE.BufferGeometry();
+            const starVertices = [];
+            for (let i = 0; i < 200; i++) {
+                starVertices.push(
+                    (Math.random() - 0.5) * 200,
+                    (Math.random() - 0.5) * 200,
+                    (Math.random() - 0.5) * 200
+                );
+            }
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const stars = new THREE.Points(starGeometry, 
+                new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.3 }));
+            scene.add(stars);
+
+            // NOYAU
+            nucleusGroup = new THREE.Group();
+            const nucleonRadius = 0.25;
+            const neutrons = el.a - el.z;
+            
+            // Positions des nucléons
+            for (let i = 0; i < el.a; i++) {
+                const isProton = i < el.z;
+                const phi = Math.acos(-1 + (2 * i) / el.a);
+                const theta = Math.sqrt(el.a * Math.PI) * phi;
+                
+                const geometry = new THREE.SphereGeometry(nucleonRadius, 16, 16);
+                const material = new THREE.MeshPhongMaterial({
+                    color: isProton ? 0xFF0000 : 0x4444FF,
+                    emissive: isProton ? 0x660000 : 0x000066,
+                    shininess: 100,
+                    specular: 0xffffff
+                });
+                const nucleon = new THREE.Mesh(geometry, material);
+                nucleon.position.setFromSphericalCoords(0.5, phi, theta);
+                nucleusGroup.add(nucleon);
+            }
+            scene.add(nucleusGroup);
+
+            // ÉLECTRONS et ORBITES
+            electrons = [];
+            orbits = [];
+            const electronRadius = 0.15;
+            const electronMaterial = new THREE.MeshPhongMaterial({
+                color: 0x00FF00,
+                emissive: 0x00FF00,
+                emissiveIntensity: 0.8,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            el.config.forEach((count, layerIndex) => {
+                const layerRadius = (layerIndex + 1) * 4;
+                const layerElectrons = [];
+
+                for (let i = 0; i < count; i++) {
+                    const electron = new THREE.Mesh(
+                        new THREE.SphereGeometry(electronRadius, 12, 12),
+                        electronMaterial
+                    );
+                    layerElectrons.push({ mesh: electron, layerIndex, electronIndex: i });
+                    scene.add(electron);
+
+                    // Halo
+                    const glow = new THREE.Mesh(
+                        new THREE.SphereGeometry(electronRadius * 2, 12, 12),
+                        new THREE.MeshBasicMaterial({ color: 0x00FF00, transparent: true, opacity: 0.2 })
+                    );
+                    electron.add(glow);
+
+                    // Orbite
+                    const orbitGeometry = new THREE.BufferGeometry();
+                    const orbitPoints = [];
+                    const tilt = i * Math.PI / count;
+                    for (let j = 0; j <= 64; j++) {
+                        const angle = (j / 64) * Math.PI * 2;
+                        orbitPoints.push(
+                            Math.cos(angle) * layerRadius,
+                            Math.sin(angle) * layerRadius * Math.sin(tilt),
+                            Math.sin(angle) * layerRadius * Math.cos(tilt)
+                        );
+                    }
+                    orbitGeometry.setAttribute('position', new THREE.Float32BufferAttribute(orbitPoints, 3));
+                    const orbit = new THREE.Line(orbitGeometry,
+                        new THREE.LineBasicMaterial({ color: 0x00FF00, transparent: true, opacity: 0.3 }));
+                    scene.add(orbit);
+                    orbits.push(orbit);
+                }
+
+                electrons.push(...layerElectrons);
+            });
+
+            // Animation
+            let time = 0;
+            const animate = () => {
+                animationId = requestAnimationFrame(animate);
+                time += 0.01;
+
+                if (isRotating) {
+                    nucleusGroup.rotation.y += 0.002;
+                    nucleusGroup.rotation.x += 0.001;
+                }
+
+                electrons.forEach(({ mesh, layerIndex, electronIndex }) => {
+                    const layerRadius = (layerIndex + 1) * 4;
+                    const speed = 1.5 - layerIndex * 0.2;
+                    const count = el.config[layerIndex];
+                    const angle = time * speed + (electronIndex * 2 * Math.PI / count);
+                    const tilt = electronIndex * Math.PI / count;
+                    
+                    mesh.position.x = Math.cos(angle) * layerRadius;
+                    mesh.position.y = Math.sin(angle) * layerRadius * Math.sin(tilt);
+                    mesh.position.z = Math.sin(angle) * layerRadius * Math.cos(tilt);
+                });
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+        }
+
+        // Boutons
+        document.getElementById('toggleRotation').addEventListener('click', () => {
+            isRotating = !isRotating;
+            document.getElementById('toggleRotation').textContent = 
+                isRotating ? 'Pause rotation' : 'Reprendre rotation';
+        });
+
+        document.getElementById('backButton').addEventListener('click', () => {
+            document.getElementById('vizSection').classList.remove('active');
+            document.querySelectorAll('.element').forEach(e => e.classList.remove('active'));
+            periodicTable.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        // Afficher l'oxygène par défaut au chargement
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const oxygenElement = Array.from(document.querySelectorAll('.element'))
+                    .find(el => el.textContent.includes('Oxygène'));
+                if (oxygenElement) oxygenElement.click();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

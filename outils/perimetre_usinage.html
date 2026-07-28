@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculateur de périmètre — Usinage / Maintenance</title>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #d8d6ce;
+    --border2: #c2c0b6;
+    --text: #1a1917;
+    --text2: #5a5853;
+    --text3: #9a9890;
+    --blue: #185FA5; --blue-bg: #E6F1FB;
+    --teal: #0F6E56; --teal-bg: #E1F5EE;
+    --amber: #854F0B; --amber-bg: #FAEEDA;
+    --coral: #993C1D; --coral-bg: #FAECE7;
+    --purple: #534AB7; --purple-bg: #EEEDFE;
+    --pink: #993556; --pink-bg: #FBEAF0;
+    --green: #3B6D11; --green-bg: #EAF3DE;
+    --red: #A32D2D; --red-bg: #FCEBEB;
+    --accent: #185FA5;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-icon {
+    width: 36px; height: 36px;
+    background: var(--blue-bg);
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  header h1 { font-size: 17px; font-weight: 600; color: var(--text); }
+  header p { font-size: 12px; color: var(--text2); }
+
+  .main { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+  /* MODE TABS */
+  .mode-tabs {
+    display: flex; gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 4px;
+    margin-bottom: 1.5rem;
+    width: fit-content;
+  }
+  .mode-tab {
+    padding: 7px 18px;
+    border-radius: var(--radius);
+    font-size: 14px; font-weight: 500;
+    border: none; cursor: pointer;
+    background: transparent; color: var(--text2);
+    transition: all 0.15s;
+  }
+  .mode-tab.active { background: var(--blue-bg); color: var(--blue); }
+  .mode-tab.defiplus-tab.active { background: #FFF3CD; color: #7A4500; }
+
+  /* SHAPE TABS ROW */
+  .shape-tabs-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap; gap: 8px;
+    margin-bottom: 1.25rem;
+  }
+  .shape-tabs {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .shape-tab {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px; font-weight: 500;
+    border: 1px solid var(--border);
+    cursor: pointer; background: var(--surface);
+    color: var(--text2); transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .shape-tab .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .shape-tab.active { border-color: currentColor; }
+  .shape-tab[data-color="blue"].active { color: var(--blue); background: var(--blue-bg); border-color: var(--blue); }
+  .shape-tab[data-color="teal"].active { color: var(--teal); background: var(--teal-bg); border-color: var(--teal); }
+  .shape-tab[data-color="amber"].active { color: var(--amber); background: var(--amber-bg); border-color: var(--amber); }
+  .shape-tab[data-color="coral"].active { color: var(--coral); background: var(--coral-bg); border-color: var(--coral); }
+  .shape-tab[data-color="purple"].active { color: var(--purple); background: var(--purple-bg); border-color: var(--purple); }
+  .shape-tab[data-color="pink"].active { color: var(--pink); background: var(--pink-bg); border-color: var(--pink); }
+  .shape-tab[data-color="green"].active { color: var(--green); background: var(--green-bg); border-color: var(--green); }
+  .shape-tab[data-color="amber2"].active { color: #633806; background: #FAEEDA; border-color: #633806; }
+
+  /* RANDOMIZE BUTTON */
+  .btn-rnd {
+    padding: 7px 14px;
+    border-radius: var(--radius);
+    font-size: 13px; font-weight: 500;
+    border: 1px solid var(--border);
+    cursor: pointer; background: var(--surface);
+    color: var(--text2); transition: all 0.15s;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .btn-rnd:hover { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 1.25rem; }
+  @media (max-width: 640px) { .panel.active { grid-template-columns: 1fr; } }
+
+  /* SKETCH */
+  .sketch-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+  }
+  .sketch-card svg { width: 100%; max-width: 240px; height: auto; }
+  .context-label {
+    font-size: 12px; color: var(--text2);
+    text-align: center; font-style: italic;
+    line-height: 1.4;
+  }
+  .shape-badge {
+    font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 20px;
+    letter-spacing: 0.04em;
+  }
+
+  /* CONTROLS */
+  .controls-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  .section-label {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text3); margin-bottom: -4px;
+  }
+  .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 13px; color: var(--text2); }
+  .field-row { display: flex; align-items: center; gap: 6px; }
+  .field input[type="number"] {
+    width: 90px; padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 15px; font-weight: 500;
+    background: var(--surface2);
+    color: var(--text);
+    transition: border-color 0.15s;
+  }
+  .field input[type="number"]:focus {
+    outline: none; border-color: var(--accent);
+    background: var(--surface);
+  }
+  .unit { font-size: 13px; color: var(--text3); }
+
+  .formula-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 13px; color: var(--text2);
+    line-height: 1.7;
+  }
+  .formula-box code {
+    font-family: 'Courier New', monospace;
+    font-size: 14px; font-weight: 700;
+    color: var(--text);
+  }
+  .formula-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .result-block {
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .result-label { font-size: 12px; color: var(--text2); margin-bottom: 2px; }
+  .result-value { font-size: 30px; font-weight: 700; color: var(--text); line-height: 1.1; }
+  .result-value .result-unit { font-size: 16px; font-weight: 400; color: var(--text2); margin-left: 4px; }
+  .result-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+  .error-box {
+    border-left: 3px solid var(--red);
+    background: var(--red-bg);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 10px 12px;
+    font-size: 13px; color: var(--text2);
+    line-height: 1.5;
+  }
+  .error-box strong { color: var(--red); font-weight: 600; }
+
+  /* DEFI MODE */
+  #mode-defi { display: none; }
+  #mode-defi.active { display: block; }
+  .defi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    max-width: 680px; margin: 0 auto;
+  }
+  .defi-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+  .defi-title { font-size: 16px; font-weight: 600; }
+  .defi-score {
+    font-size: 13px; color: var(--text2);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 12px;
+  }
+  .defi-mode-badge {
+    display: none;
+    font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 20px;
+    background: #FFF3CD; color: #7A4500;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+  }
+  .defi-mode-badge.visible { display: inline-block; }
+  .defi-shape-display {
+    background: var(--surface2);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+  .defi-shape-display svg { max-width: 200px; width: 100%; }
+  .defi-cotes {
+    font-size: 13px; color: var(--text2);
+    text-align: center; line-height: 1.7;
+  }
+  .defi-input-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 1rem;
+  }
+  .defi-input-row label { font-size: 14px; color: var(--text2); min-width: 100px; }
+  .defi-input-row input {
+    flex: 1; padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 18px; font-weight: 600;
+    background: var(--surface); color: var(--text);
+    max-width: 180px;
+  }
+  .defi-input-row input:focus { outline: none; border-color: var(--accent); }
+  .btn-check {
+    width: 100%; padding: 12px;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: var(--radius);
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .btn-check:hover { opacity: 0.88; }
+  .btn-next {
+    width: 100%; padding: 10px;
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 14px; font-weight: 500;
+    cursor: pointer; margin-top: 8px; transition: background 0.15s;
+  }
+  .btn-next:hover { background: var(--border); }
+  .feedback-box {
+    border-radius: var(--radius); padding: 12px 14px;
+    font-size: 14px; line-height: 1.5; margin-top: 1rem;
+    display: none;
+  }
+  .feedback-box.correct { background: var(--teal-bg); border-left: 3px solid var(--teal); color: var(--teal); }
+  .feedback-box.wrong { background: var(--red-bg); border-left: 3px solid var(--red); color: var(--red); }
+  .feedback-box.show { display: block; }
+  .progress-bar {
+    height: 4px; background: var(--surface2);
+    border-radius: 2px; margin-bottom: 1.25rem;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--accent);
+    border-radius: 2px; transition: width 0.4s;
+  }
+  .btn-fiche {
+    width: 100%; padding: 10px;
+    background: var(--surface2); color: var(--text2);
+    border: 1px dashed var(--border2); border-radius: var(--radius);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-fiche:hover { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon">📐</div>
+  <div>
+    <h1>Périmètre des pièces mécaniques</h1>
+    <p>Usinage · Maintenance · 2nde Bac Pro</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- MODE SELECTOR -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('calc')">Calculateur</button>
+    <button class="mode-tab" onclick="setMode('defi')">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus')">Défi ⁺</button>
+  </div>
+
+  <!-- CALCULATEUR -->
+  <div id="mode-calc">
+    <div class="shape-tabs-row">
+      <div class="shape-tabs">
+        <button class="shape-tab active" data-color="blue" onclick="setShape('rect',this)"><span class="dot" style="background:var(--blue)"></span>Rectangle</button>
+        <button class="shape-tab" data-color="teal" onclick="setShape('cercle',this)"><span class="dot" style="background:var(--teal)"></span>Cercle</button>
+        <button class="shape-tab" data-color="amber" onclick="setShape('compose',this)"><span class="dot" style="background:var(--amber)"></span>Oblong</button>
+        <button class="shape-tab" data-color="coral" onclick="setShape('lshape',this)"><span class="dot" style="background:var(--coral)"></span>Plaque en L</button>
+        <button class="shape-tab" data-color="purple" onclick="setShape('triangle',this)"><span class="dot" style="background:var(--purple)"></span>Triangle</button>
+        <button class="shape-tab" data-color="pink" onclick="setShape('trapeze',this)"><span class="dot" style="background:var(--pink)"></span>Trapèze</button>
+        <button class="shape-tab" data-color="green" onclick="setShape('demicercle',this)"><span class="dot" style="background:var(--green)"></span>Demi-cercle</button>
+        <button class="shape-tab" data-color="amber2" onclick="setShape('hexagone',this)"><span class="dot" style="background:#BA7517"></span>Hexagone</button>
+      </div>
+      <button class="btn-rnd" onclick="randomizeCurrent()">🎲 Nouvelles valeurs</button>
+    </div>
+
+    <!-- RECTANGLE -->
+    <div id="panel-rect" class="panel active">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--blue-bg);color:var(--blue)">Plaque rectangulaire</span>
+        <svg viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
+          <rect x="20" y="35" width="200" height="95" rx="2" fill="#E6F1FB" stroke="#378ADD" stroke-width="2.5"/>
+          <line x1="20" y1="24" x2="220" y2="24" stroke="#888" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="120" y="20" text-anchor="middle" font-size="13" fill="#5F5E5A" font-weight="600">L</text>
+          <line x1="232" y1="35" x2="232" y2="130" stroke="#888" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="238" y="86" font-size="13" fill="#5F5E5A" font-weight="600">l</text>
+          <text x="120" y="88" text-anchor="middle" font-size="12" fill="#185FA5">P = 2 × (L + l)</text>
+        </svg>
+        <div class="context-label">Plaque de fixation · semelle de glissière<br>fond de boîte · bague rectangulaire</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Dimensions</p>
+        <div class="field">
+          <label>Longueur L</label>
+          <div class="field-row"><input type="number" id="rect-L" value="120" min="0" step="0.1" oninput="calcRect()"><span class="unit">mm</span></div>
+        </div>
+        <div class="field">
+          <label>Largeur l</label>
+          <div class="field-row"><input type="number" id="rect-l" value="80" min="0" step="0.1" oninput="calcRect()"><span class="unit">mm</span></div>
+        </div>
+        <div class="formula-box">
+          <code>P = 2 × (L + l)</code>
+          <div class="formula-detail" id="rect-detail">P = 2 × (120 + 80) = 2 × 200</div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Périmètre</div>
+          <div class="result-value" id="rect-result">400<span class="result-unit">mm</span></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> ne compter qu'une longueur et une largeur. Le périmètre, c'est le tour complet — 2×L + 2×l.</div>
+      </div>
+    </div>
+
+    <!-- CERCLE -->
+    <div id="panel-cercle" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--teal-bg);color:var(--teal)">Bride / flasque circulaire</span>
+        <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="120" cy="100" r="78" fill="#E1F5EE" stroke="#1D9E75" stroke-width="2.5"/>
+          <line x1="120" y1="100" x2="198" y2="100" stroke="#555" stroke-width="1.2" stroke-dasharray="4,3"/>
+          <text x="162" y="93" text-anchor="middle" font-size="13" fill="#5F5E5A" font-weight="600">r</text>
+          <line x1="42" y1="100" x2="198" y2="100" stroke="#aaa" stroke-width="1" stroke-dasharray="2,3" opacity="0.5"/>
+          <text x="96" y="94" font-size="11" fill="#5F5E5A">d = 2r</text>
+          <text x="120" y="110" text-anchor="middle" font-size="12" fill="#0F6E56">P = π × d = 2πr</text>
+        </svg>
+        <div class="context-label">Joint de bride · bague d'étanchéité<br>segment · poulie · roue</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Saisir diamètre ou rayon</p>
+        <div class="field">
+          <label>Diamètre d</label>
+          <div class="field-row"><input type="number" id="cercle-d" value="80" min="0" step="0.1" oninput="calcCercleD()"><span class="unit">mm</span></div>
+        </div>
+        <div class="field">
+          <label>Rayon r</label>
+          <div class="field-row"><input type="number" id="cercle-r" value="40" min="0" step="0.1" oninput="calcCercleR()"><span class="unit">mm</span></div>
+        </div>
+        <div class="formula-box">
+          <code>P = π × d</code>
+          <div class="formula-detail" id="cercle-detail">P = π × 80 ≈ 3,1416 × 80</div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Périmètre (circonférence)</div>
+          <div class="result-value" id="cercle-result">251,3<span class="result-unit">mm</span></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> confondre rayon et diamètre. Sur un plan, Ø indique toujours le diamètre. Diviser par 2 pour obtenir r.</div>
+      </div>
+    </div>
+
+    <!-- OBLONG -->
+    <div id="panel-compose" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--amber-bg);color:var(--amber)">Joint oblong / couvercle arrondi</span>
+        <svg viewBox="0 0 260 180" xmlns="http://www.w3.org/2000/svg">
+          <path d="M65,35 L195,35 A55,55 0 0,1 195,145 L65,145 A55,55 0 0,1 65,35 Z" fill="#FAEEDA" stroke="#BA7517" stroke-width="2.5"/>
+          <line x1="65" y1="22" x2="195" y2="22" stroke="#888" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="130" y="18" text-anchor="middle" font-size="13" fill="#5F5E5A" font-weight="600">L</text>
+          <line x1="195" y1="90" x2="250" y2="90" stroke="#888" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="225" y="86" text-anchor="middle" font-size="13" fill="#5F5E5A" font-weight="600">r</text>
+          <text x="130" y="96" text-anchor="middle" font-size="11" fill="#854F0B">2 droites + 2 demi-cercles = 1 cercle</text>
+        </svg>
+        <div class="context-label">Joint oblong · lumière de glissière<br>plaque à coins arrondis · couvercle de carter</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Dimensions</p>
+        <div class="field">
+          <label>Longueur droite L (entre les axes)</label>
+          <div class="field-row"><input type="number" id="comp-L" value="100" min="0" step="0.1" oninput="calcCompose()"><span class="unit">mm</span></div>
+        </div>
+        <div class="field">
+          <label>Rayon r des demi-cercles</label>
+          <div class="field-row"><input type="number" id="comp-r" value="30" min="0" step="0.1" oninput="calcCompose()"><span class="unit">mm</span></div>
+        </div>
+        <div class="formula-box">
+          <code>P = 2×L + 2×π×r</code>
+          <div class="formula-detail" id="comp-detail">= 2 droites + 1 cercle complet</div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Périmètre</div>
+          <div class="result-value" id="comp-result">388,5<span class="result-unit">mm</span></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> utiliser π×r au lieu de 2×π×r. Les 2 demi-cercles forment un cercle entier, donc on calcule une circonférence complète.</div>
+      </div>
+    </div>
+
+    <!-- PLAQUE EN L -->
+    <div id="panel-lshape" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--coral-bg);color:var(--coral)">Plaque en L / équerre</span>
+        <svg viewBox="0 0 240 210" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="18,18 162,18 162,90 92,90 92,178 18,178" fill="#FAECE7" stroke="#D85A30" stroke-width="2.5"/>
+          <text x="90" y="12" text-anchor="middle" font-size="12" fill="#5F5E5A" font-weight="600">a</text>
+          <text x="168" y="57" font-size="12" fill="#5F5E5A" font-weight="600">b</text>
+          <text x="128" y="84" text-anchor="middle" font-size="12" fill="#5F5E5A" font-weight="600">c</text>
+          <text x="97" y="137" font-size="12" fill="#5F5E5A" font-weight="600">d</text>
+          <text x="10" y="100" text-anchor="end" font-size="12" fill="#5F5E5A" font-weight="600">e</text>
+          <text x="55" y="185" text-anchor="middle" font-size="12" fill="#5F5E5A" font-weight="600">f</text>
+          <text x="80" y="130" text-anchor="middle" font-size="11" fill="#993C1D">6 côtés</text>
+        </svg>
+        <div class="context-label">Équerre de maintien · patte de fixation<br>console en L · bride coudée</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Les 6 côtés</p>
+        <div class="fields-grid">
+          <div class="field"><label>Côté a</label><div class="field-row"><input type="number" id="l-a" value="144" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label>Côté b</label><div class="field-row"><input type="number" id="l-b" value="72" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label>Côté c</label><div class="field-row"><input type="number" id="l-c" value="72" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label>Côté d</label><div class="field-row"><input type="number" id="l-d" value="80" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label>Côté e</label><div class="field-row"><input type="number" id="l-e" value="152" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label>Côté f</label><div class="field-row"><input type="number" id="l-f" value="72" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+        </div>
+        <div class="formula-box">
+          <code>P = a+b+c+d+e+f</code>
+          <div class="formula-detail" id="l-detail"></div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Périmètre</div>
+          <div class="result-value" id="l-result">592<span class="result-unit">mm</span></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> oublier le côté rentrant de l'angle intérieur. Numéroter tous les côtés sur le croquis avant de calculer.</div>
+      </div>
+    </div>
+
+    <!-- TRIANGLE -->
+    <div id="panel-triangle" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--purple-bg);color:var(--purple)">Triangle / chanfrein / cale</span>
+        <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="120,20 210,165 30,165" fill="#EEEDFE" stroke="#7F77DD" stroke-width="2.5"/>
+          <text x="75" y="100" text-anchor="middle" font-size="13" fill="#534AB7" font-weight="600">a</text>
+          <text x="170" y="100" text-anchor="middle" font-size="13" fill="#534AB7" font-weight="600">b</text>
+          <text x="120" y="180" text-anchor="middle" font-size="13" fill="#534AB7" font-weight="600">c</text>
+          <text x="120" y="140" text-anchor="middle" font-size="11" fill="#534AB7">P = a + b + c</text>
+        </svg>
+        <div class="context-label">Cale de réglage · chanfrein · gousset<br>renflement triangulaire · came triangulaire</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Les 3 côtés</p>
+        <div class="field"><label>Côté a</label><div class="field-row"><input type="number" id="tri-a" value="85" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
+        <div class="field"><label>Côté b</label><div class="field-row"><input type="number" id="tri-b" value="85" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
+        <div class="field"><label>Côté c (base)</label><div class="field-row"><input type="number" id="tri-c" value="100" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
+        <div class="formula-box">
+          <code>P = a + b + c</code>
+          <div class="formula-detail" id="tri-detail">P = 85 + 85 + 100</div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Périmètre</div>
+          <div class="result-value" id="tri-result">270<span class="result-unit">mm</span></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> confondre la hauteur du triangle avec un côté. La hauteur n'est PAS un côté — elle n'entre pas dans le calcul du périmètre.</div>
+      </div>
+    </div>
+
+    <!-- TRAPÈZE -->
+    <div id="panel-trapeze" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--pink-bg);color:var(--pink)">Trapèze / came / glissière</span>
+        <svg viewBox="0 0 240 190" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="50,30 190,30 220,160 20,160" fill="#FBEAF0" stroke="#D4537E" stroke-width="2.5"/>
+          <text x="120" y="22" text-anchor="middle" font-size="13" fill="#993556" font-weight="600">B (grande base)</text>
+          <text x="120" y="155" text-anchor="middle" font-size="13" fill="#993556" font-weight="600">b (petite base)</text>
+          <text x="24" y="100" text-anchor="end" font-size="13" fill="#993556" font-weight="600">c</text>
+          <text x="218" y="100" font-size="13" fill="#993556" font-weight="600">d</text>
+          <text x="120" y="105" text-anchor="middle" font-size="10" fill="#993556">P = B + b + c + d</text>
+        </svg>
+        <div class="context-label">Came · glissière en T · rainure · profil de guidage<br>pièce en biseau · fond de caisse oblique</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Les 4 côtés</p>
+        <div class="field"><label>Grande base B</label><div class="field-row"><input type="number" id="trap-B" value="160" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
+        <div class="field"><label>Petite base b</label><div class="field-row"><input type="number" id="trap-b" value="100" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
+        <div class="field"><label>Côté gauche c</label><div class="field-row"><input type="number" id="trap-c" value="70" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
+        <div class="field"><label>Côté droit d</label><div class="field-row"><input type="number" id="trap-d" value="70" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
+        <div class="formula-box">
+          <code>P = B + b + c + d</code>
+          <div class="formula-detail" id="trap-detail">P = 160 + 100 + 70 + 70</div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Périmètre</div>
+          <div class="result-value" id="trap-result">400<span class="result-unit">mm</span></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> utiliser la hauteur (perpendiculaire aux bases) à la place d'un côté oblique. Les côtés c et d sont les obliques réels du plan coté.</div>
+      </div>
+    </div>
+
+    <!-- DEMI-CERCLE -->
+    <div id="panel-demicercle" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--green-bg);color:var(--green)">Demi-cercle / rotule / dôme</span>
+        <svg viewBox="0 0 240 180" xmlns="http://www.w3.org/2000/svg">
+          <path d="M30,130 A90,90 0 0,1 210,130 Z" fill="#EAF3DE" stroke="#639922" stroke-width="2.5"/>
+          <line x1="30" y1="130" x2="210" y2="130" stroke="#555" stroke-width="1.5" stroke-dasharray="5,3"/>
+          <line x1="120" y1="130" x2="120" y2="40" stroke="#888" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="142" y="90" font-size="13" fill="#5F5E5A" font-weight="600">r</text>
+          <text x="120" y="148" text-anchor="middle" font-size="11" fill="#5F5E5A">d = 2r</text>
+          <text x="120" y="110" text-anchor="middle" font-size="11" fill="#3B6D11">P = πr + 2r = r(π+2)</text>
+        </svg>
+        <div class="context-label">Dôme · rotule · bouchon demi-sphérique<br>came en arc · profil arrondi</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Rayon ou diamètre</p>
+        <div class="field"><label>Rayon r</label><div class="field-row"><input type="number" id="dc-r" value="50" min="0" step="0.1" oninput="calcDc()"><span class="unit">mm</span></div></div>
+        <div class="field"><label>Diamètre d (calculé)</label><div class="field-row"><input type="number" id="dc-d" value="100" min="0" step="0.1" oninput="calcDcD()"><span class="unit">mm</span></div></div>
+        <div class="formula-box">
+          <code>P = π×r + 2×r = r×(π+2)</code>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Arc demi-cercle + diamètre (la base)</div>
+          <div class="formula-detail" id="dc-detail">P = π×50 + 2×50 = 157,1 + 100</div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Périmètre</div>
+          <div class="result-value" id="dc-result">257,1<span class="result-unit">mm</span></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> oublier d'ajouter le diamètre (la base droite). Le périmètre du demi-cercle comprend l'arc ET le segment de base.</div>
+      </div>
+    </div>
+
+    <!-- HEXAGONE -->
+    <div id="panel-hexagone" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:#FAEEDA;color:#633806">Hexagone régulier / écrou / tête de vis</span>
+        <svg viewBox="0 0 240 210" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="120,18 204,63 204,150 120,196 36,150 36,63" fill="#FAEEDA" stroke="#BA7517" stroke-width="2.5"/>
+          <line x1="120" y1="18" x2="204" y2="63" stroke="#555" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+          <line x1="120" y1="107" x2="204" y2="63" stroke="#555" stroke-width="1.2" stroke-dasharray="4,3"/>
+          <text x="172" y="82" font-size="13" fill="#5F5E5A" font-weight="600">c</text>
+          <text x="120" y="170" text-anchor="middle" font-size="11" fill="#854F0B">P = 6 × c</text>
+          <text x="68" y="108" text-anchor="middle" font-size="10" fill="#633806">6 côtés égaux</text>
+        </svg>
+        <div class="context-label">Écrou · tête de boulon hexagonale<br>tête de vis CHC · clé plate (côté)</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Longueur d'un côté</p>
+        <div class="field"><label>Côté c (un seul suffit)</label><div class="field-row"><input type="number" id="hex-c" value="20" min="0" step="0.1" oninput="calcHex()"><span class="unit">mm</span></div></div>
+        <div style="font-size:13px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;">
+          💡 Pour un écrou M10, le côté = 8,6 mm. Pour M12 : 10,3 mm. Pour M16 : 13,7 mm.
+        </div>
+        <div class="formula-box">
+          <code>P = 6 × c</code>
+          <div class="formula-detail" id="hex-detail">P = 6 × 20 = 120</div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Périmètre</div>
+          <div class="result-value" id="hex-result">120<span class="result-unit">mm</span></div>
+          <div class="result-sub" id="hex-sub">Clé à utiliser : ≈ 34,6 mm (côté × √3)</div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> confondre le côté c avec la cote sur plats (largeur entre deux faces parallèles). La cote sur plats = c × √3 ≈ c × 1,732.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODE DÉFI (partagé défi + défi+) -->
+  <div id="mode-defi">
+    <div class="defi-card">
+      <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI + — Formules masquées</div>
+      <div class="defi-header">
+        <div class="defi-title" id="defi-mode-title">Mode défi — Pièce mystère</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
+      <div class="defi-shape-display">
+        <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:180px;width:100%;"></svg>
+        <div class="defi-cotes" id="defi-cotes"></div>
+      </div>
+      <div class="defi-input-row">
+        <label>Périmètre =</label>
+        <input type="number" id="defi-input" placeholder="?" min="0" step="0.1">
+        <span class="unit">mm</span>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:0.75rem;">Tolérance acceptée : ± 1 mm</div>
+      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+      <div class="feedback-box" id="defi-feedback"></div>
+      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Pièce suivante →</button>
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="generateFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── UTILITAIRES ─────────────────────────────────────────────────────────────
+function v(id){ return parseFloat(document.getElementById(id).value)||0; }
+function fmt(n){ return n.toFixed(1).replace('.',','); }
+// Valeur aléatoire : rndV(min,max,0)=entier, rndV(min,max,1)=1 décimale
+function rndV(min,max,dec=1){
+  const f=Math.pow(10,dec);
+  return Math.round((min+Math.random()*(max-min))*f)/f;
+}
+
+// ─── CALCULATEURS ────────────────────────────────────────────────────────────
+function calcRect(){
+  const L=v('rect-L'),l=v('rect-l'),P=2*(L+l);
+  document.getElementById('rect-detail').textContent=`P = 2 × (${L} + ${l}) = 2 × ${L+l}`;
+  document.getElementById('rect-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
+}
+function calcCercleD(){
+  const d=v('cercle-d');
+  document.getElementById('cercle-r').value=(d/2).toFixed(1);
+  const P=Math.PI*d;
+  document.getElementById('cercle-detail').textContent=`P = π × ${d} ≈ 3,1416 × ${d}`;
+  document.getElementById('cercle-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
+}
+function calcCercleR(){
+  const r=v('cercle-r');
+  document.getElementById('cercle-d').value=(r*2).toFixed(1);
+  const P=2*Math.PI*r;
+  document.getElementById('cercle-detail').textContent=`P = 2 × π × ${r}`;
+  document.getElementById('cercle-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
+}
+function calcCompose(){
+  const L=v('comp-L'),r=v('comp-r'),arc=2*Math.PI*r,P=2*L+arc;
+  document.getElementById('comp-detail').textContent=`2×${L} + 2×π×${r} = ${(2*L).toFixed(0)} + ${arc.toFixed(1)}`;
+  document.getElementById('comp-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
+}
+function calcL(){
+  const a=v('l-a'),b=v('l-b'),c=v('l-c'),d=v('l-d'),e=v('l-e'),f=v('l-f'),P=a+b+c+d+e+f;
+  document.getElementById('l-detail').textContent=`${a}+${b}+${c}+${d}+${e}+${f}`;
+  document.getElementById('l-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
+}
+function calcTri(){
+  const a=v('tri-a'),b=v('tri-b'),c=v('tri-c'),P=a+b+c;
+  document.getElementById('tri-detail').textContent=`P = ${a} + ${b} + ${c}`;
+  document.getElementById('tri-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
+}
+function calcTrap(){
+  const B=v('trap-B'),b=v('trap-b'),c=v('trap-c'),d=v('trap-d'),P=B+b+c+d;
+  document.getElementById('trap-detail').textContent=`P = ${B} + ${b} + ${c} + ${d}`;
+  document.getElementById('trap-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
+}
+function calcDc(){
+  const r=v('dc-r');
+  document.getElementById('dc-d').value=(r*2).toFixed(1);
+  const arc=Math.PI*r,P=arc+2*r;
+  document.getElementById('dc-detail').textContent=`π×${r} + 2×${r} = ${arc.toFixed(1)} + ${(2*r).toFixed(0)}`;
+  document.getElementById('dc-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
+}
+function calcDcD(){
+  const d=v('dc-d'),r=d/2;
+  document.getElementById('dc-r').value=r.toFixed(1);
+  const P=Math.PI*r+2*r;
+  document.getElementById('dc-detail').textContent=`π×${r} + 2×${r} = ${(Math.PI*r).toFixed(1)} + ${(2*r).toFixed(0)}`;
+  document.getElementById('dc-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
+}
+function calcHex(){
+  const c=v('hex-c'),P=6*c,plats=(c*Math.sqrt(3));
+  document.getElementById('hex-detail').textContent=`P = 6 × ${c} = ${P}`;
+  document.getElementById('hex-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
+  document.getElementById('hex-sub').textContent=`Cote sur plats ≈ ${plats.toFixed(1)} mm (c × √3)`;
+}
+
+// ─── RANDOMISATION CALCULATEUR ───────────────────────────────────────────────
+let currentShape = 'rect';
+
+function randomizeCurrent(){ randomizeShape(currentShape); }
+
+function randomizeShape(id){
+  switch(id){
+    case 'rect':
+      document.getElementById('rect-L').value = rndV(60,220);
+      document.getElementById('rect-l').value = rndV(25,140);
+      calcRect(); break;
+    case 'cercle':
+      document.getElementById('cercle-d').value = rndV(20,200);
+      calcCercleD(); break;
+    case 'compose':
+      document.getElementById('comp-L').value = rndV(40,180);
+      document.getElementById('comp-r').value = rndV(12,65);
+      calcCompose(); break;
+    case 'lshape':
+      document.getElementById('l-a').value = rndV(60,180);
+      document.getElementById('l-b').value = rndV(35,110);
+      document.getElementById('l-c').value = rndV(30,100);
+      document.getElementById('l-d').value = rndV(35,110);
+      document.getElementById('l-e').value = rndV(80,200);
+      document.getElementById('l-f').value = rndV(35,110);
+      calcL(); break;
+    case 'triangle':
+      document.getElementById('tri-a').value = rndV(45,160);
+      document.getElementById('tri-b').value = rndV(45,160);
+      document.getElementById('tri-c').value = rndV(55,180);
+      calcTri(); break;
+    case 'trapeze':{
+      const B = rndV(100,220);
+      const b = rndV(35, Math.min(B-20, 140));
+      document.getElementById('trap-B').value = B;
+      document.getElementById('trap-b').value = b;
+      document.getElementById('trap-c').value = rndV(35,95);
+      document.getElementById('trap-d').value = rndV(35,95);
+      calcTrap(); break;}
+    case 'demicercle':
+      document.getElementById('dc-r').value = rndV(18,90);
+      calcDc(); break;
+    case 'hexagone':
+      document.getElementById('hex-c').value = rndV(8,48);
+      calcHex(); break;
+  }
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+function setShape(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.shape-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  btn.classList.add('active');
+  currentShape = id;
+  randomizeShape(id);
+}
+
+let currentMode = 'calc';
+function setMode(m){
+  currentMode = m;
+  document.querySelectorAll('.mode-tab').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('mode-calc').style.display = m==='calc'?'block':'none';
+  const defi = document.getElementById('mode-defi');
+  const isDefi = m==='defi' || m==='defiplus';
+  defi.style.display = isDefi?'block':'none';
+  if(isDefi){
+    defi.classList.add('active');
+    const badge = document.getElementById('defi-plus-badge');
+    if(m==='defiplus'){
+      document.getElementById('defi-mode-title').textContent='Défi + — Pièce mystère';
+      badge.classList.add('visible');
+    } else {
+      document.getElementById('defi-mode-title').textContent='Mode défi — Pièce mystère';
+      badge.classList.remove('visible');
+    }
+    correct=0; total=0; defiIndex=0;
+    shuffle(order);
+    updateScore();
+    nextDefi();
+  }
+}
+
+// ─── DÉFINITIONS DES DÉFIS (avec générateurs aléatoires) ─────────────────────
+const defiDefs = [
+  {
+    nom:'Plaque rectangulaire',
+    hint:'P = 2 × (L + l)',
+    generate(){
+      const L=rndV(80,200,0), l=rndV(40,Math.min(L-10,130),0);
+      return {
+        svg:`<rect x="10" y="30" width="162" height="95" fill="#E6F1FB" stroke="#378ADD" stroke-width="2.5" rx="1"/>
+             <text x="91" y="22" text-anchor="middle" font-size="12" fill="#378ADD" font-weight="700">L = ${L} mm</text>
+             <line x1="180" y1="30" x2="180" y2="125" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>
+             <text x="198" y="80" text-anchor="end" font-size="11" fill="#378ADD" font-weight="700">l = ${l} mm</text>`,
+        cotes:`L = ${L} mm · l = ${l} mm`,
+        answer:2*(L+l)
+      };
+    }
+  },
+  {
+    nom:'Bride circulaire',
+    hint:'P = π × d',
+    generate(){
+      const d=rndV(30,160,0);
+      return {
+        svg:`<circle cx="100" cy="83" r="58" fill="#E1F5EE" stroke="#1D9E75" stroke-width="2.5"/>
+             <line x1="100" y1="83" x2="158" y2="83" stroke="#555" stroke-width="1" stroke-dasharray="4,3"/>
+             <text x="131" y="76" text-anchor="middle" font-size="11" fill="#1D9E75" font-weight="700">r = ${d/2}</text>
+             <text x="100" y="156" text-anchor="middle" font-size="12" fill="#0F6E56" font-weight="700">Ø ${d} mm</text>`,
+        cotes:`Diamètre d = ${d} mm`,
+        answer:Math.PI*d
+      };
+    }
+  },
+  {
+    nom:'Joint oblong',
+    hint:'P = 2×L + 2×π×r',
+    generate(){
+      const L=rndV(50,160,0), r=rndV(15,55,0);
+      return {
+        svg:`<path d="M45,38 L155,38 A50,50 0 0,1 155,128 L45,128 A50,50 0 0,1 45,38 Z" fill="#FAEEDA" stroke="#BA7517" stroke-width="2.5"/>
+             <line x1="45" y1="27" x2="155" y2="27" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>
+             <text x="100" y="20" text-anchor="middle" font-size="11" fill="#854F0B" font-weight="700">L = ${L} mm</text>
+             <line x1="155" y1="83" x2="190" y2="83" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>
+             <text x="194" y="87" text-anchor="end" font-size="11" fill="#854F0B" font-weight="700">r = ${r} mm</text>`,
+        cotes:`L = ${L} mm (entre axes) · r = ${r} mm`,
+        answer:2*L+2*Math.PI*r
+      };
+    }
+  },
+  {
+    nom:'Triangle isocèle',
+    hint:'P = a + b + c',
+    generate(){
+      const a=rndV(60,140,0), c=rndV(50,160,0);
+      return {
+        svg:`<polygon points="100,15 185,148 15,148" fill="#EEEDFE" stroke="#7F77DD" stroke-width="2.5"/>
+             <text x="46" y="90" text-anchor="middle" font-size="12" fill="#534AB7" font-weight="700">a=${a}</text>
+             <text x="157" y="90" text-anchor="middle" font-size="12" fill="#534AB7" font-weight="700">b=${a}</text>
+             <text x="100" y="158" text-anchor="middle" font-size="12" fill="#534AB7" font-weight="700">c = ${c} mm</text>`,
+        cotes:`Côtés égaux a = b = ${a} mm · base c = ${c} mm`,
+        answer:a+a+c
+      };
+    }
+  },
+  {
+    nom:'Demi-cercle',
+    hint:'P = π×r + 2×r = r×(π+2)',
+    generate(){
+      const r=rndV(25,85,0);
+      return {
+        svg:`<path d="M10,120 A90,90 0 0,1 190,120 Z" fill="#EAF3DE" stroke="#639922" stroke-width="2.5"/>
+             <line x1="10" y1="120" x2="190" y2="120" stroke="#555" stroke-width="1.5" stroke-dasharray="5,3"/>
+             <line x1="100" y1="120" x2="100" y2="30" stroke="#888" stroke-width="1" stroke-dasharray="4,3"/>
+             <text x="130" y="76" font-size="13" fill="#3B6D11" font-weight="700">r = ${r} mm</text>`,
+        cotes:`Rayon r = ${r} mm`,
+        answer:Math.PI*r+2*r
+      };
+    }
+  },
+  {
+    nom:'Écrou hexagonal',
+    hint:'P = 6 × c',
+    generate(){
+      const c=rndV(12,38,0);
+      return {
+        svg:`<polygon points="100,14 166,51 166,124 100,161 34,124 34,51" fill="#FAEEDA" stroke="#BA7517" stroke-width="2.5"/>
+             <line x1="100" y1="14" x2="166" y2="51" stroke="#555" stroke-width="1" stroke-dasharray="4,3"/>
+             <text x="148" y="35" font-size="13" fill="#854F0B" font-weight="700">c=${c}</text>
+             <text x="100" y="100" text-anchor="middle" font-size="11" fill="#633806">6 côtés égaux</text>`,
+        cotes:`Côté c = ${c} mm (hexagone régulier)`,
+        answer:6*c
+      };
+    }
+  },
+  {
+    nom:'Plaque en L',
+    hint:'P = a + b + c + d + e + f',
+    generate(){
+      const a=rndV(60,150,0),b=rndV(40,100,0),c=rndV(30,90,0);
+      const d=rndV(40,100,0),e=rndV(80,160,0),f=rndV(40,100,0);
+      return {
+        svg:`<polygon points="15,15 130,15 130,75 75,75 75,148 15,148" fill="#FAECE7" stroke="#D85A30" stroke-width="2.5"/>
+             <text x="73" y="10" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">a=${a}</text>
+             <text x="138" y="48" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">b=${b}</text>
+             <text x="103" y="70" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">c=${c}</text>
+             <text x="80" y="113" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">d=${d}</text>
+             <text x="10" y="85" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">e=${e}</text>
+             <text x="45" y="155" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">f=${f}</text>`,
+        cotes:`a=${a} · b=${b} · c=${c} · d=${d} · e=${e} · f=${f} (mm)`,
+        answer:a+b+c+d+e+f
+      };
+    }
+  },
+  {
+    nom:'Trapèze isocèle',
+    hint:'P = B + b + c + d',
+    generate(){
+      const B=rndV(110,200,0), b=rndV(50,Math.min(B-30,130),0), cd=rndV(35,75,0);
+      return {
+        svg:`<polygon points="30,25 170,25 195,140 5,140" fill="#FBEAF0" stroke="#D4537E" stroke-width="2.5"/>
+             <text x="100" y="17" text-anchor="middle" font-size="11" fill="#993556" font-weight="700">b = ${b} mm</text>
+             <text x="100" y="155" text-anchor="middle" font-size="11" fill="#993556" font-weight="700">B = ${B} mm</text>
+             <text x="14" y="88" text-anchor="start" font-size="11" fill="#993556" font-weight="700">c=${cd}</text>
+             <text x="186" y="88" text-anchor="end" font-size="11" fill="#993556" font-weight="700">d=${cd}</text>`,
+        cotes:`Grande base B = ${B} mm · Petite base b = ${b} mm · Côtés c = d = ${cd} mm`,
+        answer:B+b+cd+cd
+      };
+    }
+  }
+];
+
+// ─── LOGIQUE DÉFI ─────────────────────────────────────────────────────────────
+let defiIndex=0, correct=0, total=0, answered=false;
+let currentDefiAnswer=0, currentDefiHint='';
+const order=[...Array(defiDefs.length).keys()];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
+shuffle(order);
+
+function nextDefi(){
+  if(defiIndex>=order.length){defiIndex=0;shuffle(order);}
+  const def=defiDefs[order[defiIndex]];
+  const gen=def.generate();
+  currentDefiAnswer=gen.answer;
+  currentDefiHint=def.hint;
+
+  document.getElementById('defi-svg').innerHTML=gen.svg;
+
+  let cotesHTML=gen.cotes;
+  if(currentMode!=='defiplus'){
+    cotesHTML+='<br><span style="font-size:11px;color:var(--text3)">Formule : '+def.hint+'</span>';
+  }
+  document.getElementById('defi-cotes').innerHTML=cotesHTML;
+
+  document.getElementById('defi-input').value='';
+  document.getElementById('defi-feedback').className='feedback-box';
+  document.getElementById('defi-feedback').textContent='';
+  document.getElementById('btn-next').style.display='none';
+  document.getElementById('defi-input').focus();
+  answered=false;
+  defiIndex++;
+  updateScore();
+}
+
+function checkDefi(){
+  if(answered)return;
+  const inp=parseFloat(document.getElementById('defi-input').value);
+  if(isNaN(inp)){alert('Entre une valeur numérique.');return;}
+  const expected=currentDefiAnswer;
+  const ok=Math.abs(inp-expected)<=1;
+  answered=true; total++;
+  if(ok)correct++;
+  const fb=document.getElementById('defi-feedback');
+  fb.className='feedback-box '+(ok?'correct':'wrong')+' show';
+  if(ok){
+    fb.innerHTML='<strong>Correct !</strong> P = '+fmt(expected)+' mm. Bien joué.';
+  } else {
+    fb.innerHTML='<strong>Pas tout à fait.</strong> La bonne réponse est <strong>'+fmt(expected)+' mm</strong>.<br>Rappel : '+currentDefiHint;
+  }
+  document.getElementById('btn-next').style.display='block';
+  updateScore();
+}
+
+function updateScore(){
+  document.getElementById('defi-score').textContent=correct+' / '+total+' correct'+(total>1?'s':'');
+  const pct=total>0?(correct/total*100):0;
+  document.getElementById('defi-progress').style.width=pct+'%';
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    if(!answered)checkDefi();
+    else if(document.getElementById('btn-next').style.display!=='none')nextDefi();
+  }
+});
+
+// ─── GÉNÉRATION FICHE PDF ─────────────────────────────────────────────────────
+function generateFiche(){
+  const isPlus = (currentMode === 'defiplus');
+  // Tirer 10 questions aléatoires (les 8 defs en cycle mélangé)
+  const pool = [];
+  const idx = [...Array(defiDefs.length).keys()];
+  shuffle(idx);
+  while(pool.length < 10){ idx.forEach(i=>{ if(pool.length<10) pool.push(i); }); }
+
+  const questions = pool.map((defIdx, q) => {
+    const def = defiDefs[defIdx];
+    const gen = def.generate();
+    return { num: q+1, nom: def.nom, hint: def.hint, ...gen };
+  });
+
+  const today = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  const modeLabel = isPlus ? 'Défi +' : 'Mode défi';
+  const formulesText = isPlus ? '' : `
+    <div class="aide">
+      <strong>Aide-mémoire :</strong>
+      Rectangle : P = 2×(L+l) &nbsp;|&nbsp;
+      Cercle : P = π×d &nbsp;|&nbsp;
+      Oblong : P = 2L+2πr &nbsp;|&nbsp;
+      Triangle/Trapèze : somme des côtés &nbsp;|&nbsp;
+      Demi-cercle : P = r×(π+2) &nbsp;|&nbsp;
+      Hexagone : P = 6×c
+    </div>`;
+
+  const cardsHTML = questions.map(q => `
+    <div class="card">
+      <div class="card-header">
+        <span class="qnum">${q.num}</span>
+        <span class="qnom">${q.nom}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-svg">
+          <svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">${q.svg}</svg>
+        </div>
+        <div class="card-info">
+          <div class="cotes">${q.cotes.replace(/·/g,'<br>')}</div>
+          ${!isPlus ? `<div class="hint">Formule : <em>${q.hint}</em></div>` : ''}
+          <div class="answer-zone">
+            <span class="answer-label">P =</span>
+            <span class="answer-line"></span>
+            <span class="answer-unit">mm</span>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  const corrHTML = questions.map(q => `
+    <div class="card">
+      <div class="card-header">
+        <span class="qnum">${q.num}</span>
+        <span class="qnom">${q.nom}</span>
+      </div>
+      <div class="card-body corr-body">
+        <div class="card-svg corr-svg">
+          <svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">${q.svg}</svg>
+        </div>
+        <div class="card-info">
+          <div class="cotes corr-cotes">${q.cotes}</div>
+          <div class="hint">Formule : <em>${q.hint}</em></div>
+          <div class="answer-filled">
+            <span class="af-label">P =</span>
+            <span class="af-val">${fmt(q.answer)} mm</span>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Fiche périmètres — ${modeLabel}</title>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13pt; color: #111; background: #fff; }
+
+  .page-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    border-bottom: 2.5px solid #185FA5; padding-bottom: 5px; margin-bottom: 7px;
+  }
+  .page-header-left h1 { font-size: 15pt; color: #185FA5; font-weight: 700; }
+  .page-header-left p  { font-size: 10pt; color: #555; margin-top: 1px; }
+  .page-header-right   { font-size: 10pt; color: #555; text-align: right; line-height: 1.7; }
+  .badge-plus {
+    display: inline-block; background: #FFF3CD; color: #7A4500;
+    font-size: 9pt; font-weight: 700; padding: 2px 8px;
+    border-radius: 10px; border: 1px solid #e6c84a; margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .identity-row {
+    display: flex; gap: 20px; margin-bottom: 7px;
+    font-size: 12pt; color: #333;
+  }
+  .identity-row .field { flex:1; border-bottom: 1.5px solid #aaa; padding-bottom: 3px; }
+  .identity-row .field span { color: #888; font-size: 10pt; }
+
+  .aide {
+    background: #f0efe9; border: 1px solid #d8d6ce; border-radius: 4px;
+    padding: 6px 10px; font-size: 10pt; color: #333; margin-bottom: 7px;
+    line-height: 1.7; font-weight: 500;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .card {
+    border: 2px solid #b8b6ae; border-radius: 6px;
+    overflow: hidden;
+    page-break-inside: avoid;
+  }
+  .card-header {
+    background: #e8e6df; border-bottom: 1.5px solid #c2c0b6;
+    padding: 5px 9px; display: flex; align-items: center; gap: 7px;
+  }
+  .qnum {
+    background: #185FA5; color: #fff;
+    font-size: 11pt; font-weight: 700;
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .qnom { font-size: 11pt; font-weight: 700; color: #222; }
+
+  .card-body {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px;
+  }
+  .card-svg { flex-shrink: 0; width: 125px; }
+  .card-svg svg { width: 125px; height: 100px; }
+  .card-info { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .cotes { font-size: 11.5pt; color: #222; line-height: 1.65; font-weight: 500; }
+  .hint  { font-size: 10.5pt; color: #185FA5; background: #E6F1FB; border-radius: 3px; padding: 3px 7px; font-weight: 500; }
+
+  .answer-zone {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 3px;
+  }
+  .answer-label { font-weight: 900; color: #111; white-space: nowrap; font-size: 16pt; }
+  .answer-line  { flex: 1; border-bottom: 2.5px solid #111; min-width: 55px; height: 24px; }
+  .answer-unit  { font-size: 13pt; color: #333; white-space: nowrap; font-weight: 600; }
+
+  @media print { .no-print { display: none !important; } }
+  .print-btn {
+    display: block; margin: 10px auto 0; padding: 9px 28px;
+    background: #185FA5; color: #fff; border: none; border-radius: 6px;
+    font-size: 12pt; font-weight: 600; cursor: pointer;
+  }
+
+  /* ── PAGE CORRIGÉ ───────────────────────────────── */
+  .page-corr { page-break-before: always; }
+  .corr-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    border-bottom: 2.5px solid #185FA5; padding-bottom: 4px; margin-bottom: 6px;
+  }
+  .corr-header h2 { font-size: 13pt; color: #185FA5; font-weight: 700; }
+  .corr-header p  { font-size: 9pt; color: #555; margin-top: 1px; }
+  .corr-badge {
+    background: #d4edda; color: #155724; font-size: 9.5pt; font-weight: 700;
+    padding: 2px 10px; border-radius: 10px; border: 1px solid #92d4a8;
+    white-space: nowrap;
+  }
+  .page-corr .grid { gap: 6px; }
+  .page-corr .card-header { padding: 3px 8px; }
+  .page-corr .qnum { width: 20px; height: 20px; font-size: 9.5pt; }
+  .page-corr .qnom { font-size: 10pt; }
+  .page-corr .card-info { gap: 3px; }
+  .page-corr .hint { font-size: 9pt; padding: 2px 5px; }
+  .corr-body { padding: 5px 8px !important; gap: 7px !important; }
+  .corr-svg { width: 70px !important; }
+  .corr-svg svg { width: 70px !important; height: 56px !important; }
+  .corr-cotes { font-size: 9.5pt !important; line-height: 1.45 !important; font-weight: 500; }
+  .answer-filled {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 2px; background: #E6F5EC; border-radius: 4px;
+    padding: 3px 8px; border: 1.5px solid #9ACFAC;
+  }
+  .answer-filled .af-label { font-size: 14pt; font-weight: 900; color: #155724; white-space: nowrap; }
+  .answer-filled .af-val   { font-size: 14pt; font-weight: 700; color: #155724; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>📐 Périmètres des pièces mécaniques${isPlus ? '<span class="badge-plus">DÉFI +</span>' : ''}</h1>
+    <p>Usinage · Maintenance · 2nde Bac Pro &nbsp;—&nbsp; ${modeLabel}${isPlus ? ' · Formules masquées' : ''}</p>
+  </div>
+  <div class="page-header-right">
+    Date : ${today}<br>
+    Tolérance : ± 1 mm<br>
+    /10
+  </div>
+</div>
+
+<div class="identity-row">
+  <div class="field"><span>Nom · Prénom :</span>&nbsp;</div>
+  <div class="field"><span>Classe :</span>&nbsp;</div>
+</div>
+
+${formulesText}
+
+<div class="grid">${cardsHTML}</div>
+
+<div class="page-corr">
+  <div class="corr-header">
+    <div>
+      <h2>📐 Corrigé — Périmètres des pièces mécaniques</h2>
+      <p>Usinage · Maintenance · 2nde Bac Pro &nbsp;—&nbsp; ${modeLabel}${isPlus ? ' · Défi +' : ''} &nbsp;—&nbsp; Tolérance : ± 1 mm</p>
+    </div>
+    <span class="corr-badge">✓ CORRIGÉ</span>
+  </div>
+  <div class="grid">${corrHTML}</div>
+</div>
+
+<button class="print-btn no-print" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
+
+<script>
+  setTimeout(()=>{ window.print(); }, 400);
+<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+randomizeShape('rect');
+calcCercleD(); calcCompose(); calcL(); calcTri(); calcTrap(); calcDc(); calcHex();
+</script>
+</body>
+</html>

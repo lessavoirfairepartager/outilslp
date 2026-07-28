@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📐 Trigonométrie — Entraîneur</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222636;
+    --border: #2e3352;
+    --accent: #6c8ef5;
+    --accent2: #f5a623;
+    --green: #4caf82;
+    --red: #e05c5c;
+    --text: #e8ecf8;
+    --muted: #8890b0;
+    --hyp-color: #b983f5;
+    --opp-color: #f5a623;
+    --adj-color: #6c8ef5;
+    --sin-color: #f5a623;
+    --cos-color: #6c8ef5;
+    --tan-color: #e05c82;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  header {
+    width: 100%;
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    padding: 0.8rem 1.5rem;
+    display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 0.8rem;
+  }
+  .logo { font-size: 1.4rem; font-weight: 900; }
+  .logo span { color: var(--accent); }
+
+  .stats { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; }
+  .stat-badge {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.25rem 0.7rem;
+    font-size: 0.82rem; font-weight: 700;
+    display: flex; align-items: center; gap: 0.35rem;
+  }
+  .stat-badge .val { color: var(--accent); font-size: 1rem; }
+
+  .level-toggle {
+    display: flex; background: var(--surface2);
+    border: 2px solid var(--border); border-radius: 12px; overflow: hidden;
+  }
+  .level-btn {
+    padding: 0.4rem 1rem; font-family: 'Nunito', sans-serif;
+    font-weight: 800; font-size: 0.82rem; border: none;
+    background: transparent; color: var(--muted);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .level-btn.active { background: var(--accent); color: #fff; border-radius: 10px; }
+
+  main {
+    width: 100%; max-width: 960px;
+    padding: 1.2rem 1rem;
+    display: flex; flex-direction: column; gap: 1.2rem;
+  }
+
+  /* CAH SOH TOA */
+  .cahsohtoa {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: 16px; padding: 1rem 1.5rem;
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.5rem; flex-wrap: wrap;
+  }
+  .cst-badge {
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 0.6rem 1rem; gap: 0.25rem; min-width: 100px;
+  }
+  .cst-letters {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.35rem; font-weight: 800; letter-spacing: 3px;
+  }
+  .cst-formula {
+    font-size: 0.7rem; font-weight: 700; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .cst-formula .fn { font-size: 0.65rem; letter-spacing: 0.5px; }
+  .cst-formula .num { border-bottom: 1px solid var(--muted); padding-bottom: 1px; }
+  .cst-sep { font-size: 2rem; color: var(--border); font-weight: 200; line-height: 1; padding: 0 0.2rem; }
+
+  /* Exercise card */
+  .exercise-card {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: 20px; padding: 1.3rem;
+    display: grid; grid-template-columns: 310px 1fr;
+    gap: 1.3rem; align-items: start;
+  }
+  @media (max-width: 680px) { .exercise-card { grid-template-columns: 1fr; } }
+
+  .canvas-wrap { display: flex; flex-direction: column; align-items: center; gap: 0.7rem; }
+  canvas {
+    background: var(--surface2); border-radius: 14px;
+    border: 1px solid var(--border);
+    width: 100%; max-width: 310px; height: auto; display: block;
+  }
+  .legend {
+    display: flex; gap: 0.8rem; flex-wrap: wrap;
+    font-size: 0.73rem; font-weight: 700; justify-content: center;
+  }
+  .leg-item { display: flex; align-items: center; gap: 0.3rem; }
+  .leg-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+  /* Question */
+  .question-area { display: flex; flex-direction: column; gap: 0.9rem; }
+  .question-text { font-size: 1rem; font-weight: 700; line-height: 1.5; }
+  .question-text .hl {
+    color: var(--accent2); background: rgba(245,166,35,0.12);
+    padding: 0.1em 0.4em; border-radius: 6px;
+  }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 0.65rem; }
+  .step {
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 13px; padding: 0.75rem 0.9rem; transition: border-color 0.3s;
+  }
+  .step.active { border-color: var(--accent); }
+  .step.done   { border-color: var(--green); }
+  .step.error  { border-color: var(--red); }
+  .step-header {
+    font-size: 0.72rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); margin-bottom: 0.45rem;
+  }
+  .step.active .step-header { color: var(--accent); }
+  .step.done   .step-header { color: var(--green); }
+  .step.error  .step-header { color: var(--red); }
+  .step-content { font-size: 0.88rem; color: var(--text); line-height: 1.5; }
+
+  /* Formula buttons */
+  .choices { display: flex; flex-direction: column; gap: 0.45rem; }
+  .choice-btn {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: 9px; padding: 0.45rem 0.75rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+    color: var(--text); cursor: pointer; text-align: left; transition: all 0.18s;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .choice-btn:not(:disabled):hover { border-color: var(--accent); background: rgba(108,142,245,0.08); }
+  .choice-btn.correct { border-color: var(--green) !important; background: rgba(76,175,130,0.15) !important; }
+  .choice-btn.wrong   { border-color: var(--red)   !important; background: rgba(224,92,92,0.15)  !important; }
+  .ftag {
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px;
+    padding: 0.1em 0.45em; border-radius: 4px; flex-shrink: 0; text-transform: uppercase;
+  }
+  .tag-sin { background: rgba(245,166,35,0.2); color: var(--sin-color); }
+  .tag-cos { background: rgba(108,142,245,0.2); color: var(--cos-color); }
+  .tag-tan { background: rgba(224,92,130,0.2); color: var(--tan-color); }
+
+  /* Fraction builder */
+  .fraction-builder {
+    display: flex; align-items: center; gap: 0.6rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88rem; flex-wrap: wrap; margin-top: 0.4rem;
+  }
+  .frac-display { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .frac-slot {
+    background: var(--surface); border: 2px dashed var(--border);
+    border-radius: 7px; padding: 0.25rem 0.55rem;
+    min-width: 52px; text-align: center; font-size: 0.8rem;
+    color: var(--muted); transition: all 0.2s;
+  }
+  .frac-slot.filled { border-style: solid; color: var(--text); }
+  .frac-slot.filled.hyp { border-color: var(--hyp-color); background: rgba(185,131,245,0.1); color: var(--hyp-color); }
+  .frac-slot.filled.opp { border-color: var(--opp-color); background: rgba(245,166,35,0.1);  color: var(--opp-color); }
+  .frac-slot.filled.adj { border-color: var(--adj-color); background: rgba(108,142,245,0.1); color: var(--adj-color); }
+  .frac-slot.err { border-color: var(--red) !important; color: var(--red) !important; background: rgba(224,92,92,0.1) !important; }
+  .frac-divider { width: 52px; height: 2px; background: var(--text); border-radius: 2px; }
+
+  /* Side pick buttons */
+  .side-btns { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-top: 0.6rem; }
+  .side-pick-btn {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: 8px; padding: 0.3rem 0.65rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+    cursor: pointer; font-weight: 700; transition: all 0.2s; color: var(--text);
+  }
+  .side-pick-btn:not(:disabled):hover { transform: translateY(-1px); filter: brightness(1.2); }
+  .side-pick-btn.hyp { border-color: var(--hyp-color); color: var(--hyp-color); }
+  .side-pick-btn.opp { border-color: var(--opp-color); color: var(--opp-color); }
+  .side-pick-btn.adj { border-color: var(--adj-color); color: var(--adj-color); }
+  .side-pick-btn.correct { background: rgba(76,175,130,0.2);  border-color: var(--green); color: var(--green); }
+  .side-pick-btn.wrong   { background: rgba(224,92,92,0.15); border-color: var(--red);   color: var(--red); }
+
+  /* Rearrange choices */
+  .rearrange-choices { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.35rem; }
+  .rarr-btn {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: 9px; padding: 0.4rem 0.75rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+    color: var(--text); cursor: pointer; text-align: left; transition: all 0.18s;
+  }
+  .rarr-btn:not(:disabled):hover { border-color: var(--accent2); }
+  .rarr-btn.correct { border-color: var(--green); background: rgba(76,175,130,0.15); }
+  .rarr-btn.wrong   { border-color: var(--red);   background: rgba(224,92,92,0.15); }
+
+  /* Input */
+  .input-row { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; margin-top: 0.4rem; }
+  .num-input {
+    background: var(--surface2); border: 2px solid var(--border);
+    border-radius: 9px; padding: 0.4rem 0.65rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 1rem;
+    color: var(--text); width: 110px; outline: none; transition: border-color 0.2s;
+  }
+  .num-input:focus  { border-color: var(--accent); }
+  .num-input.correct { border-color: var(--green); }
+  .num-input.wrong   { border-color: var(--red); }
+  .unit-label { font-size: 0.88rem; color: var(--muted); font-weight: 700; }
+
+  .btn {
+    font-family: 'Nunito', sans-serif; font-weight: 800; border: none;
+    border-radius: 10px; padding: 0.5rem 1.2rem; cursor: pointer;
+    font-size: 0.88rem; transition: all 0.18s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #8aaeff; transform: translateY(-1px); }
+  .btn-new { background: var(--green); color: #fff; }
+  .btn-new:hover { background: #6dd9a5; transform: translateY(-1px); }
+
+  .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+  .feedback {
+    padding: 0.6rem 0.9rem; border-radius: 10px;
+    font-weight: 700; font-size: 0.88rem; display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.ok { background: rgba(76,175,130,0.13); border: 1.5px solid var(--green); color: var(--green); }
+  .feedback.ko { background: rgba(224,92,92,0.10);  border: 1.5px solid var(--red);   color: var(--red); }
+
+  .formula-built {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+    color: var(--accent); background: rgba(108,142,245,0.08);
+    padding: 0.35em 0.7em; border-radius: 8px;
+    margin-top: 0.3rem; display: inline-block;
+  }
+  .hint-text { font-size: 0.74rem; color: var(--muted); margin-top: 0.35rem; }
+  .reveal { font-family: 'JetBrains Mono', monospace; color: var(--accent2); font-weight: 700; font-size: 1rem; margin-top: 0.4rem; }
+
+  footer {
+    margin-top: auto; padding: 0.8rem;
+    color: var(--muted); font-size: 0.73rem; text-align: center;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📐 <span>Trigo</span>-Entraîneur</div>
+  <div class="stats">
+    <div class="stat-badge">✅ <span class="val" id="st-ok">0</span></div>
+    <div class="stat-badge">📊 Total <span class="val" id="st-tot">0</span></div>
+    <div class="stat-badge">🏆 <span class="val" id="st-pct">0%</span></div>
+  </div>
+  <div class="level-toggle">
+    <button class="level-btn active" id="btn-lvl1" onclick="setLevel(1)">Lvl 1 — Côté</button>
+    <button class="level-btn" id="btn-lvl2" onclick="setLevel(2)">Lvl 2 — Angle</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- CAH SOH TOA -->
+  <div class="cahsohtoa">
+    <div class="cst-badge">
+      <div class="cst-letters">
+        <span style="color:var(--cos-color)">C</span><span style="color:var(--adj-color)">A</span><span style="color:var(--hyp-color)">H</span>
+      </div>
+      <div class="cst-formula">
+        <span class="fn" style="color:var(--cos-color)">COS α =</span>
+        <span class="num" style="color:var(--adj-color)">Adjacent</span>
+        <span style="color:var(--hyp-color)">Hypoténuse</span>
+      </div>
+    </div>
+
+    <div class="cst-sep">·</div>
+
+    <div class="cst-badge">
+      <div class="cst-letters">
+        <span style="color:var(--sin-color)">S</span><span style="color:var(--opp-color)">O</span><span style="color:var(--hyp-color)">H</span>
+      </div>
+      <div class="cst-formula">
+        <span class="fn" style="color:var(--sin-color)">SIN α =</span>
+        <span class="num" style="color:var(--opp-color)">Opposé</span>
+        <span style="color:var(--hyp-color)">Hypoténuse</span>
+      </div>
+    </div>
+
+    <div class="cst-sep">·</div>
+
+    <div class="cst-badge">
+      <div class="cst-letters">
+        <span style="color:var(--tan-color)">T</span><span style="color:var(--opp-color)">O</span><span style="color:var(--adj-color)">A</span>
+      </div>
+      <div class="cst-formula">
+        <span class="fn" style="color:var(--tan-color)">TAN α =</span>
+        <span class="num" style="color:var(--opp-color)">Opposé</span>
+        <span style="color:var(--adj-color)">Adjacent</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exercise -->
+  <div class="exercise-card">
+    <div class="canvas-wrap">
+      <canvas id="triCanvas" width="300" height="260"></canvas>
+      <div class="legend" id="triLegend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--hyp-color)"></div><span id="leg-hyp">—</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--opp-color)"></div><span id="leg-opp">—</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--adj-color)"></div><span id="leg-adj">—</span></div>
+      </div>
+    </div>
+
+    <div class="question-area">
+      <div class="question-text" id="qText">Chargement…</div>
+      <div class="steps" id="stepsArea"></div>
+      <div class="actions" id="actionsArea">
+        <button class="btn btn-new" onclick="newExercise()">🎲 Nouvel exercice</button>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+    <p>© 2026 - Ressources Pédagogiques | Lycée Professionnel</p>
+    <p>Site conçu pour l'enseignement des mathématiques et des sciences</p>
+    <p style="margin-top: 15px; font-size: 0.8em; color: #a0aec0;">
+        <strong>Licence MIT</strong> - Créé par <a href="mailto:lessavoirfaire.partager@gmail.com" style="color: #667eea;">lessavoirfaire.partager@gmail.com</a><br>
+        Ce projet est sous licence libre. 
+        <a href="#" onclick="alert('MIT License\n\nCopyright (c) 2025 lessavoirfaire.partager@gmail.com\n\nPermission is hereby granted, free of charge...')" style="color: #667eea;">Voir licence complète</a>
+    </p>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE & UTILS
+// ═══════════════════════════════════════════
+let level = 1, ex = {};
+const stats = { ok: 0, total: 0 };
+const DEG = Math.PI / 180;
+const ANGLES = [25, 30, 35, 40, 45, 50, 55, 60, 65];
+const rnd = (x, d = 1) => Math.round(x * 10 ** d) / 10 ** d;
+const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+
+// Pool of point names — avoid I/O/S which look like numbers
+const POINT_POOL = ['A','B','C','D','E','F','G','H','J','K','L','M','N','P','Q','R','T','U','V','W'];
+
+function randomPoints() {
+  const pool = [...POINT_POOL];
+  const i1 = randInt(0, pool.length - 1); const p1 = pool.splice(i1, 1)[0];
+  const i2 = randInt(0, pool.length - 1); const p2 = pool.splice(i2, 1)[0];
+  const i3 = randInt(0, pool.length - 1); const p3 = pool.splice(i3, 1)[0];
+  // pRef = angle de référence (bottom-left)
+  // pRight = angle droit (bottom-right)
+  // pTop = sommet opposé (top-right)
+  return { pRef: p1, pRight: p2, pTop: p3 };
+}
+
+// ═══════════════════════════════════════════
+// TRIANGLE GENERATION
+// Fixed geometry:
+//   pRef   = bottom-left  → angle de référence
+//   pRight = bottom-right → angle droit (90°)
+//   pTop   = top-right
+//   pRef-pRight = adj,  pRight-pTop = opp,  pRef-pTop = hyp
+// ═══════════════════════════════════════════
+function generate() {
+  const angleRef = ANGLES[randInt(0, ANGLES.length - 1)];
+  const adj = randInt(4, 13);
+  const opp = rnd(adj * Math.tan(angleRef * DEG));
+  const hyp = rnd(adj / Math.cos(angleRef * DEG));
+
+  const pts = randomPoints(); // { pRef, pRight, pTop }
+  const { pRef, pRight, pTop } = pts;
+
+  // Side names: always sorted alphabetically as bipoints
+  function sideName(a, b) { return [a, b].sort().join(''); }
+  const nameHyp = sideName(pRef, pTop);
+  const nameAdj = sideName(pRef, pRight);
+  const nameOpp = sideName(pRight, pTop);
+
+  const allSides = [
+    { name: nameHyp, rel: 'hyp', value: hyp },
+    { name: nameAdj, rel: 'adj', value: adj  },
+    { name: nameOpp, rel: 'opp', value: opp  },
+  ];
+
+  if (level === 1) {
+    const ti = randInt(0, 2);
+    const target = allSides[ti];
+    const others = allSides.filter((_, i) => i !== ti);
+    const shown  = others[randInt(0, others.length - 1)];
+    return {
+      level: 1, angleRef, adj, opp, hyp, allSides, pts,
+      target, shown,
+      correctFormula: formulaFor(target.rel, shown.rel),
+    };
+  } else {
+    const combos = [
+      { formula: 'cos', numRel: 'adj', denRel: 'hyp' },
+      { formula: 'sin', numRel: 'opp', denRel: 'hyp' },
+      { formula: 'tan', numRel: 'opp', denRel: 'adj' },
+    ];
+    const pair = combos[randInt(0, 2)];
+    const numSide = allSides.find(s => s.rel === pair.numRel);
+    const denSide = allSides.find(s => s.rel === pair.denRel);
+    pair.ratio = rnd(numSide.value / denSide.value, 2);
+    pair.numSide = numSide;
+    pair.denSide = denSide;
+    return { level: 2, angleRef, adj, opp, hyp, allSides, pts, pair };
+  }
+}
+
+function formulaFor(r1, r2) {
+  const k = [r1, r2].sort().join('-');
+  if (k === 'hyp-opp') return 'sin';
+  if (k === 'adj-hyp') return 'cos';
+  if (k === 'adj-opp') return 'tan';
+}
+
+// ═══════════════════════════════════════════
+// DRAW
+// ═══════════════════════════════════════════
+function colorOf(rel) {
+  return { hyp: '#b983f5', opp: '#f5a623', adj: '#6c8ef5' }[rel];
+}
+
+function drawTriangle(highlightRels) {
+  const canvas = document.getElementById('triCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const m = 44;
+  const Bx = m, By = H - m;
+  const Cx = W - m, Cy = H - m;
+  const Ax = W - m, Ay = m;
+
+  const sidesDef = [
+    { rel: 'hyp', x1: Ax, y1: Ay, x2: Bx, y2: By, lx: (Ax+Bx)/2 - 20, ly: (Ay+By)/2 - 12, align: 'center' },
+    { rel: 'adj', x1: Bx, y1: By, x2: Cx, y2: Cy, lx: (Bx+Cx)/2,      ly: By + 20,         align: 'center' },
+    { rel: 'opp', x1: Cx, y1: Cy, x2: Ax, y2: Ay, lx: Cx,              ly: (Cy+Ay)/2,       align: 'center', vertical: true },
+  ];
+
+  function getLabel(rel) {
+    if (ex.level === 1) {
+      if (rel === ex.shown.rel)   return String(ex.shown.value) + ' cm';
+      if (rel === ex.target.rel)  return '?';
+      return '';
+    } else {
+      // lvl2: only show the 2 known sides, nothing on the third
+      const k = [ex.pair.numRel, ex.pair.denRel];
+      if (k.includes(rel)) {
+        const s = ex.allSides.find(s => s.rel === rel);
+        return String(s.value) + ' cm';
+      }
+      return ''; // unknown side: no label at all
+    }
+  }
+
+  sidesDef.forEach(s => {
+    const hl = !highlightRels || highlightRels.includes(s.rel);
+    const col = colorOf(s.rel);
+    ctx.beginPath();
+    ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2);
+    ctx.strokeStyle = hl ? col : col + '28';
+    ctx.lineWidth = hl ? 3.5 : 2;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    const lbl = getLabel(s.rel);
+    if (lbl) {
+      ctx.font = 'bold 12px JetBrains Mono, monospace';
+      ctx.fillStyle = hl ? col : col + '50';
+      if (s.vertical) {
+        // Draw label rotated alongside the vertical segment, offset to the right
+        ctx.save();
+        ctx.translate(s.lx + 16, s.ly);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'center';
+        ctx.fillText(lbl, 0, 0);
+        ctx.restore();
+      } else {
+        ctx.textAlign = s.align || 'center';
+        ctx.fillText(lbl, s.lx, s.ly);
+      }
+    }
+  });
+
+  // Right angle marker
+  const sq = 11;
+  ctx.beginPath();
+  ctx.moveTo(Cx - sq, Cy); ctx.lineTo(Cx - sq, Cy - sq); ctx.lineTo(Cx, Cy - sq);
+  ctx.strokeStyle = '#ffffff45'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Vertex labels
+  const { pRef, pRight, pTop } = ex.pts;
+  ctx.font = 'bold 13px Nunito, sans-serif';
+  ctx.fillStyle = '#e8ecf8bb'; ctx.textAlign = 'center';
+  ctx.fillText(pTop,   Ax + 14, Ay - 4);
+  ctx.fillText(pRef,   Bx - 14, By + 6);
+  ctx.fillText(pRight, Cx + 14, Cy + 15);
+
+  // Angle reference arc (at pRef = bottom-left)
+  const angBA = Math.atan2(Ay - By, Ax - Bx);
+  const angBC = Math.atan2(Cy - By, Cx - Bx);
+  const mid = (angBA + angBC) / 2;
+  ctx.beginPath();
+  ctx.arc(Bx, By, 26, angBA, angBC);
+  ctx.strokeStyle = ex.level === 1 ? '#f5a62370' : '#ffffff25';
+  ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = 'bold 11px Nunito'; ctx.textAlign = 'left';
+  if (ex.level === 1) {
+    ctx.fillStyle = '#f5a623';
+    ctx.fillText(`${ex.angleRef}°`, Bx + 38 * Math.cos(mid), By + 38 * Math.sin(mid));
+  } else {
+    ctx.fillStyle = '#ffffff55';
+    ctx.fillText(`∠${pRef} = ?`, Bx + 38 * Math.cos(mid), By + 38 * Math.sin(mid));
+  }
+}
+
+// ═══════════════════════════════════════════
+// STEP FACTORY
+// ═══════════════════════════════════════════
+function makeStep(title, cls) {
+  const div = document.createElement('div');
+  div.className = `step ${cls}`;
+  div.innerHTML = `<div class="step-header">${title}</div><div class="step-content"></div>`;
+  return div;
+}
+const SC = step => step.querySelector('.step-content');
+
+function appendStep(step) {
+  document.getElementById('stepsArea').appendChild(step);
+  setTimeout(() => step.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+}
+
+// ═══════════════════════════════════════════
+// SHARED: Formula choice widget
+// ═══════════════════════════════════════════
+// Formula labels are built dynamically using ex.pts.pRef
+function getFormulaLabels() {
+  const p = ex.pts.pRef;
+  return {
+    sin: { tag: 'sin', text: `SIN(∠${p}) = Opposé / Hypoténuse` },
+    cos: { tag: 'cos', text: `COS(∠${p}) = Adjacent / Hypoténuse` },
+    tan: { tag: 'tan', text: `TAN(∠${p}) = Opposé / Adjacent` },
+  };
+}
+
+function makeFormulaChoices(correct, onDone) {
+  const FORMULA_LABELS = getFormulaLabels();
+  const wrap = document.createElement('div');
+  wrap.className = 'choices';
+  ['sin', 'cos', 'tan'].forEach(f => {
+    const lbl = FORMULA_LABELS[f];
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.dataset.f = f;
+    btn.innerHTML = `<span class="ftag tag-${lbl.tag}">${lbl.tag.toUpperCase()}</span>${lbl.text}`;
+    btn.onclick = () => {
+      wrap.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+      btn.classList.add(f === correct ? 'correct' : 'wrong');
+      if (f !== correct) wrap.querySelector(`[data-f="${correct}"]`).classList.add('correct');
+      onDone(f === correct);
+    };
+    wrap.appendChild(btn);
+  });
+  return wrap;
+}
+
+// ═══════════════════════════════════════════
+// SHARED: Side-picker (numerator + denominator)
+// ═══════════════════════════════════════════
+// neededRels: [numRel, denRel]
+// extraLabel: fn to show value on button (for lvl 2)
+function makeSidePicker(neededRels, showValues, onDone) {
+  const numRel = neededRels[0], denRel = neededRels[1];
+
+  const fracWrap = document.createElement('div');
+  fracWrap.className = 'fraction-builder';
+  const fnSpan = document.createElement('span');
+  fnSpan.style.fontWeight = '700';
+  fnSpan.id = 'fracFn';
+  fracWrap.appendChild(fnSpan);
+
+  const fracDisp = document.createElement('div');
+  fracDisp.className = 'frac-display';
+  const numSlot = Object.assign(document.createElement('div'), { className: 'frac-slot', textContent: '…' });
+  const divLine = Object.assign(document.createElement('div'), { className: 'frac-divider' });
+  const denSlot = Object.assign(document.createElement('div'), { className: 'frac-slot', textContent: '…' });
+  fracDisp.append(numSlot, divLine, denSlot);
+  fracWrap.appendChild(fracDisp);
+
+  const sideWrap = document.createElement('div');
+  sideWrap.className = 'side-btns';
+
+  const allSides = ex.allSides.map(s => ({ rel: s.rel, label: s.name, name: s.name }));
+
+  const btnMap = {};
+  allSides.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = `side-pick-btn ${s.rel}`;
+    const valStr = showValues ? ` = ${ex.allSides.find(x => x.rel === s.rel).value} cm` : '';
+    btn.textContent = s.label + valStr;
+    sideWrap.appendChild(btn);
+    btnMap[s.rel] = btn;
+  });
+
+  const phaseHint = Object.assign(document.createElement('div'), { className: 'hint-text' });
+  phaseHint.textContent = '▶ Clique sur le côté du numérateur';
+
+  let phase = 'num', pickedNum = null;
+
+  function disableAll() { Object.values(btnMap).forEach(b => b.disabled = true); }
+
+  function resolveError() {
+    const cN = allSides.find(s => s.rel === numRel);
+    const cD = allSides.find(s => s.rel === denRel);
+    numSlot.className = `frac-slot filled ${numRel}`; numSlot.textContent = cN.name;
+    denSlot.className = `frac-slot filled ${denRel}`; denSlot.textContent = cD.name;
+    btnMap[numRel].classList.add('correct');
+    btnMap[denRel].classList.add('correct');
+  }
+
+  Object.entries(btnMap).forEach(([rel, btn]) => {
+    btn.onclick = () => {
+      const side = allSides.find(s => s.rel === rel);
+      if (phase === 'num') {
+        pickedNum = side;
+        numSlot.className = `frac-slot filled ${rel}`;
+        numSlot.textContent = side.name;
+        btn.style.opacity = '0.5'; btn.disabled = true;
+        phaseHint.textContent = '▶ Clique maintenant sur le côté du dénominateur';
+        phase = 'den';
+      } else {
+        disableAll();
+        denSlot.className = `frac-slot filled ${rel}`;
+        denSlot.textContent = side.name;
+        phaseHint.textContent = '';
+
+        const ok = (pickedNum.rel === numRel) && (rel === denRel);
+        if (!ok) resolveError();
+        onDone(ok);
+      }
+    };
+  });
+
+  return { fracWrap, sideWrap, phaseHint, fnSpan };
+}
+
+// ═══════════════════════════════════════════
+// LEVEL 1 FLOW
+// ═══════════════════════════════════════════
+function buildStepsL1() {
+  // Step 1: choose formula
+  const s1 = makeStep('Étape 1 — Choisir la formule', 'active');
+  appendStep(s1);
+  const choices = makeFormulaChoices(ex.correctFormula, (ok) => {
+    s1.classList.replace('active', ok ? 'done' : 'error');
+    setTimeout(() => step1b_L1_sides(ex.correctFormula), ok ? 400 : 900);
+  });
+  SC(s1).appendChild(choices);
+}
+
+function step1b_L1_sides(formula) {
+  const FSIDES = { sin: ['opp', 'hyp'], cos: ['adj', 'hyp'], tan: ['opp', 'adj'] };
+  const neededRels = FSIDES[formula];
+
+  const s2 = makeStep('Étape 2 — Identifier les côtés dans la fraction', 'active');
+  appendStep(s2);
+
+  const intro = Object.assign(document.createElement('div'), { className: 'hint-text' });
+  intro.textContent = 'Clique sur le bon côté pour le numérateur, puis le dénominateur :';
+  SC(s2).appendChild(intro);
+
+  const { fracWrap, sideWrap, phaseHint, fnSpan } = makeSidePicker(neededRels, false, (ok) => {
+    s2.classList.replace('active', ok ? 'done' : 'error');
+    drawTriangle(neededRels);
+    setTimeout(() => step3_L1_rearrange(formula, neededRels), ok ? 400 : 1000);
+  });
+
+  fnSpan.textContent = `${formula.toUpperCase()}(${ex.angleRef}°) = `;
+  SC(s2).append(fracWrap, sideWrap, phaseHint);
+}
+
+function step3_L1_rearrange(formula, neededRels) {
+  const s3 = makeStep('Étape 3 — Isoler le côté inconnu', 'active');
+  appendStep(s3);
+
+  const fn = formula.toUpperCase();
+  const ang = `${ex.angleRef}°`;
+  const tgt = ex.target.name;
+  const shn = ex.shown.name;
+  const targetIsNum = (ex.target.rel === neededRels[0]);
+  const numName = ex.allSides.find(s => s.rel === neededRels[0]).name;
+  const denName = ex.allSides.find(s => s.rel === neededRels[1]).name;
+  const orig = Object.assign(document.createElement('div'), { className: 'formula-built' });
+  orig.textContent = `${fn}(${ang}) = ${numName} / ${denName}`;
+  SC(s3).appendChild(orig);
+
+  const q = Object.assign(document.createElement('div'), { className: 'hint-text' });
+  q.textContent = `Quelle formule permet de calculer ${tgt} ?`;
+  q.style.marginTop = '0.5rem';
+  SC(s3).appendChild(q);
+
+  const correctExpr = targetIsNum
+    ? `${tgt} = ${shn} × ${fn}(${ang})`
+    : `${tgt} = ${shn} / ${fn}(${ang})`;
+
+  const wrongs = targetIsNum
+    ? [`${tgt} = ${shn} / ${fn}(${ang})`, `${tgt} = ${fn}(${ang}) / ${shn}`]
+    : [`${tgt} = ${shn} × ${fn}(${ang})`, `${tgt} = ${fn}(${ang}) × ${shn}`];
+
+  const opts = [correctExpr, ...wrongs].sort(() => Math.random() - 0.5);
+  const wrap = document.createElement('div');
+  wrap.className = 'rearrange-choices';
+  opts.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'rarr-btn';
+    btn.textContent = opt;
+    btn.onclick = () => {
+      wrap.querySelectorAll('.rarr-btn').forEach(b => b.disabled = true);
+      const ok = (opt === correctExpr);
+      btn.classList.add(ok ? 'correct' : 'wrong');
+      if (!ok) wrap.querySelectorAll('.rarr-btn').forEach(b => { if (b.textContent === correctExpr) b.classList.add('correct'); });
+      s3.classList.replace('active', ok ? 'done' : 'error');
+      setTimeout(() => step4_L1_compute(formula, neededRels), ok ? 400 : 1000);
+    };
+    wrap.appendChild(btn);
+  });
+  SC(s3).appendChild(wrap);
+}
+
+function step4_L1_compute(formula, neededRels) {
+  const s4 = makeStep(`Étape 4 — Calculer ${ex.target.name} (arrondi à 0,1 cm)`, 'active');
+  appendStep(s4);
+
+  const fn = formula.toUpperCase();
+  const ang = `${ex.angleRef}°`;
+  const tgt = ex.target.name;
+  const shn = ex.shown.name;
+  const targetIsNum = (ex.target.rel === neededRels[0]);
+
+  const formulaEl = Object.assign(document.createElement('div'), { className: 'formula-built' });
+  formulaEl.textContent = targetIsNum
+    ? `${tgt} = ${shn} × ${fn}(${ang})`
+    : `${tgt} = ${shn} / ${fn}(${ang})`;
+  SC(s4).appendChild(formulaEl);
+
+  const hint = Object.assign(document.createElement('div'), { className: 'hint-text' });
+  hint.textContent = 'Utilise ta calculatrice en mode degrés.';
+  SC(s4).appendChild(hint);
+
+  const row = document.createElement('div');
+  row.className = 'input-row';
+  const inp = Object.assign(document.createElement('input'), { type: 'number', step: '0.1', className: 'num-input', placeholder: '0.0', autocomplete: 'off' });
+  const unit = Object.assign(document.createElement('span'), { className: 'unit-label', textContent: 'cm' });
+  const valBtn = Object.assign(document.createElement('button'), { className: 'btn btn-primary', textContent: 'Valider' });
+  valBtn.onclick = () => {
+    const user = parseFloat(inp.value);
+    const correct = parseFloat(rnd(ex.target.value));
+    const fb = document.getElementById('feedback');
+    if (Math.abs(user - correct) <= 0.2) {
+      inp.className = 'num-input correct';
+      s4.classList.replace('active', 'done');
+      fb.className = 'feedback show ok';
+      fb.textContent = `✅ Bravo ! ${tgt} = ${correct} cm`;
+      stats.ok++; stats.total++;
+    } else {
+      inp.className = 'num-input wrong';
+      inp.disabled = true; valBtn.disabled = true;
+      s4.classList.replace('active', 'error');
+      fb.className = 'feedback show ko';
+      fb.textContent = '❌ Pas tout à fait…';
+      const rev = Object.assign(document.createElement('div'), { className: 'reveal', textContent: `${tgt} = ${correct} cm` });
+      SC(s4).appendChild(rev);
+      stats.total++;
+    }
+    updateStats(); addNewBtn();
+  };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') valBtn.click(); });
+  row.append(inp, unit, valBtn);
+  SC(s4).appendChild(row);
+  setTimeout(() => inp.focus(), 100);
+}
+
+// ═══════════════════════════════════════════
+// LEVEL 2 FLOW
+// ═══════════════════════════════════════════
+function buildStepsL2() {
+  const s1 = makeStep('Étape 1 — Choisir la formule', 'active');
+  appendStep(s1);
+  const choices = makeFormulaChoices(ex.pair.formula, (ok) => {
+    s1.classList.replace('active', ok ? 'done' : 'error');
+    setTimeout(() => step2_L2_sides(ex.pair.formula), ok ? 400 : 900);
+  });
+  SC(s1).appendChild(choices);
+}
+
+function step2_L2_sides(formula) {
+  const neededRels = [ex.pair.numRel, ex.pair.denRel];
+
+  const s2 = makeStep('Étape 2 — Identifier les côtés dans la fraction', 'active');
+  appendStep(s2);
+
+  const intro = Object.assign(document.createElement('div'), { className: 'hint-text' });
+  intro.textContent = 'Clique sur le bon côté pour le numérateur, puis le dénominateur :';
+  SC(s2).appendChild(intro);
+
+  const { fracWrap, sideWrap, phaseHint, fnSpan } = makeSidePicker(neededRels, true, (ok) => {
+    s2.classList.replace('active', ok ? 'done' : 'error');
+    drawTriangle(neededRels);
+    setTimeout(() => step3_L2_ratio(formula), ok ? 400 : 1000);
+  });
+
+  fnSpan.textContent = `${formula.toUpperCase()}(∠${ex.pts.pRef}) = `;
+  SC(s2).append(fracWrap, sideWrap, phaseHint);
+}
+
+function step3_L2_ratio(formula) {
+  const p = ex.pts.pRef;
+  const s3 = makeStep(`Étape 3 — Calculer le rapport ${formula.toUpperCase()}(∠${p})`, 'active');
+  appendStep(s3);
+
+  const fn = formula.toUpperCase();
+  const numSide = ex.pair.numSide;
+  const denSide = ex.pair.denSide;
+
+  const intro = Object.assign(document.createElement('div'), { className: 'hint-text' });
+  intro.textContent = `Calcule la valeur du rapport (arrondi à 0,01) :`;
+  SC(s3).appendChild(intro);
+
+  const formulaEl = Object.assign(document.createElement('div'), { className: 'formula-built' });
+  formulaEl.textContent = `${fn}(∠${p}) = ${numSide.name} / ${denSide.name} = ${numSide.value} / ${denSide.value}`;
+  SC(s3).appendChild(formulaEl);
+
+  const row = document.createElement('div');
+  row.className = 'input-row';
+  const inp = Object.assign(document.createElement('input'), { type: 'number', step: '0.01', className: 'num-input', placeholder: '0.00', autocomplete: 'off' });
+  const valBtn = Object.assign(document.createElement('button'), { className: 'btn btn-primary', textContent: 'Valider' });
+  valBtn.onclick = () => {
+    const user = parseFloat(parseFloat(inp.value).toFixed(2));
+    const correct = ex.pair.ratio;
+    const ok = Math.abs(user - correct) <= 0.01;
+    if (ok) {
+      inp.className = 'num-input correct';
+      s3.classList.replace('active', 'done');
+      setTimeout(() => step4_L2_angle(formula), 400);
+    } else {
+      inp.className = 'num-input wrong';
+      inp.disabled = true; valBtn.disabled = true;
+      s3.classList.replace('active', 'error');
+      const rev = Object.assign(document.createElement('div'), { className: 'reveal', textContent: `${fn}(∠${p}) = ${correct}` });
+      SC(s3).appendChild(rev);
+      setTimeout(() => step4_L2_angle(formula), 900);
+    }
+  };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') valBtn.click(); });
+  row.append(inp, valBtn);
+  SC(s3).appendChild(row);
+  setTimeout(() => inp.focus(), 100);
+}
+
+function step4_L2_angle(formula) {
+  const p = ex.pts.pRef;
+  const s4 = makeStep(`Étape 4 — En déduire ∠${p} (arrondi au degré)`, 'active');
+  appendStep(s4);
+
+  const fn = formula.toUpperCase();
+
+  const intro = Object.assign(document.createElement('div'), { className: 'hint-text' });
+  intro.textContent = `Utilise la touche ${fn}⁻¹ sur ta calculatrice (mode degrés).`;
+  SC(s4).appendChild(intro);
+
+  const promptEl = Object.assign(document.createElement('div'), { className: 'formula-built' });
+  promptEl.textContent = `∠${p} = ${fn}⁻¹( … )`;
+  SC(s4).appendChild(promptEl);
+
+  const row = document.createElement('div');
+  row.className = 'input-row';
+  const inp = Object.assign(document.createElement('input'), { type: 'number', step: '1', className: 'num-input', placeholder: '0', autocomplete: 'off' });
+  const unit = Object.assign(document.createElement('span'), { className: 'unit-label', textContent: '°' });
+  const valBtn = Object.assign(document.createElement('button'), { className: 'btn btn-primary', textContent: 'Valider' });
+  valBtn.onclick = () => {
+    const user = parseInt(inp.value);
+    const correct = ex.angleRef;
+    const fb = document.getElementById('feedback');
+    if (Math.abs(user - correct) <= 1) {
+      inp.className = 'num-input correct';
+      s4.classList.replace('active', 'done');
+      fb.className = 'feedback show ok';
+      fb.textContent = `✅ Bravo ! ∠${p} = ${correct}°`;
+      stats.ok++; stats.total++;
+    } else {
+      inp.className = 'num-input wrong';
+      inp.disabled = true; valBtn.disabled = true;
+      s4.classList.replace('active', 'error');
+      fb.className = 'feedback show ko';
+      fb.textContent = '❌ Pas tout à fait…';
+      const rev = Object.assign(document.createElement('div'), { className: 'reveal', textContent: `∠${p} = ${correct}°` });
+      SC(s4).appendChild(rev);
+      stats.total++;
+    }
+    updateStats(); addNewBtn();
+  };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') valBtn.click(); });
+  row.append(inp, unit, valBtn);
+  SC(s4).appendChild(row);
+  setTimeout(() => inp.focus(), 100);
+}
+
+// ═══════════════════════════════════════════
+// ORCHESTRATION
+// ═══════════════════════════════════════════
+function buildSteps() {
+  document.getElementById('stepsArea').innerHTML = '';
+  document.getElementById('actionsArea').innerHTML =
+    '<button class="btn btn-new" onclick="newExercise()">🎲 Nouvel exercice</button>';
+  document.getElementById('feedback').className = 'feedback';
+  // Update legend
+  document.getElementById('leg-hyp').textContent = ex.allSides.find(s => s.rel === 'hyp').name;
+  document.getElementById('leg-opp').textContent = ex.allSides.find(s => s.rel === 'opp').name;
+  document.getElementById('leg-adj').textContent = ex.allSides.find(s => s.rel === 'adj').name;
+  drawTriangle(null);
+  if (ex.level === 1) buildStepsL1();
+  else buildStepsL2();
+}
+
+function addNewBtn() {
+  const a = document.getElementById('actionsArea');
+  if (!a.querySelector('.btn-new')) {
+    const btn = Object.assign(document.createElement('button'), { className: 'btn btn-new', textContent: '🎲 Nouvel exercice' });
+    btn.onclick = newExercise;
+    a.appendChild(btn);
+  }
+}
+
+function updateStats() {
+  document.getElementById('st-ok').textContent = stats.ok;
+  document.getElementById('st-tot').textContent = stats.total;
+  document.getElementById('st-pct').textContent = stats.total > 0 ? Math.round(100 * stats.ok / stats.total) + '%' : '0%';
+}
+
+function setLevel(l) {
+  level = l;
+  document.getElementById('btn-lvl1').classList.toggle('active', l === 1);
+  document.getElementById('btn-lvl2').classList.toggle('active', l === 2);
+  newExercise();
+}
+
+function newExercise() {
+  ex = generate();
+  const q = document.getElementById('qText');
+  document.getElementById('feedback').className = 'feedback';
+  if (level === 1)
+    q.innerHTML = `Calcule <span class="hl">${ex.target.name}</span> dans ce triangle rectangle (en cm, arrondi à 0,1).`;
+  else
+    q.innerHTML = `Calcule <span class="hl">∠${ex.pts.pRef}</span> dans ce triangle rectangle (arrondi au degré).`;
+  buildSteps();
+}
+
+newExercise();
+</script>
+</body>
+</html>

@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Outil Diagramme Statistique</title>
+<style>
+  body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f9f8;
+    margin: 20px;
+    color: #2d3748;
+  }
+  .container {
+    max-width: 900px;
+    margin: auto;
+    background: white;
+    border-radius: 10px;
+    padding: 25px 35px;
+    box-shadow: 0 6px 12px rgba(102,126,234,0.3);
+  }
+  h1 {
+    font-weight: 400;
+    color: #764ba2;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 2.2em;
+  }
+  .form-row {
+    display: flex; 
+    align-items: flex-end;
+    gap: 35px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+  }
+  label {
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 4px;
+    display: block;
+  }
+  select, input[type="text"], input[type="number"] {
+    padding: 7px 10px;
+    border-radius: 5px;
+    border: 1px solid #cbd5e0;
+    font-size: 16px;
+    width: 210px;
+    font-family: inherit;
+  }
+  input[type="checkbox"] {
+    margin-left: 10px;
+    transform: scale(1.2);
+    cursor: pointer;
+  }
+  button {
+    margin-top: 16px;
+    background: #764ba2;
+    border: none;
+    padding: 12px 26px;
+    color: white;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+  }
+  button:hover {
+    background: #667eea;
+  }
+  .table-container {
+    margin-top: 24px;
+    overflow-x: auto;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+    text-align: center;
+  }
+  th, td {
+    border: 1px solid #e2e8f0;
+    padding: 9px;
+  }
+  th {
+    background: linear-gradient(90deg, #764ba2, #63b3ed);
+    color: white;
+    font-weight: 600;
+  }
+  tr.total-row {
+    font-weight: bold;
+    background: #e6fffa;
+  }
+  canvas {
+    margin-top: 32px;
+    display: block;
+    max-width: 100%;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+  }
+  .flex-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .hidden {
+    display: none;
+  }
+  #continuOptions label {
+    color: #319795;
+    font-weight: 600;
+  }
+  footer {
+    max-width: 900px;
+    margin: 30px auto 10px;
+    font-size: 12px;
+    color: #666;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    text-align: center;
+  }
+  footer a {
+    color: #764ba2;
+    text-decoration: none;
+  }
+  footer a:hover {
+    text-decoration: underline;
+  }
+  @media (max-width: 480px) {
+    body {
+      margin: 10px;
+    }
+    .container {
+      padding: 20px 15px;
+      margin: 5px;
+    }
+    h1 {
+      font-size: 1.6em;
+    }
+    select, input[type="text"], input[type="number"] {
+      width: 100%;
+      font-size: 14px;
+    }
+    .form-row {
+      gap: 15px;
+    }
+    button {
+      width: 100%;
+      padding: 12px 0;
+      font-size: 14px;
+    }
+    canvas {
+      width: 100% !important;
+      height: auto !important;
+    }
+  }
+  @media (min-width: 481px) and (max-width: 768px) {
+    .container {
+      padding: 20px 25px;
+      max-width: 700px;
+    }
+    h1 {
+      font-size: 1.9em;
+    }
+    select, input[type="text"], input[type="number"] {
+      width: 180px;
+    }
+  }
+  @media (min-width: 1200px) {
+    .container {
+      max-width: 1100px;
+      padding: 35px 50px;
+    }
+    h1 {
+      font-size: 2.4em;
+    }
+    select, input[type="text"], input[type="number"] {
+      width: 240px;
+      font-size: 18px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Outil Diagramme Statistique</h1>
+
+  <div class="form-row">
+    <div style="flex-basis:100%;">
+      <label for="titreDiagramme">Titre du diagramme :</label>
+      <input type="text" id="titreDiagramme" placeholder="Ex : Répartition des couleurs de yeux" style="width: 100%; max-width: 500px;" />
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div>
+      <label for="nomCaractere">Nom du caractère :</label>
+      <input type="text" id="nomCaractere" placeholder="Ex : Taille, Couleur..." />
+    </div>
+    <div>
+      <label for="typeCaractere">Type de caractère :</label>
+      <select id="typeCaractere">
+        <option value="">-- Choisir --</option>
+        <option value="qualitatif">Qualitatif</option>
+        <option value="quantitatif_discret">Quantitatif discret</option>
+        <option value="quantitatif_continu">Quantitatif continu</option>
+      </select>
+    </div>
+    <div>
+      <label for="axeY">Axe Y :</label>
+      <select id="axeY">
+        <option value="frequence">Fréquence</option>
+        <option value="effectif">Effectif</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="continuOptions" class="hidden">
+    <label>Paramètres pour quantitatif continu :</label>
+    <div class="flex-row">
+      <div>
+        <label for="minVal">Valeur min :</label><br />
+        <input type="number" id="minVal" step="any" />
+      </div>
+      <div>
+        <label for="maxVal">Valeur max :</label><br />
+        <input type="number" id="maxVal" step="any" />
+      </div>
+      <div>
+        <label for="etendueClasse">Étendue des classes :</label><br />
+        <input type="number" id="etendueClasse" step="any" />
+      </div>
+    </div>
+  </div>
+
+  <button id="genererTableau">Générer tableau</button>
+
+  <div class="table-container hidden" id="tableContainer">
+    <label>
+      <input type="checkbox" id="completerCol" />
+      Compléter les colonnes automatiquement
+    </label>
+    <table id="tableCaract" aria-label="Tableau des caractères et statistiques">
+      <thead>
+        <tr>
+          <th id="colCaractere">Caractère</th>
+          <th>Effectif</th>
+          <th>Fréquence (%)</th>
+          <th>Angle (°)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="choixGraphiqueContainer" style="margin-top: 20px;">
+    <label>Choix du graphique :</label><br />
+    <label><input type="radio" name="graphType" value="circulaire" /> Circulaire</label>
+    <label><input type="radio" name="graphType" value="colonnes" /> Diagramme en colonnes</label>
+    <label><input type="radio" name="graphType" value="barres" /> Histogramme</label>
+  </div>
+
+  <canvas id="graphCanvas" width="820" height="430" role="img" aria-label="Graphique statistique"></canvas>
+</div>
+
+<footer class="footer">
+    <p>© 2026 - Ressources Pédagogiques | Lycée Professionnel</p>
+    <p>Site conçu pour l'enseignement des mathématiques et des sciences</p>
+    <p style="margin-top: 15px; font-size: 0.8em; color: #a0aec0;">
+        <strong>Licence MIT</strong> - Créé par <a href="mailto:lessavoirfaire.partager@gmail.com" style="color: #667eea;">lessavoirfaire.partager@gmail.com</a><br>
+        Ce projet est sous licence libre. 
+        <a href="#" onclick="alert('MIT License\n\nCopyright (c) 2025 lessavoirfaire.partager@gmail.com\n\nPermission is hereby granted, free of charge...')" style="color: #667eea;">Voir licence complète</a>
+    </p>
+</footer>
+
+<script>
+  const typeSelect = document.getElementById("typeCaractere");
+  const continuOptions = document.getElementById("continuOptions");
+  const tbody = document.querySelector("#tableCaract tbody");
+  const completerCheckbox = document.getElementById("completerCol");
+  const graphContainer = document.getElementById("choixGraphiqueContainer");
+  const canvas = document.getElementById("graphCanvas");
+  const ctx = canvas.getContext("2d");
+  const axeYSelect = document.getElementById("axeY");
+  const colCaractere = document.getElementById("colCaractere");
+  const nomCaractereInput = document.getElementById("nomCaractere");
+  const titreDiagrammeInput = document.getElementById("titreDiagramme");
+
+  const couleurs = [
+    "#764ba2", "#319795", "#9f79ea", "#48bb78", "#b78efa", "#2f855a",
+    "#7c3aed", "#38a169", "#a78bfa", "#276749"
+  ];
+
+  function resetAll() {
+    tbody.innerHTML = "";
+    document.getElementById("tableContainer").classList.add("hidden");
+    canvas.classList.add("hidden");
+    completerCheckbox.checked = false;
+  }
+
+  function updateColCaractereTitle(){
+    const nom = nomCaractereInput.value.trim();
+    colCaractere.textContent = nom ? `Caractère : ${nom}` : "Caractère";
+  }
+
+  titreDiagrammeInput.addEventListener("input", () => {
+    if(completerCheckbox.checked){
+      dessinerGraphique(document.querySelector('input[name="graphType"]:checked').value);
+    }
+  });
+
+  nomCaractereInput.addEventListener("input", () => {
+    updateColCaractereTitle();
+  });
+
+  typeSelect.addEventListener("change", () => {
+    if(typeSelect.value === "quantitatif_continu") {
+      continuOptions.classList.remove("hidden");
+    } else {
+      continuOptions.classList.add("hidden");
+    }
+    resetAll();
+  });
+
+  document.getElementById("genererTableau").addEventListener("click", () => {
+    const nomCaract = nomCaractereInput.value.trim();
+    if(!nomCaract) { alert("Veuillez saisir le nom du caractère."); return; }
+    updateColCaractereTitle();
+    const type = typeSelect.value;
+    if(!type) { alert("Veuillez choisir un type de caractère."); return; }
+    resetAll();
+
+    if(type === "quantitatif_continu") {
+      const min = parseFloat(document.getElementById("minVal").value);
+      const max = parseFloat(document.getElementById("maxVal").value);
+      const etendue = parseFloat(document.getElementById("etendueClasse").value);
+      if(isNaN(min) || isNaN(max) || isNaN(etendue) || min >= max || etendue <= 0) {
+        alert("Veuillez entrer un minimum, un maximum, et une étendue des classes valides.");
+        return;
+      }
+      let classes = [];
+      for(let val = min; val < max; val += etendue){
+        let maxClass = val + etendue;
+        if(maxClass > max) maxClass = max;
+        classes.push({min: val, max: maxClass});
+      }
+      tbody.innerHTML = "";
+      classes.forEach(c => {
+        const tr = document.createElement("tr");
+        const caractere = `[${c.min.toFixed(2)} ; ${c.max.toFixed(2)}[`;
+        tr.innerHTML =
+          `<td>${caractere}</td>
+          <td><input type="number" min="0" step="any"></td>
+          <td><input type="number" min="0" step="any"></td>
+          <td></td>`;
+        tbody.appendChild(tr);
+      });
+
+    } else {
+      tbody.innerHTML = "";
+      for(let i=0; i<2; i++){
+        tbody.appendChild(creerLigneVide());
+      }
+    }
+    document.getElementById("tableContainer").classList.remove("hidden");
+  });
+
+  function creerLigneVide(){
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td><input type="text" class="charValue" placeholder="Valeur..."></td>
+       <td><input type="number" min="0" step="any" class="effValue"></td>
+       <td><input type="number" min="0" step="any" class="freqValue"></td>
+       <td class="angleCell"></td>`;
+    return tr;
+  }
+
+  tbody.addEventListener("input", (e) => {
+    if(e.target.classList.contains("charValue")){
+      const type = typeSelect.value;
+      if(type === "qualitatif" || type === "quantitatif_discret"){
+        const dernier = tbody.lastElementChild;
+        if(dernier && dernier.querySelector(".charValue").value.trim() !== ""){
+          const lignesVides = Array.from(tbody.children).filter(r =>
+            r !== dernier && r.querySelector(".charValue").value.trim() === ""
+          );
+          if(lignesVides.length === 0){
+            tbody.appendChild(creerLigneVide());
+          }
+        }
+      }
+    }
+    if(completerCheckbox.checked){
+      completerColonnes();
+      dessinerGraphique(document.querySelector('input[name="graphType"]:checked').value);
+    }
+  });
+
+  completerCheckbox.addEventListener("change", e => {
+    if(!e.target.checked){
+      supprimerTotal();
+      canvas.classList.add("hidden");
+      return;
+    }
+    completerColonnes();
+    setGraphiqueChoix(typeSelect.value);
+    setTimeout(() => {
+      dessinerGraphique(document.querySelector('input[name="graphType"]:checked').value);
+    }, 250);
+  });
+
+  function completerColonnes(){
+    supprimerTotal();
+    const rows = Array.from(tbody.rows).filter(r => 
+        (typeSelect.value === "quantitatif_continu" && r.cells[0].textContent.trim() !== "") ||
+        (typeSelect.value !== "quantitatif_continu" && r.cells[0].querySelector("input").value.trim() !== "")
+    );
+    const axeY = axeYSelect.value;
+
+    let totalEff = 0;
+    rows.forEach(tr => {
+      const effVal = parseFloat(tr.cells[1].querySelector("input").value);
+      if(!isNaN(effVal)) totalEff += effVal;
+    });
+
+    rows.forEach(tr => {
+      const effInp = tr.cells[1].querySelector("input");
+      const freqInp = tr.cells[2].querySelector("input");
+      let effVal = parseFloat(effInp.value);
+      let freqValPct = parseFloat(freqInp.value);
+      let freqVal = freqValPct/100;
+
+      if(axeY === "effectif") {
+        if(isNaN(freqVal) && !isNaN(effVal) && totalEff > 0){
+          freqVal = effVal / totalEff;
+          freqInp.value = (freqVal*100).toFixed(1);
+        }
+      } else {
+        if(isNaN(effVal) && !isNaN(freqVal) && totalEff > 0){
+          effVal = freqVal * totalEff;
+          effInp.value = effVal.toFixed(1);
+        }
+      }
+    });
+
+    let sommeAngle = 0;
+    const angles = [];
+    rows.forEach(tr => {
+      const effVal = parseFloat(tr.cells[1].querySelector("input").value);
+      const freqPct = parseFloat(tr.cells[2].querySelector("input").value);
+      
+      let angle = 0;
+      if (totalEff > 0) {
+          angle = (freqPct / 100) * 360;
+      }
+      
+      angles.push(angle);
+      tr.cells[3].textContent = angle > 0 ? angle.toFixed(1) : "0.0";
+      sommeAngle += angle;
+    });
+    
+    // Ajustement de la dernière valeur pour que le total soit exactement 360.0
+    if(rows.length > 0) {
+        const lastIndex = rows.length - 1;
+        const correction = 360.0 - sommeAngle;
+        let lastAngle = angles[lastIndex] + correction;
+        rows[lastIndex].cells[3].textContent = lastAngle.toFixed(1);
+    }
+    
+    const sumEff = rows.reduce((acc, tr) => {
+      const val = parseFloat(tr.cells[1].querySelector("input").value);
+      return acc + (isNaN(val) ? 0 : val);
+    }, 0);
+    const sumFreq = rows.reduce((acc, tr) => {
+      const val = parseFloat(tr.cells[2].querySelector("input").value);
+      return acc + (isNaN(val) ? 0 : val);
+    }, 0);
+    const sumAngle = rows.reduce((acc, tr) => {
+      const val = parseFloat(tr.cells[3].textContent);
+      return acc + (isNaN(val) ? 0 : val);
+    }, 0);
+
+    const trTotal = document.createElement("tr");
+    trTotal.className = "total-row";
+    trTotal.innerHTML = `<td>Total</td><td>${sumEff.toFixed(1)}</td><td>${sumFreq.toFixed(1)}</td><td>${sumAngle.toFixed(1)}</td>`;
+    tbody.appendChild(trTotal);
+  }
+
+  function supprimerTotal(){
+    const totalRows = tbody.querySelectorAll("tr.total-row");
+    totalRows.forEach(r => r.remove());
+  }
+
+  function setGraphiqueChoix(type) {
+    graphContainer.classList.remove("hidden");
+    const radios = graphContainer.querySelectorAll('input[name="graphType"]');
+    radios.forEach(r => r.checked = false);
+
+    if(type === "qualitatif") {
+      radios[0].checked = true;
+      radios[0].parentElement.style.display = "inline-block";
+      radios[1].parentElement.style.display = "inline-block";
+      radios[2].parentElement.style.display = "none";
+    }
+    else if(type === "quantitatif_discret") {
+      radios[1].checked = true;
+      radios[0].parentElement.style.display = "inline-block";
+      radios[1].parentElement.style.display = "inline-block";
+      radios[2].parentElement.style.display = "none";
+    }
+    else if(type === "quantitatif_continu") {
+      radios[2].checked = true;
+      radios[0].parentElement.style.display = "inline-block";
+      radios[1].parentElement.style.display = "inline-block";
+      radios[2].parentElement.style.display = "inline-block";
+    }
+  }
+
+  graphContainer.addEventListener("change", e => {
+    if(e.target.name === "graphType"){
+      dessinerGraphique(e.target.value);
+    }
+  });
+
+  function dessinerGraphique(typeGraph){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.classList.remove("hidden");
+
+    const rows = Array.from(tbody.rows).filter(r => !r.classList.contains("total-row"));
+    if(rows.length === 0) return;
+
+    const data = rows.map(tr => {
+      let label = "";
+      if(typeSelect.value === "quantitatif_continu") {
+        label = tr.cells[0].textContent;
+      } else {
+        label = tr.cells[0].querySelector("input")?.value || "";
+      }
+      let eff = parseFloat(tr.cells[1].querySelector("input")?.value);
+      if(isNaN(eff)) eff = 0;
+      return {label, eff};
+    }).filter(d => d.label.trim() !== "");
+
+    if(data.length === 0) return;
+    const totalEff = data.reduce((a,b) => a + b.eff, 0);
+    const palette = couleurs;
+
+    const titreDiagramme = titreDiagrammeInput.value.trim() || (typeGraph === "circulaire" ? "Diagramme Circulaire" : (typeGraph === "colonnes" ? "Diagramme en colonnes" : "Histogramme"));
+
+    if(typeGraph === "circulaire") {
+      let startAngle = 0;
+      data.forEach((d,i) => {
+        const val = d.eff/totalEff;
+        const sliceAngle = val * 2 * Math.PI;
+
+        ctx.beginPath();
+        ctx.moveTo(canvas.width/4, canvas.height/2);
+        ctx.arc(canvas.width/4, canvas.height/2, 110, startAngle, startAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fillStyle = palette[i % palette.length];
+        ctx.fill();
+
+        const midAngle = startAngle + sliceAngle/2;
+        const labelX = canvas.width/4 + Math.cos(midAngle) * 130;
+        const labelY = canvas.height/2 + Math.sin(midAngle) * 130;
+        ctx.fillStyle = "#2d3748";
+        ctx.font = "14px Segoe UI";
+        ctx.textAlign = (midAngle > Math.PI/2 && midAngle < 3*Math.PI/2) ? "right" : "left";
+        ctx.fillText(`${d.label} (${(val*100).toFixed(1)}%)`, labelX, labelY);
+        startAngle += sliceAngle;
+      });
+
+      ctx.fillStyle = "#764ba2";
+      ctx.font = "20px Segoe UI";
+      ctx.textAlign = "center";
+      ctx.fillText(titreDiagramme, canvas.width/4, 35);
+
+    } else {
+      const margin = 60;
+      const marginRight = 40;
+      const width = canvas.width - margin - marginRight;
+      const height = canvas.height - 2 * margin;
+      
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(margin, margin, width, height);
+
+      const maxVal = Math.max(...data.map(d => d.eff));
+      
+      // Calcul d'une échelle linéaire arrondie pour l'axe Y (CORRECTION #2)
+      let maxYAffiche = maxVal;
+      if (maxVal > 0) {
+          const puissanceDeDix = Math.pow(10, Math.floor(Math.log10(maxVal)) - 1);
+          const arrondiA = [0.1, 0.2, 0.5, 1, 2, 5].find(v => (v * puissanceDeDix) >= maxVal) || 10;
+          maxYAffiche = Math.ceil(maxVal / arrondiA) * arrondiA;
+
+          if (maxYAffiche === maxVal && maxVal > 0) {
+            maxYAffiche = maxVal + maxVal * 0.1; // Ajoute une petite marge si c'est déjà un entier parfait
+            const p = Math.pow(10, Math.floor(Math.log10(maxYAffiche)));
+            maxYAffiche = Math.ceil(maxYAffiche / p) * p;
+          }
+          if (maxVal <= 1 && maxVal > 0) {
+            maxYAffiche = 1; // Si les valeurs sont très petites, garder une limite raisonnable
+          }
+      } else {
+        maxYAffiche = 10;
+      }
+      
+      // Assurer que la valeur affichée est toujours supérieure ou égale à maxVal
+      if (maxYAffiche < maxVal) {
+          maxYAffiche = maxVal + 1;
+      }
+      
+      ctx.strokeStyle = "#cbd5e0";
+      ctx.fillStyle = "#4a5568";
+      ctx.textAlign = "right";
+      ctx.font = "12px Segoe UI";
+      ctx.lineWidth = 1;
+
+      // Échelle linéaire pour l'axe Y
+      const nbGraduationsY = 5;
+      for(let i=0; i<=nbGraduationsY; i++) {
+        const val = (maxYAffiche * i / nbGraduationsY);
+        const y = margin + height * (1 - val / maxYAffiche);
+        ctx.beginPath();
+        ctx.moveTo(margin, y);
+        ctx.lineTo(margin + width, y);
+        ctx.stroke();
+        ctx.fillText(val.toFixed(0), margin-8, y+5);
+      }
+      
+      // Ligne finale de l'axe X (Base)
+      ctx.beginPath();
+      ctx.moveTo(margin, margin + height);
+      ctx.lineTo(margin + width, margin + height);
+      ctx.strokeStyle = "#4a5568";
+      ctx.stroke();
+
+      if(typeGraph === "barres") {
+        // Histogramme - échelle linéaire sur X (CORRECTION #1 - Déjà OK, seulement réorganisé)
+        
+        let minX = Infinity, maxX = -Infinity;
+        const bornesUniques = new Set();
+        
+        data.forEach(d => {
+          const parts = d.label.match(/[\d.]+/g);
+          if(parts && parts.length >= 2){
+            const valMin = parseFloat(parts[0]);
+            const valMax = parseFloat(parts[1]);
+            bornesUniques.add(valMin);
+            bornesUniques.add(valMax);
+            if(valMin < minX) minX = valMin;
+            if(valMax > maxX) maxX = valMax;
+          }
+        });
+
+        const bornesAffiche = Array.from(bornesUniques).sort((a,b) => a - b);
+        
+        if(minX === Infinity || maxX === -Infinity){
+          minX = 0; 
+          maxX = 1;
+        }
+
+        const echX = width / (maxX - minX);
+
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#4a5568";
+        
+        // Afficher toutes les bornes réelles des classes
+        bornesAffiche.forEach(val => {
+          const x = margin + (val - minX) * echX;
+          ctx.beginPath();
+          ctx.moveTo(x, margin + height);
+          ctx.lineTo(x, margin + height + 5);
+          ctx.stroke();
+          ctx.fillStyle = "#2d3748";
+          ctx.fillText(val.toFixed(1), x, margin + height + 18);
+        });
+
+        // Dessiner les barres
+        data.forEach((d,i) => {
+          const parts = d.label.match(/[\d.]+/g);
+          let xMinVal = 0, xMaxVal = 0;
+          if(parts && parts.length >= 2){
+            xMinVal = parseFloat(parts[0]);
+            xMaxVal = parseFloat(parts[1]);
+          } else if(parts && parts.length >= 1){
+            xMinVal = parseFloat(parts[0]);
+            xMaxVal = xMinVal + (parseFloat(document.getElementById("etendueClasse")?.value) || 1);
+          } else {
+            xMinVal = i;
+            xMaxVal = i + 1;
+          }
+          
+          const x = margin + (xMinVal - minX) * echX;
+          const barWidthPx = (xMaxVal - xMinVal) * echX;
+          const barHeight = (d.eff / maxYAffiche) * height;
+
+          ctx.fillStyle = couleurs[i % couleurs.length];
+          ctx.fillRect(x, margin + height - barHeight, barWidthPx, barHeight);
+          
+          if (barWidthPx > 0) {
+             ctx.strokeStyle = '#fff';
+             ctx.lineWidth = 1;
+             ctx.strokeRect(x, margin + height - barHeight, barWidthPx, barHeight);
+          }
+        });
+
+      } else {
+        // Diagramme en colonnes (Quantitatif discret ou qualitatif) (CORRECTION #1 - Rétablissement de l'échelle linéaire)
+        
+        // --- Étape 1: Extraire les valeurs numériques et déterminer l'étendue X ---
+        let minX = Infinity, maxX = -Infinity;
+        const dataWithValues = data.map(d => {
+          let valNum = parseFloat(d.label);
+          if(isNaN(valNum)) {
+            valNum = Infinity; // Qualitatif ou non-numérique, traité comme non-linéaire
+          }
+          if(isFinite(valNum)){
+              if(valNum < minX) minX = valNum;
+              if(valNum > maxX) maxX = valNum;
+          }
+          return {label: d.label, eff: d.eff, valNum: valNum};
+        });
+        
+        const isLinear = isFinite(minX) && isFinite(maxX);
+        
+        if (isLinear) {
+            const rangeX = maxX - minX;
+            const margeX = rangeX * 0.1 || 1; // 10% de marge ou 1 si range est 0
+            const minXAffiche = minX - margeX;
+            const maxXAffiche = maxX + margeX;
+            
+            const echX = width / (maxXAffiche - minXAffiche);
+            
+            // Largeur de la barre : utiliser une valeur arbitraire basée sur la plus petite différence ou par défaut
+            let minDiff = Infinity;
+            if (dataWithValues.length > 1) {
+                const sortedVals = dataWithValues.filter(d => isFinite(d.valNum)).map(d => d.valNum).sort((a, b) => a - b);
+                for (let i = 1; i < sortedVals.length; i++) {
+                    const diff = sortedVals[i] - sortedVals[i-1];
+                    if (diff > 0 && diff < minDiff) minDiff = diff;
+                }
+            }
+            const barWidthVal = minDiff === Infinity ? (margeX/2) : (minDiff * 0.5); // 50% de la plus petite différence ou marge
+            const barWidthPx = barWidthVal * echX;
+            
+            // --- Étape 2: Dessiner l'Axe X (Labels et Lignes) ---
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#4a5568";
+            ctx.strokeStyle = "#cbd5e0";
+            
+            dataWithValues.filter(d => isFinite(d.valNum)).forEach(d => {
+                const x = margin + (d.valNum - minXAffiche) * echX;
+                
+                // Ligne de graduation
+                ctx.beginPath();
+                ctx.moveTo(x, margin + height);
+                ctx.lineTo(x, margin + height + 5);
+                ctx.stroke();
+                
+                // Label (Caractère)
+                ctx.fillStyle = "#2d3748";
+                ctx.fillText(d.label, x, margin + height + 20);
+            });
+            
+            // --- Étape 3: Dessiner les Barres ---
+            dataWithValues.filter(d => isFinite(d.valNum)).forEach((d, i) => {
+                const xCenter = margin + (d.valNum - minXAffiche) * echX;
+                const xLeft = xCenter - barWidthPx / 2;
+                const barHeight = (d.eff / maxYAffiche) * height;
+                const y = margin + height - barHeight;
+                
+                ctx.fillStyle = couleurs[i % couleurs.length];
+                ctx.fillRect(xLeft, y, barWidthPx, barHeight);
+            });
+
+        } else {
+            // Logique pour Qualitatif / Non-numérique (revert à l'espacement uniforme)
+            const numBars = data.length;
+            if (numBars === 0) return;
+            
+            const padding = 0.2; 
+            const barTotalWidth = width / numBars; 
+            const barActualWidth = barTotalWidth * (1 - padding);
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#4a5568";
+            ctx.strokeStyle = "#cbd5e0";
+            
+            data.forEach((d, i) => {
+                const xCenter = margin + barTotalWidth * (i + 0.5);
+                
+                ctx.beginPath();
+                ctx.moveTo(xCenter, margin + height);
+                ctx.lineTo(xCenter, margin + height + 5);
+                ctx.stroke();
+                
+                ctx.fillStyle = "#2d3748";
+                ctx.fillText(d.label, xCenter, margin + height + 20);
+                
+                const xLeft = margin + barTotalWidth * i + barTotalWidth * padding / 2;
+                const barHeight = (d.eff / maxYAffiche) * height;
+                const y = margin + height - barHeight;
+                
+                ctx.fillStyle = couleurs[i % couleurs.length];
+                ctx.fillRect(xLeft, y, barActualWidth, barHeight);
+            });
+        }
+      }
+
+      ctx.fillStyle = "#764ba2";
+      ctx.font = "20px Segoe UI";
+      ctx.textAlign = "center";
+      ctx.fillText(titreDiagramme, canvas.width/2, 35);
+    }
+  }
+</script>
+</body>
+</html>

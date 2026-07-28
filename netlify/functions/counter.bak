@@ -1,0 +1,31 @@
+const { writeBlob, readBlob } = require('@netlify/blob-storage');
+
+const blobName = 'visitor_count.json';
+
+exports.handler = async () => {
+  try {
+    let countData;
+
+    try {
+      const blob = await readBlob(blobName);
+      countData = JSON.parse(new TextDecoder().decode(blob));
+    } catch (e) {
+      // Aucun blob existant, on démarre à 0
+      countData = { count: 0 };
+    }
+
+    countData.count++;
+
+    await writeBlob(blobName, new TextEncoder().encode(JSON.stringify(countData)));
+
+    return {
+      statusCode: 200,
+      body: countData.count.toString(),
+    };
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: 'Erreur compteur: ' + error.message,
+    };
+  }
+};

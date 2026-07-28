@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Quiz – Tableaux des Nombres & PGCD</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0 auto;
+    padding: 24px 10px 18px 10px;
+    background: #f0f8f0;
+    max-width: 900px;
+    box-sizing: border-box;
+}
+h1 {
+    color: #2d5a2d;
+    text-align: center;
+    margin-bottom: 16px;
+    font-size: 2.2em;
+}
+.quiz-container {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 3px 18px #aaa3,0 1px 2px #0074d90a;
+    padding: 24px 16px 24px 16px;
+    margin-bottom: 25px;
+}
+.btn-bar {
+    display: flex;
+    gap: 22px;
+    margin: 22px 0 18px 0;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+button, .btn-style, select {
+    background-color: #4a7c59;
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.3em;
+    margin: 2px;
+    transition: background 0.19s, transform 0.14s;
+    font-weight: 500;
+}
+button:hover, .btn-style:hover, select:hover {
+    background-color: #FF7E70;
+    color: #fff;
+}
+@keyframes boutonPop {
+    0% { transform: scale(0.8); opacity: 0.5;}
+    70% { transform: scale(1.05);}
+    100% { transform: scale(1); opacity: 1;}
+}
+.animatePop {
+    animation: boutonPop 0.8s cubic-bezier(.23,1.23,.49,.89) both;
+}
+.result-box, .result-box2 {
+    background: #e8f5e8;
+    border-radius: 7px;
+    min-height: 36px;
+    padding: 14px 18px;
+    margin: 18px 0 12px 0;
+    font-size: 1.45em;
+    color: #222;
+    box-shadow: 0 2px 7px #0074d90a;
+    word-break: break-word;
+    text-align: center;
+    font-weight: 600;
+}
+.mode-bar {
+    text-align: center;
+    margin-bottom: 16px;
+    font-size: 1.4em;
+}
+#mainTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 18px auto 32px auto;
+    background: #f8faf8;
+    box-shadow: 0 1px 7px #0074d925;
+    border-radius: 13px;
+    overflow: auto;
+    font-size: 1.7em;
+}
+#mainTable th, #mainTable td {
+    border: 1px solid #b7dbf6;
+    padding: 12px 10px;
+    text-align: center;
+}
+#mainTable tr:nth-child(even) {background: #eef6f8;}
+#mainTable th {
+    background: #e8f5e8;
+    color: #2d5a2d;
+    font-weight: 700;
+}
+#clockZone {
+    text-align: center;
+    margin-bottom: 14px;
+    position: relative;
+}
+#analogueClock {
+    margin: auto;
+    display: block;
+    background: #f5faf9;
+    box-shadow: 0 2px 14px #0074d950;
+    border-radius: 50%;
+    border: 4px solid #FF7E70 !important;
+    width: 180px;
+    height: 180px;
+}
+.clock-red {
+    border-color: #e74c3c !important;
+    background: #fee !important;
+}
+#tempsEcoule {
+    display: none;
+    color: #fff;
+    background: #e74c3c;
+    border-radius: 18px;
+    position: absolute;
+    left:50%; top:44%;
+    font-size: 2.8em;
+    padding: 20px 30px;
+    transform: translate(-50%,-50%);
+    box-shadow: 2px 7px 19px #e74c3c88;
+    z-index: 1001;
+    font-weight: 700;
+    user-select: none;
+}
+#mentionCalculatrice {
+    text-align: center;
+    font-size: 1.6em;
+    margin-top: 42px;
+    margin-bottom: 30px;
+    font-weight: 700;
+    color: #2d5a2d;
+    animation: clignoter 1.3s infinite;
+}
+@keyframes clignoter {
+    0%, 100% { opacity: 1;}
+    50% { opacity: 0.38;}
+}
+@media (max-width:900px){
+    body {max-width: 98vw;}
+    #mainTable td, #mainTable th {font-size:1.3em;}
+}
+@media (max-width:670px){
+    #mainTable td, #mainTable th {padding:8px;}
+}
+@media (max-width:530px){
+    #mainTable {width:99vw;}
+    .quiz-container {padding:8px 2vw;}
+}
+@media (max-width:430px){
+    #mainTable th, #mainTable td {font-size:1.1em;}
+}
+</style>
+</head>
+<body>
+<div class="quiz-container">
+    <h1>Quiz Interactif – Facteurs, Diviseurs et PGCD</h1>
+    <div class="mode-bar">
+        <label for="modeSelect" class="label-quiz">Mode :</label>
+        <select id="modeSelect" class="animatePop">
+            <option value="simple">Entraînement</option>
+            <option value="avance">Entraînement poussé</option>
+            <option value="eval">Évaluation</option>
+        </select>
+    </div>
+    <div class="btn-bar">
+        <button id="btnRandom" class="animatePop">🎲 Choisir 2 nombres</button>
+        <button id="btnSolutions" class="animatePop">👀 Afficher les solutions</button>
+        <div id="zoneChrono" style="display:none;">
+            <label for="tempsChrono" class="label-quiz" style="margin-right:10px;">Temps :</label>
+            <select id="tempsChrono" class="animatePop">
+                <option value="" selected disabled>Choisir</option>
+                <option value="5">5 minutes</option>
+                <option value="6">6 minutes</option>
+                <option value="7">7 minutes</option>
+                <option value="8">8 minutes</option>
+                <option value="9">9 minutes</option>
+                <option value="10">10 minutes</option>
+                <option value="11">11 minutes</option>
+                <option value="12">12 minutes</option>
+                <option value="13">13 minutes</option>
+                <option value="14">14 minutes</option>
+                <option value="15">15 minutes</option>
+            </select>
+        </div>
+    </div>
+    <div id="clockZone" style="position: relative; margin-bottom:0;">
+        <canvas id="analogueClock" width="180" height="180" style="display:none;"></canvas>
+        <div id="tempsEcoule">⏰ Temps écoulé !</div>
+    </div>
+    <table id="mainTable" role="table" aria-label="Quiz nombres et PGCD">
+        <thead>
+            <tr>
+                <th>A</th>
+                <th>B</th>
+                <th>Facteurs premiers de A</th>
+                <th>Facteurs premiers de B</th>
+                <th>Diviseurs de A</th>
+                <th>Diviseurs de B</th>
+                <th>PGCD(A,B)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+        </tbody>
+    </table>
+    <div id="mentionCalculatrice" style="display:none;">Calculatrice collège autorisée et <span style="color:#e74c3c;">FORTEMENT conseillée !</span></div>
+</div>
+
+<script>
+// ------------------------- Math tools
+function isInt(n) { return Number.isInteger(n) && n>0;}
+function isPrime(n) {
+  if(n<=1) return false;if(n===2) return true;if(n%2===0) return false;
+  for(let i=3;i*i<=n;i+=2){if(n%i===0)return false;}
+  return true;
+}
+function facteursPremiers(n) {
+  let f=[],d=2,tmp=n;
+  while(tmp>1){if(tmp%d===0){f.push(d);tmp/=d;}else{d++;}}
+  return f;
+}
+function diviseurs(n) {
+  let d = [];
+  for(let i=1;i<=Math.sqrt(n);i++)
+    if(n%i===0){d.push(i);if(i!==n/i)d.push(n/i);}
+  return d.sort((a,b)=>a-b);
+}
+function pgcd(a,b){
+  while(b!==0){let t=b;b=a%b;a=t;}
+  return a;
+}
+
+// ----------- Génération aléatoire
+function randomInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+function hasEnoughDiv(n, minDiv){
+  return diviseurs(n).length >= minDiv;
+}
+function hasCommonDivs(a,b){let da=diviseurs(a),db=diviseurs(b);
+  return da.filter(x=>db.includes(x)&&x!==1).length>0;
+}
+
+// Pour réduire la probabilité que pgcd=1
+function pgcdIsOneRare(a,b){
+  // on tire une probabilité (ex: seulement 15% que pgcd=1 soit accepté)
+  if(pgcd(a,b) !== 1) return true;
+  return Math.random() < 0.15;
+}
+
+// ----------- Gestion du tableau
+const mainTable = document.getElementById('mainTable');
+const tbody = mainTable.querySelector('tbody');
+let quizRows = [ {} ];
+let solutionsShown = false;
+
+// ------ Gestion des boutons/modes
+const btnRandom = document.getElementById('btnRandom');
+const btnSolutions = document.getElementById('btnSolutions');
+const modeSelect = document.getElementById('modeSelect');
+const zoneChrono = document.getElementById('zoneChrono');
+const mentionCalculatrice = document.getElementById('mentionCalculatrice');
+// Chrono
+let timerSet = false;
+let timerVal = 0;
+let timerRunning = false;
+let timerInterval;
+let timerEnd;
+const clockCanvas = document.getElementById('analogueClock');
+const tempsEcoule = document.getElementById('tempsEcoule');
+
+// --- Mode, affichage chrono
+modeSelect.onchange = ()=>{
+  if(modeSelect.value==="eval"){
+    zoneChrono.style.display="inline-block";
+    clockCanvas.style.display="block";
+  } else {
+    zoneChrono.style.display="none";
+    clockCanvas.style.display="none";
+    tempsEcoule.style.display="none";
+    clearInterval(timerInterval); timerRunning=false; timerSet=false;
+    clockCanvas.classList.remove("clock-red");
+  }
+};
+
+document.getElementById("tempsChrono").onchange = function(){
+  timerVal = parseInt(this.value,10);
+  timerSet = !!timerVal;
+};
+
+// ----------- Animation boutons
+document.querySelectorAll('.animatePop').forEach(btn=>{
+  btn.classList.remove('animatePop');
+  setTimeout(()=>btn.classList.add('animatePop'),Math.random()*250+80);
+});
+
+// ----------------------------- Génération quiz
+btnRandom.onclick = ()=>{
+  if(modeSelect.value==="eval" && !timerSet){
+    alert("Définissez le temps d'évaluation avant de lancer !");
+    return;
+  }
+  solutionsShown = false;
+  quizRows=[ {} ];
+  // Mode
+  let mode = modeSelect.value;
+  let ranges = {simple:[1,600],avance:[1,1000],eval:[1,400]};
+  // Div min selon mode et temps pour éval
+  let divMin;
+  if(mode==="simple"){
+    divMin=1;
+  } else if(mode==="avance"){
+    divMin=5;
+  } else { // mode eval - adapte divMin selon timer (ex: 5min -> 5 div, 15min -> 12 div)
+    divMin = 5 + Math.floor((timerVal-5)*0.5);
+    if(divMin>12) divMin=12;
+  }
+  let tries = 0, maxTries=5000;
+  let a,b;
+
+  do {
+    a=randomInt(ranges[mode][0],ranges[mode][1]);
+    b=randomInt(ranges[mode][0],ranges[mode][1]);
+    tries++;
+    if(tries>maxTries){
+      // Fallback relax conditions
+      break;
+    }
+  } while(
+    !hasEnoughDiv(a,divMin)
+    || !hasEnoughDiv(b,divMin)
+    || (mode==="eval" && (!hasCommonDivs(a,b) || pgcd(a,b) < 10))
+    || !pgcdIsOneRare(a,b)
+  );
+  quizRows[0]={a,b};
+  majTable();
+  mentionCalculatrice.style.display="block";
+
+  // Chrono Reset
+  if(mode==="eval"){
+    clearInterval(timerInterval);timerRunning=false;
+    clockCanvas.classList.remove("clock-red");
+    tempsEcoule.style.display="none";
+    startChrono();
+  }
+};
+
+btnSolutions.onclick = ()=>{
+  solutionsShown = true;
+  majTable();
+};
+
+// ------------ Maj du tableau
+function majTable(){
+  for(let i=0;i<1;i++){
+    let row = quizRows[i]||{};
+    let tr = tbody.children[i];
+    tr.cells[0].textContent=row.a||"";
+    tr.cells[1].textContent=row.b||"";
+    tr.cells[2].innerHTML = (solutionsShown && row.a)? facteursPremiers(row.a).join(' × '):"";
+    tr.cells[3].innerHTML = (solutionsShown && row.b)? facteursPremiers(row.b).join(' × '):"";
+    tr.cells[4].innerHTML = (solutionsShown && row.a)? diviseurs(row.a).join(', '):"";
+    tr.cells[5].innerHTML = (solutionsShown && row.b)? diviseurs(row.b).join(', '):"";
+    tr.cells[6].textContent = (solutionsShown && row.a && row.b)? pgcd(row.a,row.b):"";
+  }
+}
+
+// -------------------------------------- Horloge analogique (mode éval)
+function startChrono(){
+  if(!timerSet||timerRunning){return;}
+  let minutes = timerVal, seconds = 0;
+  let totalSec = minutes*60;
+  let startTime = Date.now();
+  timerEnd = startTime+(totalSec*1000);
+  timerRunning = true;
+
+  function drawClock(){
+    let ctx = clockCanvas.getContext('2d');
+    let now = Date.now();
+    let elapsed = Math.max(0,(timerEnd-now)/1000);
+    let remaining = Math.max(0,elapsed/totalSec);
+    ctx.clearRect(0,0,180,180);
+    // Cadran
+    ctx.save();
+    ctx.translate(90,90);
+    ctx.beginPath();
+    ctx.arc(0,0,85,0,2*Math.PI);
+    ctx.fillStyle="#f8faf8";
+    ctx.fill();
+    ctx.lineWidth=8;
+    ctx.strokeStyle= clockCanvas.classList.contains("clock-red") ? "#e74c3c" : "#FF7E70";
+    ctx.stroke();
+
+    // Secteur restant
+    ctx.rotate(-Math.PI/2);
+    ctx.beginPath();
+    ctx.arc(0,0,80,0,2*Math.PI*remaining,false);
+    ctx.lineWidth=10;
+    ctx.strokeStyle= clockCanvas.classList.contains("clock-red") ? "#e74c3c" : "#FF7E70";
+    ctx.stroke();
+
+    // Aiguilles style minute
+    ctx.rotate(Math.PI/2);
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    let angle = 2*Math.PI*((totalSec-elapsed)/totalSec)-Math.PI/2;
+    ctx.lineTo(70*Math.cos(angle),70*Math.sin(angle));
+    ctx.lineWidth=8;
+    ctx.strokeStyle="#FF7E70";
+    ctx.stroke();
+
+    // Point central
+    ctx.beginPath();
+    ctx.arc(0,0,8,0,2*Math.PI);
+    ctx.fillStyle="#4a7c59";
+    ctx.fill();
+    ctx.restore();
+
+    // Affichage temps restant
+    ctx.save();
+    ctx.translate(90,140);
+    ctx.font="bold 1.8em Arial";
+    ctx.textAlign="center";
+    ctx.fillStyle=(clockCanvas.classList.contains("clock-red"))?"#e74c3c":"#2d5a2d";
+    let mm = Math.floor(elapsed/60), ss = Math.floor(elapsed%60);
+    ctx.fillText(`${mm}:${ss<10?"0":""}${ss}`,0,0);
+    ctx.restore();
+  }
+
+  drawClock();
+
+  timerInterval = setInterval(()=>{
+    let now = Date.now();
+    let elapsed = Math.max(0,(timerEnd-now)/1000);
+    drawClock();
+    if(elapsed <= 0){
+      clearInterval(timerInterval);
+      timerRunning = false;
+      clockCanvas.classList.add("clock-red");
+      tempsEcoule.style.display = "block";
+      playBuzzer();
+    }
+  }, 900);
+}
+
+// ----------- buzzer plus grave et plus long (jeu télévisé)
+function playBuzzer(){
+  let ctx = new (window.AudioContext||window.webkitAudioContext)();
+  let o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = "square";
+  o.frequency.setValueAtTime(180,ctx.currentTime); // fréquence plus grave
+  g.gain.setValueAtTime(0.15,ctx.currentTime);
+  o.connect(g); g.connect(ctx.destination);
+  o.start();
+  // Diminue progressivement le volume (fade out) sur 3 secondes
+  g.gain.linearRampToValueAtTime(0, ctx.currentTime + 3);
+  o.stop(ctx.currentTime + 3);
+  setTimeout(() => {ctx.close();}, 3100);
+}
+
+// --- RWD correction sur resize
+window.onresize = function() { mainTable.style.width = "100%"; }
+</script>
+<footer style="margin-top:40px; font-size:0.9em; color:#444; text-align:center; font-family:Arial, sans-serif;">
+  <hr style="border-color:#b7dbf6; margin-bottom:12px; max-width:480px;" />
+  <div>
+    <b>Licence MIT</b> – <span style="color:#2d5a2d;">© 2025 Moise Muller</span><br/>
+    <a href="mailto:moise.muller@ac-dijon.fr" style="color:#0074D9; text-decoration:underline;">moise.muller@ac-dijon.fr</a>
+  </div>
+  <div style="font-size:0.83em; color:#888; margin-top:6px;">
+    Libre pour usage, modification et diffusion.<br/>
+    Voir détails dans le code source.
+  </div>
+</footer>
+</body>
+</html>

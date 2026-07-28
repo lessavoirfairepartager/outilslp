@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ressources Pédagogiques - Maths & Sciences</title>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        /* MODE SOMBRE PAR DÉFAUT */
+        body.dark {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f1f5f9;
+            --shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background: var(--bg-body);
+            color: var(--text-main);
+            transition: all 0.3s ease;
+            line-height: 1.6;
+        }
+
+        body.classmode {
+            background: #000 !important;
+        }
+        body.classmode .card {
+            font-size: 1.4em;
+            padding: 25px;
+            border: 2px solid #667eea;
+        }
+        body.classmode h2 { color: #fff; }
+
+        /* HEADER */
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            text-align: center;
+            padding: 50px 20px;
+            margin-bottom: 30px;
+        }
+
+        .top-buttons {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .top-buttons button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            color: white;
+            font-size: 1.2em;
+            transition: 0.3s;
+        }
+        .top-buttons button:hover { background: rgba(255,255,255,0.4); }
+
+        /* FILTERS */
+        .filters {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding: 0 20px;
+        }
+
+        .filter-btn {
+            padding: 8px 18px;
+            border-radius: 25px;
+            border: 2px solid var(--primary);
+            background: transparent;
+            color: var(--primary);
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+
+        .filter-btn.active, .filter-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* LAYOUT */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .section { margin-bottom: 50px; }
+        
+        h2 {
+            font-size: 1.6em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--primary);
+            display: inline-block;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        /* CARD STYLE */
+        .card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 18px;
+            background: var(--bg-card);
+            color: var(--text-main);
+            text-decoration: none;
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.25);
+        }
+
+        .card img, .card svg {
+            width: 45px;
+            height: 45px;
+            flex-shrink: 0;
+        }
+
+        .hidden { display: none; }
+
+        footer {
+            text-align: center;
+            padding: 40px;
+            margin-top: 50px;
+            background: #edf2f7;
+            color: #718096;
+        }
+        .dark footer { background: #1e293b; color: #94a3b8; }
+    </style>
+</head>
+<body class="dark">
+
+<div class="top-buttons">
+    <button onclick="document.body.classList.toggle('dark')" title="Changer de Mode">🌓</button>
+    <button onclick="document.body.classList.toggle('classmode')" title="Mode Projection Classe">🎥</button>
+</div>
+
+<header>
+    <h1>Ressources Pédagogiques</h1>
+    <p>Mathématiques, Physique, Chimie & Programmation</p>
+</header>
+
+<div class="container">
+    <div class="filters">
+        <button class="filter-btn active" onclick="filter('all', this)">Tout</button>
+        <button class="filter-btn" onclick="filter('math', this)">Maths</button>
+        <button class="filter-btn" onclick="filter('science', this)">Sciences</button>
+        <button class="filter-btn" onclick="filter('outil', this)">Outils</button>
+        <button class="filter-btn" onclick="filter('prof', this)">Profs</button>
+    </div>
+
+    <div class="section">
+        <h2>🎯 Outils en ligne</h2>
+        <div class="grid">
+            <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" class="card math outil" target="_blank">🧮 Casio fx-92 Collège</a>
+            <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY090" class="card math outil" target="_blank">🧮 Casio Graph Light</a>
+            <a href="https://maclasseti.fr/calculatrice" class="card math outil" target="_blank">🧮 Scientifique TI</a>
+            <a href="https://www.numworks.com/fr/simulateur/" class="card math outil" target="_blank">🧮 NUMWORKS</a>
+            <a href="https://www.geogebra.org/classic?lang=fr" class="card math" target="_blank">📐 GeoGebra</a>
+            <a href="https://framacalc.org/abc/fr/" class="card outil" target="_blank">📊 Tableur</a>
+            <a href="https://unitconvr.com/fr" class="card science outil" target="_blank">🔄 Convertisseur Unités</a>
+            <a href="https://www.desmos.com/calculator?lang=fr" class="card math" target="_blank">📈 Traceur Desmos</a>
+        </div>
+    </div>
+
+    <div class="section" id="section-home">
+        <h2>🛠️ Outils Maison</h2>
+        <div class="grid">
+            <a href="outils/horloge.html" class="card outil" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes rotate {from{transform:rotate(0deg);}to{transform:rotate(360deg);}}.hand{transform-origin:50px 50px; animation:rotate 6s linear infinite;}</style><circle cx='50' cy='50' r='35' fill='%23fff3e0' stroke='%23ef6c00' stroke-width='3'/><line class='hand' x1='50' y1='50' x2='50' y2='25' stroke='%23ef6c00' stroke-width='4'/><circle cx='50' cy='50' r='3' fill='%23ef6c00'/></svg>">
+                Horloge Interactive
+            </a>
+            <a href="outils/sonometre.html" class="card science outil" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes sound {0%{height:10px;}50%{height:40px;}100%{height:15px;}}.bar{animation:sound 1s infinite;}.bar:nth-child(2){animation-delay:0.2s;}.bar:nth-child(3){animation-delay:0.4s;}</style><rect x='20' y='60' width='10' height='20' fill='%2300acc1' class='bar'/><rect x='40' y='40' width='10' height='40' fill='%2300acc1' class='bar'/><rect x='60' y='50' width='10' height='30' fill='%2300acc1' class='bar'/></svg>">
+                Sonomètre de classe
+            </a>
+            <a href="outils/quiz_diviseurs.html" class="card math outil" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes p {0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.1);opacity:0.8}}</style><g style='transform-origin:50px 50px;animation:p 2s infinite'><circle cx='50' cy='50' r='40' fill='%232e7d32'/><text x='50' y='68' text-anchor='middle' font-size='60' fill='white' font-weight='bold'>÷</text></g></svg>">
+                Diviseurs et Facteurs
+            </a>
+            <a href="outils/graph_stats.html" class="card math outil" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes draw {0%{stroke-dashoffset:100;}100%{stroke-dashoffset:0;}}.line{stroke-dasharray:100; stroke-dashoffset:100; animation:draw 2s linear infinite;}</style><polyline points='10,70 40,40 70,60 90,20' fill='none' stroke='%232e7dff' stroke-width='4' class='line'/></svg>">
+                Stats & Diagrammes
+            </a>
+            <a href="outils/atome_bohr2.html" class="card science outil" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes orbit {from{transform:rotate(0deg);}to{transform:rotate(360deg);}}.e{transform-origin:50px 50px; animation:orbit 3s linear infinite;}</style><circle cx='50' cy='50' r='10' fill='%23ab47bc'/><g class='e'><circle cx='50' cy='20' r='5' fill='%236a1b9a'/></g></svg>">
+                Atomes : Modèle Bohr
+            </a>
+            <a href="outils/trigo_trainer.html" class="card math outil" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes open {0%{transform:rotate(10deg);}100%{transform:rotate(80deg);}}.line{transform-origin:50px 50px; animation:open 2s ease-in-out infinite alternate;}</style><line x1='50' y1='50' x2='80' y2='50' stroke='%234fc3f2' stroke-width='6'/><line class='line' x1='50' y1='50' x2='50' y2='20' stroke='%234fc3f2' stroke-width='6'/></svg>">
+                Entraînement Trigo
+            </a>
+            <a href="jeux/juniper_green_final_licence.html" class="card math outil" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes f {0%{fill-opacity:0.4;}50%{fill-opacity:1;}100%{fill-opacity:0.4;}}.sq{animation:f 2s infinite;}</style><rect x='20' y='20' width='60' height='60' fill='%234caf50' class='sq' rx='5'/><text x='50' y='58' text-anchor='middle' font-size='28' fill='white' font-weight='bold'>JG</text></svg>">
+                Juniper Green
+            </a>
+            <a href="jeux/quizz_pgcd_licence.html" class="card math outil" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes move {0%{transform:translateY(0)}50%{transform:translateY(-8px)}100%{transform:translateY(0)}}.n{animation:move 1.5s infinite;}</style><text x='50' y='45' text-anchor='middle' font-size='24' fill='%23a5d6a7' font-weight='bold' class='n'>12|18</text><line x1='20' y1='55' x2='80' y2='55' stroke='%23a5d6a7' stroke-width='4'/><text x='50' y='85' text-anchor='middle' font-size='22' fill='%23a5d6a7' font-weight='bold'>PGCD</text></svg>">
+                Diviseurs & PGCD
+            </a>
+            <a href="jeux/pythagore_trainer.html" class="card math outil" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes dash {0%{stroke-dashoffset:150}100%{stroke-dashoffset:0}}.tri{stroke-dasharray:150; stroke-dashoffset:150; animation:dash 3s linear infinite;}</style><path d='M30,70 L70,70 L30,30 Z' fill='none' stroke='%23ff5252' stroke-width='4' class='tri'/><rect x='30' y='60' width='10' height='10' fill='none' stroke='%23ff5252' stroke-width='2'/></svg>">
+                Pythagore Trainer
+            </a>
+            <a href="outils/infographie_nuisances sonores.html" class="card science outil" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes wave {0%{r:10;opacity:1;}100%{r:35;opacity:0;}}.w{animation:wave 1.5s infinite;}</style><circle cx='50' cy='50' r='10' fill='%23ff7043'/><circle cx='50' cy='50' r='10' fill='none' stroke='%23ff7043' stroke-width='3' class='w'/></svg>">
+                Nuisances Sonores
+            </a>
+            <a href="outils/perimetre_usinage.html" class="card math outil" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes d{0%{stroke-dashoffset:240}100%{stroke-dashoffset:0}}</style><rect x='20' y='20' width='60' height='60' fill='none' stroke='%23ff5252' stroke-width='5' stroke-dasharray='240' style='animation:d 2s infinite'/><text x='50' y='58' text-anchor='middle' font-size='32' fill='%23ff5252' font-weight='bold'>P</text></svg>">
+                Périmètre Usinage
+            </a>
+			<a href="outils/aire_usinage.html" class="card math outil" target="_blank">
+				<img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes a{0%,100%{opacity:.05;transform:scale(.75)}55%{opacity:.42;transform:scale(1)}}.f{transform-origin:50px 50px;animation:a 2s ease-in-out infinite}</style><rect class='f' x='18' y='18' width='64' height='64' fill='%230F6E56'/><rect x='18' y='18' width='64' height='64' fill='none' stroke='%230F6E56' stroke-width='4'/><text x='50' y='60' text-anchor='middle' font-size='30' fill='%230F6E56' font-weight='bold'>A</text></svg>"> 
+				Aires Usinage
+			</a>
+			<a href="outils/calcul_litteral.html" class="card math outil" target="_blank">
+				<img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes d{0%{stroke-dashoffset:240}100%{stroke-dashoffset:0}}@keyframes p{0%,100%{opacity:1}50%{opacity:.45}}</style><rect x='20' y='20' width='60' height='60' fill='none' stroke='%230891b2' stroke-width='5' stroke-dasharray='240' style='animation:d 2s infinite'/><text x='50' y='65' text-anchor='middle' font-size='44' fill='%230891b2' font-weight='bold' font-style='italic' font-family='Cambria Math,Times New Roman,serif' style='animation:p 2s infinite'>x</text></svg>"> 
+				Calcul littéral
+			</a>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🥷🏽 Le coin des profs</h2>
+        <div class="grid">
+            <a href="https://phet.colorado.edu/fr/simulations/filter?type=html" class="card prof science" target="_blank">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='none' stroke='%23ffeb3b' stroke-width='4'><animate attributeName='r' values='35;45;35' dur='2s' repeatCount='indefinite'/></circle><polygon points='40,35 70,50 40,65' fill='%23ffeb3b'/></svg>">
+                Simulations PhET (HTML5)
+            </a>
+            <a href="profs/liensGMPCIE.html" class="card prof" target="_blank">💂🏻‍♂️ Liens officiels</a>
+            <a href="https://s.42l.fr/" class="card prof" target="_blank">⛓️ Raccourcisseur 42l</a>
+            <a href="https://javalab.org/en/" class="card prof science" target="_blank">⏯️ Simulations Javalab</a>
+            <a href="https://ladigitale.dev/" class="card prof" target="_blank">🔮 La Digitale</a>
+            <a href="https://portail.apps.education.fr/signin" class="card prof" target="_blank">🚀 Apps Education</a>
+            <a href="https://console.basthon.fr/" class="card prof math" target="_blank">🐍 Console Python</a>
+            <a href="https://chemix.org/" class="card prof science" target="_blank">🧪 Dessin Labo Chemix</a>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🎓 Exercices & Évaluations</h2>
+        <div class="grid">
+            <a href="https://wayground.com/" class="card" target="_blank">🎮 Quizz Waygroud</a>
+            <a href="https://wims.univ-cotedazur.fr" class="card math" target="_blank">🎲 Wims exerciseurs</a>
+            <a href="https://www.quiziniere.com/" class="card" target="_blank">🎮 Quizinière</a>
+            <a href="https://www.blooket.com/" class="card" target="_blank">🎮 Blooket</a>
+            <a href="https://www.plickers.com/" class="card" target="_blank">🎮 Plickers</a>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <p>© 2026 - Ressources Pédagogiques | Lycée Professionnel</p>
+    <p>Licence MIT - <a href="mailto:lessavoirfaire.partager@gmail.com" style="color: var(--primary);">Contact</a></p>
+</footer>
+
+<script>
+    function filter(cat, btn) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        document.querySelectorAll('.card').forEach(card => {
+            if (cat === 'all' || card.classList.contains(cat)) {
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        document.querySelectorAll('.section').forEach(sec => {
+            const visibleCards = sec.querySelectorAll('.card:not(.hidden)').length;
+            sec.style.display = (visibleCards === 0) ? 'none' : 'block';
+        });
+    }
+</script>
+
+</body>
+</html>

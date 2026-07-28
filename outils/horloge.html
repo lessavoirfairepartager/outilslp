@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horloge Interactive de Classe</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            width: 100%;
+            position: relative;
+        }
+
+        .current-time {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .current-time .time-label {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: normal;
+            display: block;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+        }
+
+        .clock-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .clock {
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            position: relative;
+            margin: 20px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .clock-face {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            background: white;
+        }
+
+        .clock-svg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .section {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200px;
+            height: 200px;
+            transform-origin: 0 0;
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            color: #333;
+            text-align: center;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+
+        .hand {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 180px;
+            background: #ff4444;
+            transform-origin: 50% 100%;
+            transform: translate(-50%, -100%) rotate(0deg);
+            border-radius: 2px;
+            z-index: 10;
+            transition: transform 0.1s ease-out;
+        }
+
+        .center-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            background: #ff4444;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 11;
+        }
+
+        .controls {
+            flex: 1;
+            min-width: 350px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .control-group.collapsed {
+            padding: 10px 15px;
+            background: #e9ecef;
+        }
+
+        .control-group.collapsed .control-content {
+            display: none;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            cursor: pointer;
+            margin: 0 0 15px 0;
+        }
+
+        .control-group.collapsed .control-header {
+            margin: 0;
+        }
+
+        .control-header h3 {
+            margin: 0;
+            color: #555;
+            flex-grow: 1;
+        }
+
+        .collapse-indicator {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .control-group.collapsed .collapse-indicator {
+            transform: rotate(-90deg);
+        }
+
+        .history-item {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .history-title {
+            font-weight: bold;
+            color: #333;
+            flex-grow: 1;
+        }
+
+        .history-date {
+            font-size: 0.9rem;
+            color: #666;
+            margin-left: 10px;
+        }
+
+        .history-details {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .history-sections {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .history-section-tag {
+            background: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            color: #555;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+        }
+
+        .history-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .empty-history {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            padding: 30px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        label {
+            font-weight: 500;
+            min-width: 120px;
+            color: #666;
+        }
+
+        input[type="number"], input[type="text"] {
+            flex: 1;
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .sections-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .section-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #eee;
+        }
+
+        .section-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .section-input input[type="text"] {
+            flex: 1;
+        }
+
+        .section-input input[type="number"] {
+            width: 80px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: #ed8936;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #dd6b20;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+            transform: translateY(-2px);
+        }
+
+        .timer-info {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #e6f3ff;
+            border-radius: 10px;
+        }
+
+        .timer-info h3 {
+            margin: 0 0 10px 0;
+            color: #2d5aa0;
+        }
+
+        .time-display {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .current-section {
+            font-size: 1.2rem;
+            color: #667eea;
+            margin-top: 10px;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .section.completed {
+            background-color: #ff6b6b !important;
+        }
+
+        .storage-info {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            color: #2e7d32;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .clock {
+                width: 300px;
+                height: 300px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .current-time {
+                position: static;
+                margin-top: 20px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🕐 Horloge Interactive de Classe</h1>
+        
+        <div class="main-content">
+            <div class="clock-container">
+                <div class="clock" id="clock">
+                    <div class="clock-face" id="clockFace">
+                        <svg class="clock-svg" id="clockSvg" viewBox="0 0 400 400">
+                            <!-- Les sections seront ajoutées ici -->
+                        </svg>
+                        <div class="hand" id="hand"></div>
+                        <div class="center-dot"></div>
+                    </div>
+                </div>
+                
+                <div class="timer-info">
+                    <h3>Temps restant</h3>
+                    <div class="time-display" id="timeDisplay">00:00</div>
+                    <div class="current-section" id="currentSection">En attente</div>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-success" id="startBtn" onclick="startTimer()">▶️ Démarrer</button>
+                    <button class="btn btn-warning" id="pauseBtn" onclick="pauseTimer()" disabled>⏸️ Pause</button>
+                    <button class="btn btn-danger" onclick="resetTimer()">⏹️ Reset</button>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group" id="generalConfig">
+                    <div class="control-header" onclick="toggleCollapse('generalConfig')">
+                        <h3>Configuration générale</h3>
+                        <span class="collapse-indicator">🔽</span>
+                    </div>
+                    <div class="control-content">
+                        <div class="form-row">
+                            <label>Durée totale (min):</label>
+                            <input type="number" id="totalDuration" value="60" min="1" max="300">
+                        </div>
+                        <div class="form-row">
+                            <label>Nombre de sections:</label>
+                            <input type="number" id="numSections" value="4" min="2" max="12">
+                            <button class="btn btn-primary" onclick="updateSections()">Mettre à jour</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-group" id="sectionsConfig">
+                    <div class="control-header" onclick="toggleCollapse('sectionsConfig')">
+                        <h3>Configuration des sections</h3>
+                        <span class="collapse-indicator">🔽</span>
+                    </div>
+                    <div class="control-content">
+                        <div class="sections-container" id="sectionsContainer">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <button class="btn btn-primary" onclick="applyClock()" style="width: 100%; font-size: 18px;">
+                        🎯 Appliquer la configuration
+                    </button>
+                </div>
+                
+                <div class="control-group" id="historyConfig">
+                    <div class="control-header" onclick="toggleCollapse('historyConfig')">
+                        <h3>Historique des configurations (Permanent)</h3>
+                        <span class="collapse-indicator">🔽</span>
+                    </div>
+                    <div class="control-content">
+                        <div class="storage-info">
+                            💾 <strong>Historique permanent :</strong> Vos configurations sont sauvegardées localement dans votre navigateur et seront disponibles lors de vos prochaines visites.
+                        </div>
+                        <div class="history-container" id="historyContainer">
+                            <div class="empty-history">
+                                Aucune configuration sauvegardée pour le moment.<br>
+                                <small>Les configurations seront automatiquement ajoutées à l'historique lors de leur première utilisation.</small>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <button class="btn btn-warning btn-small" onclick="exportHistory()">
+                                💾 Sauvegarder (historique.json)
+                            </button>
+                            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importHistory(event)">
+                            <button class="btn btn-primary btn-small" onclick="document.getElementById('importFile').click()" style="margin-left: 5px;">
+                                📂 Charger historique
+                            </button>
+                            <button class="btn btn-danger btn-small" onclick="clearHistory()" style="margin-left: 10px;">
+                                🗑️ Vider
+                            </button>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 0.85em; color: #666; background: #f8f9fa; padding: 10px; border-radius: 5px;">
+                            <strong>💡 Conseil :</strong> Sauvegardez régulièrement votre historique dans le même dossier que ce fichier HTML. 
+                            Le fichier "historique.json" contiendra toutes vos configurations et pourra être rechargé à tout moment.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="current-time" id="currentTime">
+            <span class="time-label">Heure actuelle</span>
+            <span id="currentTimeDisplay">--:--:--</span>
+        </div>
+    </div>
+
+    <script>
+        let timer = null;
+        let clockTimer = null;
+        let isPaused = false;
+        let startTime = null;
+        let pausedTime = 0;
+        let totalDurationMs = 0;
+        let sections = [];
+        let currentSectionIndex = 0;
+        let configHistory = [];
+        
+        const pastelColors = [
+            '#FFB6C1', '#87CEEB', '#98FB98', '#DDA0DD',
+            '#F0E68C', '#FF7F50', '#40E0D0', '#EE82EE',
+            '#90EE90', '#FFB347', '#87CEFA', '#DEB887'
+        ];
+
+        // NOUVELLES FONCTIONS POUR LA PERSISTENCE
+        function loadHistoryFromStorage() {
+            try {
+                const savedHistory = localStorage.getItem('horloge-config-history');
+                if (savedHistory) {
+                    configHistory = JSON.parse(savedHistory);
+                    console.log(`Historique chargé: ${configHistory.length} configurations`);
+                } else {
+                    configHistory = [];
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement de l\'historique:', error);
+                configHistory = [];
+            }
+        }
+
+        function saveHistoryToStorage() {
+            try {
+                localStorage.setItem('horloge-config-history', JSON.stringify(configHistory));
+                console.log('Historique sauvegardé avec succès');
+            } catch (error) {
+                console.error('Erreur lors de la sauvegarde de l\'historique:', error);
+                // En cas d'erreur (quota dépassé, etc.), on peut supprimer les plus anciennes configurations
+                if (configHistory.length > 10) {
+                    configHistory = configHistory.slice(0, 10);
+                    try {
+                        localStorage.setItem('horloge-config-history', JSON.stringify(configHistory));
+                        console.log('Historique réduit et sauvegardé');
+                    } catch (e) {
+                        console.error('Impossible de sauvegarder même avec un historique réduit', e);
+                    }
+                }
+            }
+        }
+
+        function exportHistory() {
+            if (configHistory.length === 0) {
+                alert('Aucune configuration à sauvegarder !');
+                return;
+            }
+
+            const dataStr = JSON.stringify(configHistory, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `historique.json`; // Nom fixe pour faciliter la gestion
+            link.click();
+            
+            // Nettoyage
+            URL.revokeObjectURL(link.href);
+            
+            alert(`✅ Historique sauvegardé !\n📁 Fichier: "historique.json"\n💡 Placez ce fichier dans le même dossier que votre fichier HTML pour faciliter la gestion.`);
+        }
+
+        function importHistory(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    if (Array.isArray(importedData)) {
+                        const validConfigs = importedData.filter(config => 
+                            config.id && config.sections && Array.isArray(config.sections)
+                        );
+                        
+                        if (validConfigs.length > 0) {
+                            if (confirm(`Voulez-vous remplacer l'historique actuel (${configHistory.length} configurations) par les ${validConfigs.length} configurations importées ?`)) {
+                                configHistory = validConfigs;
+                                saveHistoryToStorage();
+                                updateHistoryDisplay();
+                                alert(`${validConfigs.length} configurations importées avec succès !`);
+                            }
+                        } else {
+                            alert('Aucune configuration valide trouvée dans le fichier !');
+                        }
+                    } else {
+                        alert('Format de fichier invalide !');
+                    }
+                } catch (error) {
+                    console.error('Erreur lors de l\'import:', error);
+                    alert('Erreur lors de la lecture du fichier. Vérifiez que c\'est un fichier JSON valide.');
+                }
+            };
+            
+            reader.readAsText(file);
+            // Réinitialiser l'input file
+            event.target.value = '';
+        }
+
+        function updateSections() {
+            const numSections = parseInt(document.getElementById('numSections').value);
+            const container = document.getElementById('sectionsContainer');
+            container.innerHTML = '';
+            
+            sections = [];
+            for (let i = 0; i < numSections; i++) {
+                sections.push({
+                    name: `Activité ${i + 1}`,
+                    duration: Math.floor(60 / numSections),
+                    color: pastelColors[i % pastelColors.length]
+                });
+                
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'section-input';
+                sectionDiv.innerHTML = `
+                    <div class="section-color" style="background-color: ${sections[i].color}"></div>
+                    <input type="text" placeholder="Nom de l'activité" value="${sections[i].name}" onchange="updateSectionName(${i}, this.value)">
+                    <label>min:</label>
+                    <input type="number" value="${sections[i].duration}" min="1" max="120" onchange="updateSectionDuration(${i}, this.value)">
+                `;
+                container.appendChild(sectionDiv);
+            }
+        }
+
+        function updateSectionName(index, name) {
+            sections[index].name = name;
+        }
+
+        function updateSectionDuration(index, duration) {
+            sections[index].duration = parseInt(duration);
+            updateTotalFromSections();
+        }
+
+        function updateTotalFromSections() {
+            const total = sections.reduce((sum, section) => sum + section.duration, 0);
+            document.getElementById('totalDuration').value = total;
+        }
+
+        function applyClock() {
+            const totalDuration = parseInt(document.getElementById('totalDuration').value);
+            totalDurationMs = totalDuration * 60 * 1000;
+            
+            // Ajuster les durées des sections si nécessaire
+            const sectionsTotal = sections.reduce((sum, section) => sum + section.duration, 0);
+            if (sectionsTotal !== totalDuration) {
+                const ratio = totalDuration / sectionsTotal;
+                sections.forEach(section => {
+                    section.duration = Math.round(section.duration * ratio);
+                });
+            }
+            
+            // Sauvegarder dans l'historique PERMANENT
+            saveToHistory();
+            
+            drawClock();
+            resetTimer();
+            
+            // Replier les sections de configuration
+            document.getElementById('generalConfig').classList.add('collapsed');
+            document.getElementById('sectionsConfig').classList.add('collapsed');
+        }
+
+        function saveToHistory() {
+            const config = {
+                id: Date.now(),
+                date: new Date().toLocaleString('fr-FR'),
+                totalDuration: parseInt(document.getElementById('totalDuration').value),
+                sections: sections.map(section => ({...section})), // Copie profonde
+                sectionsCount: sections.length
+            };
+            
+            // Vérifier si une configuration identique existe déjà 
+            const isDuplicate = configHistory.some(item => 
+                item.totalDuration === config.totalDuration &&
+                item.sectionsCount === config.sectionsCount &&
+                JSON.stringify(item.sections) === JSON.stringify(config.sections)
+            );
+            
+            if (!isDuplicate) {
+                configHistory.unshift(config); // Ajouter en premier
+                
+                // Limiter à 50 configurations pour éviter les problèmes de stockage
+                if (configHistory.length > 50) {
+                    configHistory = configHistory.slice(0, 50);
+                }
+                
+                // Sauvegarder dans le localStorage
+                saveHistoryToStorage();
+                updateHistoryDisplay();
+            }
+        }
+
+        function updateHistoryDisplay() {
+            const container = document.getElementById('historyContainer');
+            
+            if (configHistory.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-history">
+                        Aucune configuration sauvegardée pour le moment.<br>
+                        <small>Les configurations seront automatiquement ajoutées à l'historique lors de leur première utilisation.</small>
+                    </div>`;
+                return;
+            }
+            
+            container.innerHTML = configHistory.map(config => `
+                <div class="history-item">
+                    <div class="history-header">
+                        <div class="history-title">
+                            Configuration ${config.sectionsCount} sections
+                        </div>
+                        <div class="history-date">${config.date}</div>
+                    </div>
+                    <div class="history-details">
+                        Durée totale: ${config.totalDuration} minutes
+                    </div>
+                    <div class="history-sections">
+                        ${config.sections.map(section => `
+                            <span class="history-section-tag" style="background-color: ${section.color}30; border: 1px solid ${section.color};">
+                                ${section.name} (${section.duration}min)
+                            </span>
+                        `).join('')}
+                    </div>
+                    <div class="history-actions">
+                        <button class="btn btn-primary btn-small" onclick="loadFromHistory(${config.id})">
+                            📋 Utiliser
+                        </button>
+                        <button class="btn btn-warning btn-small" onclick="editFromHistory(${config.id})">
+                            ✏️ Modifier
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="deleteFromHistory(${config.id})">
+                            🗑️ Supprimer
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadFromHistory(configId) {
+            const config = configHistory.find(item => item.id === configId);
+            if (!config) return;
+            
+            // Charger la configuration
+            document.getElementById('totalDuration').value = config.totalDuration;
+            document.getElementById('numSections').value = config.sectionsCount;
+            
+            sections = config.sections.map(section => ({...section}));
+            
+            // Mettre à jour l'affichage des sections
+            const container = document.getElementById('sectionsContainer');
+            container.innerHTML = '';
+            
+            sections.forEach((section, index) => {
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'section-input';
+                sectionDiv.innerHTML = `
+                    <div class="section-color" style="background-color: ${section.color}"></div>
+                    <input type="text" placeholder="Nom de l'activité" value="${section.name}" onchange="updateSectionName(${index}, this.value)">
+                    <label>min:</label>
+                    <input type="number" value="${section.duration}" min="1" max="120" onchange="updateSectionDuration(${index}, this.value)">
+                `;
+                container.appendChild(sectionDiv);
+            });
+            
+            // Déplier les sections de configuration
+            document.getElementById('generalConfig').classList.remove('collapsed');
+            document.getElementById('sectionsConfig').classList.remove('collapsed');
+            
+            alert('Configuration chargée ! Vous pouvez la modifier et cliquer sur "Appliquer" pour l\'utiliser.');
+        }
+
+        function editFromHistory(configId) {
+            loadFromHistory(configId);
+        }
+
+        function deleteFromHistory(configId) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer cette configuration ?')) {
+                configHistory = configHistory.filter(item => item.id !== configId);
+                saveHistoryToStorage();
+                updateHistoryDisplay();
+            }
+        }
+
+        function clearHistory() {
+            if (confirm('Êtes-vous sûr de vouloir vider tout l\'historique permanent ?')) {
+                configHistory = [];
+                localStorage.removeItem('horloge-config-history');
+                updateHistoryDisplay();
+            }
+        }
+
+        function drawClock() {
+            const clockSvg = document.getElementById('clockSvg');
+            
+            // Supprimer les anciennes sections
+            clockSvg.innerHTML = '';
+            
+            let startAngle = 0;
+            const totalDuration = sections.reduce((sum, section) => sum + section.duration, 0);
+            const centerX = 200;
+            const centerY = 200;
+            const radius = 180;
+            
+            sections.forEach((section, index) => {
+                const sectionAngle = (section.duration / totalDuration) * 360;
+                const endAngle = startAngle + sectionAngle;
+                
+                // Créer le chemin du secteur
+                const startAngleRad = (startAngle - 90) * Math.PI / 180;
+                const endAngleRad = (endAngle - 90) * Math.PI / 180;
+                
+                const x1 = centerX + Math.cos(startAngleRad) * radius;
+                const y1 = centerY + Math.sin(startAngleRad) * radius;
+                const x2 = centerX + Math.cos(endAngleRad) * radius;
+                const y2 = centerY + Math.sin(endAngleRad) * radius;
+                
+                const largeArcFlag = sectionAngle > 180 ? 1 : 0;
+                
+                const pathData = [
+                    `M ${centerX} ${centerY}`,
+                    `L ${x1} ${y1}`,
+                    `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+                    'Z'
+                ].join(' ');
+                
+                // Créer l'élément path
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathData);
+                path.setAttribute('fill', section.color);
+                path.setAttribute('stroke', 'white');
+                path.setAttribute('stroke-width', '2');
+                path.classList.add('section-path');
+                path.setAttribute('data-index', index);
+                
+                clockSvg.appendChild(path);
+                
+                // Ajouter le texte orienté dans le sens du rayon (au centre du secteur)
+                const midAngle = startAngle + sectionAngle / 2;
+                const textAngleRad = (midAngle - 90) * Math.PI / 180;
+                const textRadius = radius * 0.6;
+                const textX = centerX + Math.cos(textAngleRad) * textRadius;
+                const textY = centerY + Math.sin(textAngleRad) * textRadius;
+                
+                // Calculer l'angle de rotation du texte pour qu'il suive le rayon
+                let textRotation = midAngle - 90;
+                // Si le texte serait à l'envers, le retourner de 180°
+                if (textRotation > 90 && textRotation < 270) {
+                    textRotation += 180;
+                }
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', textX);
+                text.setAttribute('y', textY);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dominant-baseline', 'central');
+                text.setAttribute('font-size', '12');
+                text.setAttribute('font-weight', 'bold');
+                text.setAttribute('fill', '#333');
+                text.setAttribute('transform', `rotate(${textRotation}, ${textX}, ${textY})`);
+                text.textContent = section.name;
+                
+                clockSvg.appendChild(text);
+                
+                startAngle = endAngle;
+            });
+        }
+
+        function startTimer() {
+            if (sections.length === 0) {
+                alert('Veuillez d\'abord configurer l\'horloge !');
+                return;
+            }
+            
+            if (isPaused) {
+                // Reprendre là où on s'était arrêté
+                startTime = Date.now() - pausedTime;
+                isPaused = false;
+            } else {
+                // Nouveau démarrage
+                startTime = Date.now();
+                pausedTime = 0;
+                currentSectionIndex = 0;
+            }
+            
+            timer = setInterval(updateClock, 100);
+            
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+        }
+
+        function pauseTimer() {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+                isPaused = true;
+                pausedTime = Date.now() - startTime;
+                
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+            }
+        }
+
+        function resetTimer() {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+            
+            isPaused = false;
+            startTime = null;
+            pausedTime = 0;
+            currentSectionIndex = 0;
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            
+            document.getElementById('timeDisplay').textContent = '00:00';
+            document.getElementById('currentSection').textContent = 'En attente';
+            document.getElementById('hand').style.transform = 'translate(-50%, -100%) rotate(0deg)';
+            
+            // Remettre les couleurs originales
+            const sectionPaths = document.querySelectorAll('.section-path');
+            sectionPaths.forEach((path, index) => {
+                path.setAttribute('fill', sections[index]?.color || pastelColors[index % pastelColors.length]);
+            });
+        }
+
+        function toggleCollapse(groupId) {
+            const group = document.getElementById(groupId);
+            group.classList.toggle('collapsed');
+        }
+
+        function updateCurrentTime() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            
+            document.getElementById('currentTimeDisplay').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        function startClockTimer() {
+            if (!clockTimer) {
+                updateCurrentTime(); // Mise à jour immédiate
+                clockTimer = setInterval(updateCurrentTime, 1000); // Mise à jour chaque seconde
+            }
+        }
+
+        function stopClockTimer() {
+            if (clockTimer) {
+                clearInterval(clockTimer);
+                clockTimer = null;
+            }
+        }
+
+        function updateClock() {
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, totalDurationMs - elapsed);
+            
+            if (remaining === 0) {
+                // Temps écoulé
+                clearInterval(timer);
+                timer = null;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('timeDisplay').textContent = '00:00';
+                document.getElementById('currentSection').textContent = 'Terminé !';
+                alert('⏰ Temps écoulé !');
+                return;
+            }
+            
+            // Mettre à jour l'affichage du temps
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            document.getElementById('timeDisplay').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Calculer l'angle de la trotteuse
+            const progress = elapsed / totalDurationMs;
+            const angle = progress * 360; // Commencer directement à 0° (12h)
+            document.getElementById('hand').style.transform = `translate(-50%, -100%) rotate(${angle}deg)`;
+            
+            // Déterminer la section actuelle et mettre à jour les couleurs
+            let cumulativeDuration = 0;
+            let newCurrentSectionIndex = 0;
+            
+            for (let i = 0; i < sections.length; i++) {
+                cumulativeDuration += sections[i].duration * 60 * 1000;
+                if (elapsed < cumulativeDuration) {
+                    newCurrentSectionIndex = i;
+                    break;
+                }
+                if (i === sections.length - 1) {
+                    newCurrentSectionIndex = sections.length - 1;
+                }
+            }
+            
+            currentSectionIndex = newCurrentSectionIndex;
+            
+            // Mettre à jour l'affichage de la section actuelle
+            if (currentSectionIndex < sections.length) {
+                document.getElementById('currentSection').textContent = 
+                    `Section actuelle: ${sections[currentSectionIndex].name}`;
+            }
+            
+            // Mettre à jour les couleurs des sections (rouge pour les sections dépassées)
+            const sectionPaths = document.querySelectorAll('.section-path');
+            let sectionCumulativeTime = 0;
+            
+            sections.forEach((section, index) => {
+                sectionCumulativeTime += section.duration * 60 * 1000;
+                if (index < sectionPaths.length) {
+                    if (elapsed >= sectionCumulativeTime) {
+                        sectionPaths[index].setAttribute('fill', '#ff6b6b');
+                    } else {
+                        sectionPaths[index].setAttribute('fill', section.color);
+                    }
+                }
+            });
+        }
+
+        // INITIALISATION AU CHARGEMENT DE LA PAGE
+        document.addEventListener('DOMContentLoaded', function() {
+            // Charger l'historique depuis le localStorage
+            loadHistoryFromStorage();
+            
+            // Initialiser l'affichage
+            updateSections();
+            applyClock();
+            updateHistoryDisplay();
+            
+            // Démarrer l'affichage de l'heure actuelle
+            startClockTimer();
+        });
+
+        // Compteur de visites simple (comme dans l'original)
+        let visites = localStorage.getItem('compteur-visites') || 0;
+        visites++;
+        localStorage.setItem('compteur-visites', visites);
+    </script>
+
+<footer class="footer" style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 15px; text-align: center; color: #666;">
+    <p>© 2026 - Ressources Pédagogiques | Lycée Professionnel</p>
+    <p>Site conçu pour l'enseignement des mathématiques et des sciences</p>
+    <p style="margin-top: 15px; font-size: 0.8em; color: #a0aec0;">
+        <strong>Licence MIT</strong> - Créé par <a href="mailto:lessavoirfaire.partager@gmail.com" style="color: #667eea;">lessavoirfaire.partager@gmail.com</a><br>
+        Ce projet est sous licence libre. 
+        <a href="#" onclick="showLicense()" style="color: #667eea;">Voir licence complète</a>
+    </p>
+    <p id="compteur-visites" style="margin-top: 10px; font-size: 0.8em;"></p>
+</footer>
+
+<script>
+// Affichage du compteur de visites
+document.addEventListener('DOMContentLoaded', function() {
+    const compteur = document.getElementById('compteur-visites');
+    if (compteur) {
+        compteur.innerHTML = `👁️ Visites sur cette page : <strong>${visites}</strong>`;
+    }
+});
+
+function showLicense() {
+    alert(`MIT License
+
+Copyright (c) 2024 lessavoirfaire.partager@gmail.com
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.`);
+}
+</script>

@@ -1,0 +1,886 @@
+<!--
+Juniper Green - Jeu des Diviseurs et Multiples (appli HTML/js)
+Copyright (c) 2025 Moise Muller <moise.muller@ac-dijon.fr>
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juniper Green - Jeu des Diviseurs et Multiples</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f8f0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2d5a2d;
+            text-align: center;
+        }
+        .rules {
+            background-color: #e8f5e8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4a7c59;
+        }
+        .player-setup {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .player-config {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            gap: 15px;
+        }
+        .player-config input[type="text"] {
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        .color-option.selected {
+            border-color: #333;
+            transform: scale(1.2);
+        }
+        .game-controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            background-color: #4a7c59;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #5a8c69;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 10px;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #4a7c59;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: #f9f9f9;
+            font-weight: bold;
+            font-size: 14px;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+        .cell:hover {
+            background-color: #e8f5e8;
+            transform: scale(1.05);
+        }
+        .cell.selected {
+            color: white;
+            font-weight: bold;
+        }
+        .cell.last-selected {
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            border-width: 3px;
+        }
+        .cell.disabled {
+            background-color: #ddd;
+            color: #888;
+            cursor: not-allowed;
+            border-color: #bbb;
+        }
+        .cell.invalid {
+            background-color: #ff6b6b;
+            color: white;
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .info-panel {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .sequence {
+            font-weight: bold;
+            color: #2d5a2d;
+        }
+        .sequence-number {
+            border-radius:4px; 
+            margin:0 2px;
+            padding:2px 6px;
+        }
+        .player-turn {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .score {
+            text-align: center;
+            margin: 10px 0;
+        }
+        .game-over {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #d9534f;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8d7da;
+            border-radius: 8px;
+        }
+        .history-section {
+            margin-top: 30px;
+            border-top: 2px solid #4a7c59;
+            padding-top: 20px;
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 10px;
+            background-color: #e8f5e8;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .history-content {
+            display: none;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .history-content.show {
+            display: block;
+        }
+        .history-entry {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 5px;
+            border-left: 4px solid #4a7c59;
+        }
+        .toggle-arrow {
+            transition: transform 0.3s;
+        }
+        .toggle-arrow.rotated {
+            transform: rotate(180deg);
+        }
+        .mode-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .mode-buttons button {
+            min-width: 120px;
+        }
+        .hidden {display: none;}
+        #bandeau-multiplication {
+            position: fixed;
+            top: 0; right: 0;
+            height: 100vh;
+            width: 420px;
+            max-width: 99vw;
+            background: #fff;
+            border-left: 2px solid #0074D9;
+            box-shadow: -2px 0 8px #0074d988;
+            transition: transform 0.3s;
+            z-index: 1001;
+            padding: 15px 5px 15px 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        #bandeau-multiplication.replie { transform: translateX(100%);}
+        #bouton-bandeau-mult {
+            position: fixed;
+            top: 40%;
+            right: 0;
+            transform: translateY(-50%);
+            background: #0074D9;
+            color: #fff;
+            border: none;
+            padding: 12px 7px 12px 15px;
+            border-radius: 20px 0 0 20px;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 1100;
+            transition: right 0.3s;
+        }
+        #bandeau-multiplication.replie + #bouton-bandeau-mult {
+            right: 0;
+        }
+        #table-mult {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 340px;
+            background: #fff;
+            margin-top: 10px;
+        }
+        #table-mult th, #table-mult td {
+            border: 1px solid #AAA;
+            padding: 6px 8px;
+            text-align: center;
+            font-size: 17px;
+        }
+        #table-mult th {
+            background: #dedffa;
+            font-weight: bold;
+        }
+        #bandeau-decomp {
+            position: fixed;
+            top: 0; left: 0;
+            height: 100vh;
+            width: 270px;
+            max-width: 97vw;
+            background: #fff;
+            border-right: 2px solid #0074D9;
+            box-shadow: 2px 0 8px #0074d988;
+            transition: transform 0.3s;
+            z-index: 1001;
+            padding: 15px 5px 15px 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        #bandeau-decomp.replie { transform: translateX(-100%);}
+        #bouton-bandeau-decomp {
+            position: fixed;
+            top: 40%;
+            left: 0;
+            transform: translateY(-50%);
+            background: #0074D9;
+            color: #fff;
+            border: none;
+            padding: 12px 15px 12px 7px;
+            border-radius: 0 20px 20px 0;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 1100;
+            transition: left 0.3s;
+        }
+        #bandeau-decomp.replie + #bouton-bandeau-decomp {
+            left: 0;
+        }
+        @media (max-width: 700px) {
+            #bandeau-multiplication, #bandeau-decomp {
+                width: 96vw !important;
+                min-width: 140px;
+                padding: 10px 0 10px 5px;
+            }
+            #table-mult th, #table-mult td {
+                font-size: 13px;
+                padding: 4px 3.5px;
+            }
+        }
+        .select-nb-joueurs-container {
+            text-align: center;
+            margin-bottom: 18px;
+            font-size: 1.12em;
+        }
+        .select-nb-joueurs {
+            font-size: 1em;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 2px solid #4a7c59;
+            background: #e8f5e8;
+            outline: none;
+            margin-left: 5px;
+        }
+        #help-bubble-btn {
+            position: fixed;
+            top: 19px;
+            right: 19px;
+            width: 46px;
+            height: 46px;
+            background: #0074D9;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            font-size: 30px;
+            font-weight: bold;
+            z-index: 2001;
+            box-shadow: 1px 2px 16px #0074d980;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.18s;
+        }
+        #help-bubble-btn:active { background:#005ea6;}
+        #help-bubble {
+            position: fixed;
+            top: 75px;
+            right: 23px;
+            width: 420px;
+            max-width: 95vw;
+            background: #ffffff;
+            color: #222;
+            border-radius: 18px;
+            border: 2px solid #0074D9;
+            box-shadow: 2px 4px 22px #0074d9cc;
+            z-index: 2002;
+            padding: 28px 22px 24px 22px;
+            font-size: 1.15em;
+            line-height: 1.6;
+            text-align:left;
+            max-height: calc(98vh - 80px);
+            overflow: auto;
+        }
+        #help-bubble h2 {
+            margin-top: 0; margin-bottom: 8px;
+            font-size: 1.18em;
+            color: #0074D9;
+            text-align: center;
+        }
+        #help-bubble ul {
+            margin-top: 0.5em;
+            padding-left: 1.2em;
+        }
+        #help-bubble strong { color:#2d5a2d;}
+        @media (max-width:500px){
+            #help-bubble{width:95vw; right:2vw; left:auto;}
+        }
+    </style>
+</head>
+<body>
+    <!-- Bouton Aide ("?") -->
+    <button id="help-bubble-btn" title="Afficher l'aide du jeu" aria-expanded="false">?</button>
+    <div id="help-bubble" style="display:none;">
+        <h2>Comment jouer à Juniper Green ?</h2>
+        <p>
+            <strong>But du jeu&nbsp;:</strong><br>
+            Le but est de sélectionner à tour de rôle des nombres sur la grille.<br>
+            À chaque tour, le nombre choisi doit être <strong>un multiple ou un diviseur</strong> du nombre sélectionné juste avant.<br>
+            <strong>Celui qui ne peut plus jouer a perdu.</strong>
+        </p>
+        <ul>
+            <li>Choisis le nombre de joueurs (2 à 4) et leur couleur.</li>
+            <li>Deux modes : <b>aidé</b> (seules les cases valides peuvent être cliquées) ou <b>libre</b> (erreurs signalées en rouge, tu peux corriger).</li>
+            <li>À chaque tour, le joueur suivant change automatiquement.</li>
+            <li><b>Bandeau droit</b> : affiche toujours la table de multiplication (aide visuelle rapide).</li>
+            <li><b>Bandeau gauche</b> : montre la décomposition (diviseurs, facteurs premiers) du nombre que tu viens de choisir.</li>
+            <li>Le joueur qui ne peut plus jouer perd, celui qui a joué juste avant gagne !</li>
+            <li>Le bouton “Nouvelle configuration” permet de repartir à zéro.</li>
+            <li>L’historique montre les séquences et gagnants précédents.</li>
+        </ul>
+        <div style="text-align:center; margin-top:10px;">
+            <span style="color:#e74c3c;font-weight:bold;font-size:1.09em;">Bonne partie !</span>
+        </div>
+        <div style="border-top:1px solid #b7dbf6;margin-top:18px;padding-top:11px;font-size:0.98em;text-align:center;color:#444;">
+          <div style="font-size:0.98em;">
+            <b>Licence MIT</b> – <span style="color:#2d5a2d">© 2025 Moise Muller</span><br>
+            <a href="mailto:moise.muller@ac-dijon.fr" style="color:#0074D9;text-decoration:underline">moise.muller@ac-dijon.fr</a>
+          </div>
+          <div style="font-size:0.92em;color:#888;margin-top:3px;">
+            Libre pour usage, modification et diffusion.<br>
+            Voir détails dans le code source.
+          </div>
+        </div>
+    </div>
+    <!-- BANDEAU GAUCHE - Décomposition -->
+    <div id="bandeau-decomp" class="replie">
+      <h3>Décomposition du nombre</h3>
+      <div id="decomposition-details">
+        <em>Aucun nombre sélectionné</em>
+      </div>
+    </div>
+    <button id="bouton-bandeau-decomp" aria-label="Afficher/Cacher la décomposition">⮞</button>
+    <div class="container">
+        <h1>Juniper Green</h1>
+        <div class="rules">
+            <h3>Règles du jeu</h3>
+            <p><strong>Objectif :</strong><br>
+            Cliquez sur les différentes cases une à une sachant que la case sur laquelle vous cliquez doit être un <strong>diviseur ou un multiple</strong> de la case précédente.</p>
+            <p><strong>Mode aidé :</strong> Seules les cases valides sont cliquables.<br>
+            <strong>Mode libre :</strong> Toutes les cases sont cliquables, les erreurs sont signalées en rouge et peuvent être corrigées.</p>
+        </div>
+        <div class="select-nb-joueurs-container">
+          <label for="nbJoueurs"><b>Nombre de joueurs : </b></label>
+          <select id="nbJoueurs" class="select-nb-joueurs">
+            <option value="2" selected>2 joueurs</option>
+            <option value="3">3 joueurs</option>
+            <option value="4">4 joueurs</option>
+          </select>
+        </div>
+        <div class="player-setup" id="playerSetup">
+            <h3>Configuration des joueurs</h3>
+            <div id="playerConfigs"></div>
+            <div class="player-config">
+                <label><strong>Nom de l'historique :</strong></label>
+                <input type="text" id="historyName" placeholder="Nom de la session" value="Session">
+            </div>
+        </div>
+        <div class="mode-buttons">
+            <button onclick="startGame('aided')">Jeu Aidé</button>
+            <button onclick="startGame('free')">Jeu Libre</button>
+            <button onclick="resetGame()">Nouvelle Configuration</button>
+        </div>
+        <div class="player-turn" id="playerTurn" style="display: none;"></div>
+        <div class="grid" id="gameGrid"></div>
+        <div class="info-panel">
+            <div class="score">
+                <span id="scoreDisplay">Configurez les joueurs et sélectionnez un mode de jeu</span>
+            </div>
+            <div class="sequence">
+                Séquence : <span id="sequenceDisplay">-</span>
+            </div>
+        </div>
+        <div class="game-over" id="gameOver" style="display: none;"></div>
+        <div class="history-section" id="historySection" style="display: none;">
+            <div class="history-header" onclick="toggleHistory()">
+                <h3 id="historyTitle">Historique</h3>
+                <span class="toggle-arrow" id="toggleArrow">▼</span>
+            </div>
+            <div class="history-content" id="historyContent"></div>
+        </div>
+    </div>
+    <div id="bandeau-multiplication" class="replie">
+      <h3>Table des multiplications</h3>
+      <table id="table-mult">
+        <thead>
+          <tr>
+            <th>×</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+    <button id="bouton-bandeau-mult" aria-label="Afficher/Cacher la table">⮜</button>
+
+    <script>
+        // === FONCTIONNALITÉ BULLE AIDE ===
+        const helpBtn = document.getElementById('help-bubble-btn');
+        const helpBubble = document.getElementById('help-bubble');
+        helpBtn.addEventListener('click', function(){
+            const visible = helpBubble.style.display !== 'none';
+            helpBubble.style.display = visible ? 'none' : 'block';
+            helpBtn.setAttribute('aria-expanded', (!visible).toString());
+        });
+
+        /*********** VARIABLES GLOBALES ***********/
+        let gameMode = '';
+        let nbJoueurs = 2;
+        let currentPlayer = 1;
+        let selectedCells = [];
+        let playedBy = [];
+        let gameActive = false;
+        let numbers = [];
+        let lastSelected = -1;
+        let playerColors = ["#2d5a2d", "#e74c3c", "#3498db", "#f39c12"];
+        let playerNames = ["Joueur 1", "Joueur 2", "Joueur 3", "Joueur 4"];
+        let gameHistory = [];
+        let invalidSelections = [];
+        function decompositionFacteursPremiers(n) {
+            if (n < 2) return [n];
+            let res = [];
+            let original = n;
+            for (let f = 2; f*f <= n; f++) {
+                while (n % f === 0) {
+                    res.push(f);
+                    n = n / f;
+                }
+            }
+            if (n > 1) res.push(n);
+            return res;
+        }
+        function tousDiviseurs(n) {
+            let div = [];
+            for (let i = 1; i <= n; i++) if (n % i === 0) div.push(i);
+            return div;
+        }
+        function setDecomposition(n) {
+          const dest = document.getElementById("decomposition-details");
+          if (!dest) return;
+          if (!n || n<1) {
+            dest.innerHTML = "<em>Aucun nombre sélectionné</em>";
+            return;
+          }
+          const facteurs = decompositionFacteursPremiers(n);
+          const divs = tousDiviseurs(n);
+          dest.innerHTML = `
+            <div><b>Nombre :</b> ${n}</div>
+            <div><b>Facteurs&nbsp;premiers :</b> ${facteurs.join(' × ')}</div>
+            <div><b>Diviseurs&nbsp;:</b> ${divs.join(', ')}</div>
+          `;
+        }
+        const couleurBdd = [
+            "#2d5a2d", "#e74c3c", "#3498db", "#f39c12", "#9b59b6", "#1abc9c"
+        ];
+        const couleurNoms = [
+            "Vert", "Rouge", "Bleu", "Orange", "Violet", "Turquoise"
+        ];
+        let couleursParDefaut = couleurBdd.slice(0,4);
+        function renderPlayerConfigs() {
+            const nb = parseInt(document.getElementById("nbJoueurs").value);
+            nbJoueurs = nb;
+            let html = "";
+            for (let i=1; i<=nb; i++) {
+                let colorRow = "";
+                couleurBdd.forEach((c, idx) => {
+                  const checked = playerColors[i-1] == c ? "selected" : "";
+                  colorRow += `<div class="color-option ${checked}" data-player="${i}" title="${couleurNoms[idx]}" data-color="${c}" style="background-color: ${c};"></div>`;
+                });
+                html += `
+                  <div class="player-config">
+                    <label><strong>Joueur ${i} :</strong></label>
+                    <input type="text" id="player${i}Name" placeholder="Nom du joueur ${i}" value="${playerNames[i-1]}">
+                    <div class="color-picker">
+                      ${colorRow}
+                    </div>
+                  </div>
+                `;
+            }
+            document.getElementById("playerConfigs").innerHTML = html;
+        }
+        document.addEventListener("DOMContentLoaded", function(){
+            renderPlayerConfigs();
+        });
+        document.getElementById("nbJoueurs").addEventListener("change", function(){
+            const n = parseInt(this.value);
+            for(let i=2;i<n;i++){ if(!playerNames[i]) playerNames[i]=`Joueur ${i+1}`; }
+            for(let i=0;i<n;i++){ if(!playerColors[i]) playerColors[i]=couleurBdd[i]; }
+            renderPlayerConfigs();
+        });
+
+        function generateNumbers() {
+            numbers = [];
+            for (let i = 1; i <= 50; i++) {
+                numbers.push(i);
+            }
+        }
+        function createGrid() {
+            const grid = document.getElementById('gameGrid');
+            grid.innerHTML = '';
+            for (let i = 0; i < 50; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.textContent = numbers[i];
+                cell.onclick = () => { selectCell(i); setDecomposition(numbers[i]); };
+                grid.appendChild(cell);
+            }
+        }
+        function getPlayerConfig(pn) {
+            const nameInput = document.getElementById(`player${pn}Name`);
+            return {
+                name: nameInput ? nameInput.value : `Joueur ${pn}`,
+                color: playerColors[pn-1] || couleurBdd[pn-1]
+            };
+        }
+        function refreshPlayerParams() {
+          for(let i=1;i<=nbJoueurs;i++) {
+            let nameInput = document.getElementById(`player${i}Name`);
+            if (nameInput) playerNames[i-1]=nameInput.value;
+          }
+        }
+        function startGame(mode) {
+            refreshPlayerParams();
+            gameMode = mode;
+            currentPlayer = 1;
+            selectedCells = [];
+            playedBy = [];
+            gameActive = true;
+            lastSelected = -1;
+            invalidSelections = [];
+            generateNumbers();
+            createGrid();
+            updateDisplay();
+            document.getElementById('playerTurn').style.display = 'block';
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('historySection').style.display = 'block';
+            updatePlayerTurn();
+            setDecomposition(null);
+            if (mode === 'aided') highlightValidMoves();
+        }
+        function resetGame() {
+            refreshPlayerParams();
+            gameMode = '';
+            gameActive = false;
+            selectedCells = [];
+            playedBy = [];
+            lastSelected = -1;
+            invalidSelections = [];
+            document.getElementById('gameGrid').innerHTML = '';
+            document.getElementById('playerTurn').style.display = 'none';
+            document.getElementById('gameOver').style.display = 'none';
+            updateDisplay();
+            setDecomposition(null);
+        }
+        function isDivisorOrMultiple(a, b) {
+            return a % b === 0 || b % a === 0;
+        }
+        function selectCell(index) {
+            if (!gameActive) return;
+            const cells = document.getElementsByClassName('cell');
+            const cell = cells[index];
+            if (cell.classList.contains('selected')) return;
+            const currentNumber = numbers[index];
+            if (selectedCells.length === 0) {
+                selectedCells.push(index);
+                playedBy.push(currentPlayer);
+                cell.classList.add('selected', 'last-selected');
+                cell.style.backgroundColor = playerColors[currentPlayer-1];
+                lastSelected = index;
+                updateDisplay();
+                currentPlayer = currentPlayer % nbJoueurs + 1;
+                updatePlayerTurn();
+                if (gameMode === 'aided') highlightValidMoves();
+                return;
+            }
+            const lastNumber = numbers[lastSelected];
+            if (!isDivisorOrMultiple(currentNumber, lastNumber)) {
+                if (gameMode === 'aided') return;
+                else {
+                    cell.classList.add('invalid');
+                    invalidSelections.push(index);
+                    setTimeout(() => { cell.classList.remove('invalid'); }, 1000);
+                    return;
+                }
+            }
+            invalidSelections.forEach(invalidIndex => {
+                cells[invalidIndex].classList.remove('invalid');
+            });
+            invalidSelections = [];
+            selectedCells.push(index);
+            playedBy.push(currentPlayer);
+            if (lastSelected !== -1) cells[lastSelected].classList.remove('last-selected');
+            cell.classList.add('selected', 'last-selected');
+            cell.style.backgroundColor = playerColors[currentPlayer-1];
+            lastSelected = index;
+            const validMoves = getValidMoves();
+            if (validMoves.length === 0) {
+                gameActive = false;
+                const winnerNum = playedBy[playedBy.length-1];
+                const loserNum = (winnerNum%nbJoueurs)+1;
+                const winnerName = playerNames[winnerNum-1];
+                const loserName = playerNames[loserNum-1];
+                document.getElementById('gameOver').innerHTML =
+                   `${winnerName} gagne ! (${loserName} n'a plus de mouvements possibles)`;
+                document.getElementById('gameOver').style.display = 'block';
+                addToHistory(false);
+            } else {
+                currentPlayer = currentPlayer % nbJoueurs + 1;
+                updatePlayerTurn();
+            }
+            updateDisplay();
+            if (gameMode === 'aided' && gameActive) highlightValidMoves();
+        }
+        function getValidMoves() {
+            if (lastSelected === -1) return [];
+            const lastNumber = numbers[lastSelected];
+            const validMoves = [];
+            const cells = document.getElementsByClassName('cell');
+            for (let i = 0; i < numbers.length; i++) {
+                if (cells[i].classList.contains('selected')) continue;
+                if (isDivisorOrMultiple(numbers[i], lastNumber)) validMoves.push(i);
+            }
+            return validMoves;
+        }
+        function highlightValidMoves() {
+            const cells = document.getElementsByClassName('cell');
+            const validMoves = getValidMoves();
+            for (let i = 0; i < cells.length; i++) {
+                cells[i].classList.remove('disabled');
+            }
+            for (let i = 0; i < cells.length; i++) {
+                if (!cells[i].classList.contains('selected') && !validMoves.includes(i)) {
+                    cells[i].classList.add('disabled');
+                }
+            }
+        }
+        function updateDisplay() {
+            const scoreElement = document.getElementById('scoreDisplay');
+            const sequenceElement = document.getElementById('sequenceDisplay');
+            if (gameMode === '') {
+                scoreElement.textContent = 'Configurez les joueurs et sélectionnez un mode de jeu';
+                sequenceElement.textContent = '-';
+            } else {
+                const currentPlayerName = playerNames[currentPlayer-1];
+                scoreElement.textContent = `Tour de ${currentPlayerName} - Nombres sélectionnés : ${selectedCells.length}`;
+                const sequence = selectedCells.map((index, i) => {
+                    const playerColor = playerColors[playedBy[i]-1];
+                    return `<span class="sequence-number" style="background-color: ${playerColor}; color:white;">${numbers[index]}</span>`;
+                }).join(' → ');
+                sequenceElement.innerHTML = sequence || '-';
+            }
+        }
+        function updatePlayerTurn() {
+            const playerTurnElement = document.getElementById('playerTurn');
+            const currentPlayerName = playerNames[currentPlayer-1];
+            const currentColor = playerColors[currentPlayer-1];
+            playerTurnElement.textContent = `Tour de ${currentPlayerName}`;
+            playerTurnElement.style.backgroundColor = currentColor;
+            playerTurnElement.style.color = 'white';
+        }
+        function addToHistory(isReset = false) {
+            if (selectedCells.length === 0 && !isReset) return;
+            const sequence = selectedCells.map(index => numbers[index]).join(' → ');
+            const timestamp = new Date().toLocaleString();
+            const playersObj = {};
+            for(let i=0;i<nbJoueurs;i++) playersObj['player'+(i+1)] = playerNames[i];
+            const entry = {
+                timestamp,
+                mode: gameMode,
+                sequence,
+                length: selectedCells.length,
+                players: playersObj
+            };
+            gameHistory.push(entry);
+            updateHistoryDisplay();
+        }
+        function updateHistoryDisplay() {
+            const historyContent = document.getElementById('historyContent');
+            const historyTitle = document.getElementById('historyTitle');
+            const historyName = document.getElementById('historyName').value;
+            historyTitle.textContent = `Historique - ${historyName}`;
+            historyContent.innerHTML = '';
+            gameHistory.slice(-10).reverse().forEach(entry => {
+                let joueurs = "";
+                Object.entries(entry.players).forEach(([k,v], idx) => {
+                  joueurs += v;
+                  if (idx<Object.keys(entry.players).length-1) joueurs += " vs ";
+                });
+                const div = document.createElement('div');
+                div.className = 'history-entry';
+                div.innerHTML = `
+                    <strong>${entry.timestamp}</strong> - Mode: ${entry.mode === 'aided' ? 'Aidé' : 'Libre'}<br>
+                    Joueurs: ${joueurs}<br>
+                    Séquence (${entry.length} nombres): ${entry.sequence}
+                `;
+                historyContent.appendChild(div);
+            });
+        }
+        function toggleHistory() {
+            const content = document.getElementById('historyContent');
+            const arrow = document.getElementById('toggleArrow');
+            content.classList.toggle('show');
+            arrow.classList.toggle('rotated');
+        }
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('color-option')) {
+                const player = parseInt(e.target.dataset.player);
+                const color = e.target.dataset.color;
+                playerColors[player-1] = color;
+                document.querySelectorAll(`[data-player="${player}"]`).forEach(el => {
+                    el.classList.remove('selected');
+                });
+                e.target.classList.add('selected');
+            }
+        });
+        renderPlayerConfigs();
+        resetGame();
+
+        function creerTableMultiplications() {
+            const thead = document.querySelector("#table-mult thead tr");
+            const tbody = document.querySelector("#table-mult tbody");
+            thead.innerHTML = "<th>×</th>";
+            for (let i = 1; i <= 10; i++) {
+                thead.innerHTML += `<th>${i}</th>`;
+            }
+            tbody.innerHTML = "";
+            for (let i = 1; i <= 10; i++) {
+                let tr = document.createElement("tr");
+                let th = document.createElement("th");
+                th.textContent = i;
+                tr.appendChild(th);
+                for (let j = 1; j <= 10; j++) {
+                    let td = document.createElement("td");
+                    td.textContent = i * j;
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+        }
+        creerTableMultiplications();
+        // replie/déplie bandeaux
+        const bandeauMultip = document.getElementById("bandeau-multiplication");
+        const boutonMult = document.getElementById("bouton-bandeau-mult");
+        boutonMult.onclick = () => {
+            bandeauMultip.classList.toggle("replie");
+            boutonMult.innerHTML = bandeauMultip.classList.contains("replie") ? "⮞" : "⮜";
+        };
+        bandeauMultip.classList.add("replie");
+        boutonMult.innerHTML = "⮞";
+        // Gauche - decomp
+        const bandeauDecomp = document.getElementById("bandeau-decomp");
+        const boutonDecomp = document.getElementById("bouton-bandeau-decomp");
+        boutonDecomp.onclick = () => {
+            bandeauDecomp.classList.toggle("replie");
+            boutonDecomp.innerHTML = bandeauDecomp.classList.contains("replie") ? "⮞" : "⮜";
+        };
+        bandeauDecomp.classList.add("replie");
+        boutonDecomp.innerHTML = "⮞";
+    </script>
+</body>
+</html>

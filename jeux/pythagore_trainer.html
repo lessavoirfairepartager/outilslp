@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pythagore - Entraînement</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            transition: background 0.3s ease;
+        }
+
+        body.correct {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        body.incorrect {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            text-align: center;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .stat-value {
+            color: #667eea;
+            font-size: 1.5em;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            position: relative;
+        }
+
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        canvas {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+        }
+
+        .input-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .question {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        input[type="number"] {
+            padding: 12px 20px;
+            font-size: 1.2em;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            width: 150px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #764ba2;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        input.shake {
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-validate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-validate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-new {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-new:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #f0f;
+            position: absolute;
+            animation: confetti-fall 3s linear forwards;
+            pointer-events: none;
+        }
+
+        @keyframes confetti-fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .stats {
+                gap: 15px;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            canvas {
+                max-width: 100%;
+                height: auto;
+            }
+
+            input[type="number"] {
+                width: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔺 Théorème de Pythagore</h1>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Réussites</div>
+                <div class="stat-value" id="success">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Total</div>
+                <div class="stat-value" id="total">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Taux</div>
+                <div class="stat-value" id="rate">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="canvas-container">
+            <canvas id="triangleCanvas" width="600" height="400"></canvas>
+        </div>
+
+        <div class="input-section">
+            <div class="question" id="question"></div>
+            <div class="input-group">
+                <input type="number" id="answer" step="0.01" placeholder="Réponse">
+                <button class="btn-validate" onclick="checkAnswer()">Valider</button>
+            </div>
+            <button class="btn-new" onclick="newExercise()">Nouvel exercice</button>
+        </div>
+    </div>
+
+    <script>
+        let currentExercise = null;
+        let stats = { success: 0, total: 0 };
+
+        const vertexNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        function generateExercise() {
+            const names = shuffleArray(vertexNames).slice(0, 3);
+            const cathete1 = getRandomInt(3, 12);
+            const cathete2 = getRandomInt(3, 12);
+            const hypotenuse = Math.sqrt(cathete1 * cathete1 + cathete2 * cathete2);
+            
+            const givenType = Math.random() < 0.5 ? 'hyp_cath' : 'two_cath';
+            const orientation = getRandomInt(0, 3);
+            
+            let given, unknown, unknownVertex;
+            
+            if (givenType === 'hyp_cath') {
+                const whichCathete = Math.random() < 0.5 ? 0 : 1;
+                if (whichCathete === 0) {
+                    given = { hypotenuse: hypotenuse, cathete: cathete1 };
+                    unknown = cathete2;
+                    unknownVertex = 1;
+                } else {
+                    given = { hypotenuse: hypotenuse, cathete: cathete2 };
+                    unknown = cathete1;
+                    unknownVertex = 0;
+                }
+            } else {
+                given = { cathete1: cathete1, cathete2: cathete2 };
+                unknown = hypotenuse;
+                unknownVertex = 2;
+            }
+            
+            return {
+                names,
+                cathete1,
+                cathete2,
+                hypotenuse,
+                given,
+                givenType,
+                unknown,
+                unknownVertex,
+                orientation
+            };
+        }
+
+        function drawTriangle(exercise) {
+            const canvas = document.getElementById('triangleCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const scale = 20;
+            const width = exercise.cathete1 * scale;
+            const height = exercise.cathete2 * scale;
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            let points;
+            const offset = 40;
+            
+            switch(exercise.orientation) {
+                case 0:
+                    points = [
+                        {x: centerX - width/2, y: centerY + height/2},
+                        {x: centerX + width/2, y: centerY + height/2},
+                        {x: centerX + width/2, y: centerY - height/2}
+                    ];
+                    break;
+                case 1:
+                    points = [
+                        {x: centerX + width/2, y: centerY + height/2},
+                        {x: centerX + width/2, y: centerY - height/2},
+                        {x: centerX - width/2, y: centerY - height/2}
+                    ];
+                    break;
+                case 2:
+                    points = [
+                        {x: centerX + width/2, y: centerY - height/2},
+                        {x: centerX - width/2, y: centerY - height/2},
+                        {x: centerX - width/2, y: centerY + height/2}
+                    ];
+                    break;
+                case 3:
+                    points = [
+                        {x: centerX - width/2, y: centerY - height/2},
+                        {x: centerX - width/2, y: centerY + height/2},
+                        {x: centerX + width/2, y: centerY + height/2}
+                    ];
+                    break;
+            }
+            
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            ctx.lineTo(points[1].x, points[1].y);
+            ctx.lineTo(points[2].x, points[2].y);
+            ctx.closePath();
+            ctx.stroke();
+            
+            const rightAngleSize = 15;
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            if (exercise.orientation === 0) {
+                ctx.moveTo(points[1].x - rightAngleSize, points[1].y);
+                ctx.lineTo(points[1].x - rightAngleSize, points[1].y - rightAngleSize);
+                ctx.lineTo(points[1].x, points[1].y - rightAngleSize);
+            } else if (exercise.orientation === 1) {
+                ctx.moveTo(points[1].x, points[1].y + rightAngleSize);
+                ctx.lineTo(points[1].x - rightAngleSize, points[1].y + rightAngleSize);
+                ctx.lineTo(points[1].x - rightAngleSize, points[1].y);
+            } else if (exercise.orientation === 2) {
+                ctx.moveTo(points[1].x + rightAngleSize, points[1].y);
+                ctx.lineTo(points[1].x + rightAngleSize, points[1].y + rightAngleSize);
+                ctx.lineTo(points[1].x, points[1].y + rightAngleSize);
+            } else {
+                ctx.moveTo(points[1].x, points[1].y - rightAngleSize);
+                ctx.lineTo(points[1].x + rightAngleSize, points[1].y - rightAngleSize);
+                ctx.lineTo(points[1].x + rightAngleSize, points[1].y);
+            }
+            ctx.stroke();
+            
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            const vertexOffset = 25;
+            ctx.fillText(exercise.names[0], points[0].x + (exercise.orientation === 1 || exercise.orientation === 2 ? vertexOffset : -vertexOffset), 
+                         points[0].y + (exercise.orientation === 0 || exercise.orientation === 1 ? vertexOffset : -vertexOffset));
+            ctx.fillText(exercise.names[1], points[1].x + (exercise.orientation === 2 || exercise.orientation === 3 ? -vertexOffset : vertexOffset), 
+                         points[1].y + (exercise.orientation === 1 || exercise.orientation === 2 ? -vertexOffset : vertexOffset));
+            ctx.fillText(exercise.names[2], points[2].x + (exercise.orientation === 0 || exercise.orientation === 3 ? vertexOffset : -vertexOffset), 
+                         points[2].y + (exercise.orientation === 2 || exercise.orientation === 3 ? vertexOffset : -vertexOffset));
+            
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#764ba2';
+            
+            const labelOffset = 25;
+            
+            const midpoint01 = {
+                x: (points[0].x + points[1].x) / 2,
+                y: (points[0].y + points[1].y) / 2
+            };
+            const midpoint12 = {
+                x: (points[1].x + points[2].x) / 2,
+                y: (points[1].y + points[2].y) / 2
+            };
+            const midpoint02 = {
+                x: (points[0].x + points[2].x) / 2,
+                y: (points[0].y + points[2].y) / 2
+            };
+            
+            // Fonction pour dessiner un label pour côté vertical
+            function drawVerticalLabel(text, x, y, isLeft) {
+                const textWidth = ctx.measureText(text).width;
+                if (isLeft) {
+                    // Côté à gauche : on affiche le texte à gauche du côté
+                    ctx.textAlign = 'right';
+                    ctx.fillText(text, x - labelOffset, y);
+                } else {
+                    // Côté à droite : on affiche le texte à droite du côté
+                    ctx.textAlign = 'left';
+                    ctx.fillText(text, x + labelOffset, y);
+                }
+                ctx.textAlign = 'center'; // reset
+            }
+            
+            // Fonction pour dessiner un label pour côté horizontal
+            function drawHorizontalLabel(text, x, y, isTop) {
+                if (isTop) {
+                    // Côté en haut : on affiche au-dessus
+                    ctx.fillText(text, x, y - labelOffset);
+                } else {
+                    // Côté en bas : on affiche en dessous
+                    ctx.fillText(text, x, y + labelOffset);
+                }
+            }
+            
+            // Fonction pour dessiner un label pour l'hypoténuse (en diagonal)
+            function drawDiagonalLabel(text, x, y, orientation) {
+                const textWidth = ctx.measureText(text).width;
+                if (orientation === 0) {
+                    // Triangle orienté vers le haut-droite : label à gauche
+                    ctx.textAlign = 'right';
+                    ctx.fillText(text, x - labelOffset * 0.7, y);
+                } else if (orientation === 1) {
+                    // Triangle orienté vers le bas-droite : label en haut
+                    ctx.fillText(text, x, y - labelOffset * 0.7);
+                } else if (orientation === 2) {
+                    // Triangle orienté vers le bas-gauche : label à droite
+                    ctx.textAlign = 'left';
+                    ctx.fillText(text, x + labelOffset * 0.7, y);
+                } else {
+                    // Triangle orienté vers le haut-gauche : label en bas
+                    ctx.fillText(text, x, y + labelOffset * 0.7);
+                }
+                ctx.textAlign = 'center'; // reset
+            }
+            
+            // Déterminer si les côtés sont à gauche/droite ou haut/bas selon l'orientation
+            const isVerticalLeft = exercise.orientation === 2 || exercise.orientation === 3;
+            const isHorizontalTop = exercise.orientation === 2 || exercise.orientation === 3;
+            
+            if (exercise.givenType === 'hyp_cath') {
+                if (exercise.unknownVertex === 0) {
+                    // Cathète vertical donné
+                    drawVerticalLabel(`${exercise.given.cathete.toFixed(1)} cm`, midpoint12.x, midpoint12.y, isVerticalLeft);
+                    // Hypoténuse donnée
+                    drawDiagonalLabel(`${exercise.given.hypotenuse.toFixed(1)} cm`, midpoint02.x, midpoint02.y, exercise.orientation);
+                    // Cathète horizontal inconnu
+                    drawHorizontalLabel('?', midpoint01.x, midpoint01.y, isHorizontalTop);
+                } else {
+                    // Cathète horizontal donné
+                    drawHorizontalLabel(`${exercise.given.cathete.toFixed(1)} cm`, midpoint01.x, midpoint01.y, isHorizontalTop);
+                    // Hypoténuse donnée
+                    drawDiagonalLabel(`${exercise.given.hypotenuse.toFixed(1)} cm`, midpoint02.x, midpoint02.y, exercise.orientation);
+                    // Cathète vertical inconnu
+                    drawVerticalLabel('?', midpoint12.x, midpoint12.y, isVerticalLeft);
+                }
+            } else {
+                // Deux cathètes donnés
+                drawHorizontalLabel(`${exercise.given.cathete1.toFixed(1)} cm`, midpoint01.x, midpoint01.y, isHorizontalTop);
+                drawVerticalLabel(`${exercise.given.cathete2.toFixed(1)} cm`, midpoint12.x, midpoint12.y, isVerticalLeft);
+                // Hypoténuse inconnue
+                drawDiagonalLabel('?', midpoint02.x, midpoint02.y, exercise.orientation);
+            }
+        }
+
+        function updateQuestion(exercise) {
+            const unknownSide = exercise.names[exercise.unknownVertex] + exercise.names[(exercise.unknownVertex + 1) % 3];
+            document.getElementById('question').textContent = `Calculer la longueur ${unknownSide} (en cm, arrondie au centième)`;
+        }
+
+        function newExercise() {
+            currentExercise = generateExercise();
+            drawTriangle(currentExercise);
+            updateQuestion(currentExercise);
+            document.getElementById('answer').value = '';
+            document.getElementById('answer').focus();
+            document.body.className = '';
+        }
+
+        function playBuzzer() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 200;
+            oscillator.type = 'square';
+            gainNode.gain.value = 0.3;
+            
+            oscillator.start();
+            setTimeout(() => oscillator.stop(), 300);
+        }
+
+        function createConfetti() {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffa500'];
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * window.innerWidth + 'px';
+                    confetti.style.top = '-10px';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => confetti.remove(), 3000);
+                }, i * 30);
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('success').textContent = stats.success;
+            document.getElementById('total').textContent = stats.total;
+            const rate = stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0;
+            document.getElementById('rate').textContent = rate + '%';
+        }
+
+        function checkAnswer() {
+            const input = document.getElementById('answer');
+            const userAnswer = parseFloat(input.value);
+            
+            if (isNaN(userAnswer)) {
+                return;
+            }
+            
+            stats.total++;
+            
+            const tolerance = 0.1;
+            if (Math.abs(userAnswer - currentExercise.unknown) < tolerance) {
+                stats.success++;
+                document.body.className = 'correct';
+                createConfetti();
+                setTimeout(() => {
+                    newExercise();
+                }, 2000);
+            } else {
+                document.body.className = 'incorrect';
+                input.classList.add('shake');
+                playBuzzer();
+                setTimeout(() => {
+                    input.classList.remove('shake');
+                    document.body.className = '';
+                }, 500);
+            }
+            
+            updateStats();
+        }
+
+        document.getElementById('answer').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+
+        newExercise();
+    </script>
+</body>
+</html>
