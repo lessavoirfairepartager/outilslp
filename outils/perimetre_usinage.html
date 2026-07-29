@@ -4,319 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calculateur de périmètre — Usinage / Maintenance</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
 <style>
-  :root {
-    --bg: #f5f4f0;
-    --surface: #ffffff;
-    --surface2: #f0efe9;
-    --border: #d8d6ce;
-    --border2: #c2c0b6;
-    --text: #1a1917;
-    --text2: #5a5853;
-    --text3: #9a9890;
-    --blue: #185FA5; --blue-bg: #E6F1FB;
-    --teal: #0F6E56; --teal-bg: #E1F5EE;
-    --amber: #854F0B; --amber-bg: #FAEEDA;
-    --coral: #993C1D; --coral-bg: #FAECE7;
-    --purple: #534AB7; --purple-bg: #EEEDFE;
-    --pink: #993556; --pink-bg: #FBEAF0;
-    --green: #3B6D11; --green-bg: #EAF3DE;
-    --red: #A32D2D; --red-bg: #FCEBEB;
-    --accent: #185FA5;
-    --radius: 8px;
-    --radius-lg: 12px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 16px;
-    line-height: 1.5;
-    min-height: 100vh;
-  }
-  header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 1rem 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .header-icon {
-    width: 36px; height: 36px;
-    background: var(--blue-bg);
-    border-radius: var(--radius);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-  }
-  header h1 { font-size: 17px; font-weight: 600; color: var(--text); }
-  header p { font-size: 12px; color: var(--text2); }
-
-  .main { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
-
-  /* MODE TABS */
-  .mode-tabs {
-    display: flex; gap: 4px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 4px;
-    margin-bottom: 1.5rem;
-    width: fit-content;
-  }
-  .mode-tab {
-    padding: 7px 18px;
-    border-radius: var(--radius);
-    font-size: 14px; font-weight: 500;
-    border: none; cursor: pointer;
-    background: transparent; color: var(--text2);
-    transition: all 0.15s;
-  }
-  .mode-tab.active { background: var(--blue-bg); color: var(--blue); }
-  .mode-tab.defiplus-tab.active { background: #FFF3CD; color: #7A4500; }
-
-  /* SHAPE TABS ROW */
-  .shape-tabs-row {
-    display: flex; align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap; gap: 8px;
-    margin-bottom: 1.25rem;
-  }
-  .shape-tabs {
-    display: flex; gap: 6px; flex-wrap: wrap;
-  }
-  .shape-tab {
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 13px; font-weight: 500;
-    border: 1px solid var(--border);
-    cursor: pointer; background: var(--surface);
-    color: var(--text2); transition: all 0.15s;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .shape-tab .dot { width: 8px; height: 8px; border-radius: 50%; }
-  .shape-tab.active { border-color: currentColor; }
-  .shape-tab[data-color="blue"].active { color: var(--blue); background: var(--blue-bg); border-color: var(--blue); }
-  .shape-tab[data-color="teal"].active { color: var(--teal); background: var(--teal-bg); border-color: var(--teal); }
-  .shape-tab[data-color="amber"].active { color: var(--amber); background: var(--amber-bg); border-color: var(--amber); }
-  .shape-tab[data-color="coral"].active { color: var(--coral); background: var(--coral-bg); border-color: var(--coral); }
-  .shape-tab[data-color="purple"].active { color: var(--purple); background: var(--purple-bg); border-color: var(--purple); }
-  .shape-tab[data-color="pink"].active { color: var(--pink); background: var(--pink-bg); border-color: var(--pink); }
-  .shape-tab[data-color="green"].active { color: var(--green); background: var(--green-bg); border-color: var(--green); }
-  .shape-tab[data-color="amber2"].active { color: #633806; background: #FAEEDA; border-color: #633806; }
-
-  /* RANDOMIZE BUTTON */
-  .btn-rnd {
-    padding: 7px 14px;
-    border-radius: var(--radius);
-    font-size: 13px; font-weight: 500;
-    border: 1px solid var(--border);
-    cursor: pointer; background: var(--surface);
-    color: var(--text2); transition: all 0.15s;
-    white-space: nowrap; flex-shrink: 0;
-  }
-  .btn-rnd:hover { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
-
-  /* PANELS */
-  .panel { display: none; }
-  .panel.active { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 1.25rem; }
-  @media (max-width: 640px) { .panel.active { grid-template-columns: 1fr; } }
-
-  /* SKETCH */
-  .sketch-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 1.25rem;
-    display: flex; flex-direction: column;
-    align-items: center; gap: 12px;
-  }
-  .sketch-card svg { width: 100%; max-width: 240px; height: auto; }
-  .context-label {
-    font-size: 12px; color: var(--text2);
-    text-align: center; font-style: italic;
-    line-height: 1.4;
-  }
-  .shape-badge {
-    font-size: 11px; font-weight: 600;
-    padding: 3px 10px; border-radius: 20px;
-    letter-spacing: 0.04em;
-  }
-
-  /* CONTROLS */
-  .controls-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 1.25rem;
-    display: flex; flex-direction: column; gap: 1rem;
-  }
-  .section-label {
-    font-size: 11px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--text3); margin-bottom: -4px;
-  }
-  .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .field { display: flex; flex-direction: column; gap: 4px; }
-  .field label { font-size: 13px; color: var(--text2); }
-  .field-row { display: flex; align-items: center; gap: 6px; }
-  .field input[type="number"] {
-    width: 90px; padding: 7px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-size: 15px; font-weight: 500;
-    background: var(--surface2);
-    color: var(--text);
-    transition: border-color 0.15s;
-  }
-  .field input[type="number"]:focus {
-    outline: none; border-color: var(--accent);
-    background: var(--surface);
-  }
-  .unit { font-size: 13px; color: var(--text3); }
-
-  .formula-box {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 10px 12px;
-    font-size: 13px; color: var(--text2);
-    line-height: 1.7;
-  }
-  .formula-box code {
-    font-family: 'Courier New', monospace;
-    font-size: 14px; font-weight: 700;
-    color: var(--text);
-  }
-  .formula-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
-
-  .result-block {
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-  }
-  .result-label { font-size: 12px; color: var(--text2); margin-bottom: 2px; }
-  .result-value { font-size: 30px; font-weight: 700; color: var(--text); line-height: 1.1; }
-  .result-value .result-unit { font-size: 16px; font-weight: 400; color: var(--text2); margin-left: 4px; }
-  .result-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
-
-  .error-box {
-    border-left: 3px solid var(--red);
-    background: var(--red-bg);
-    border-radius: 0 var(--radius) var(--radius) 0;
-    padding: 10px 12px;
-    font-size: 13px; color: var(--text2);
-    line-height: 1.5;
-  }
-  .error-box strong { color: var(--red); font-weight: 600; }
-
-  /* DEFI MODE */
-  #mode-defi { display: none; }
-  #mode-defi.active { display: block; }
-  .defi-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    max-width: 680px; margin: 0 auto;
-  }
-  .defi-header {
-    display: flex; align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1.25rem;
-  }
-  .defi-title { font-size: 16px; font-weight: 600; }
-  .defi-score {
-    font-size: 13px; color: var(--text2);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 20px; padding: 4px 12px;
-  }
-  .defi-mode-badge {
-    display: none;
-    font-size: 11px; font-weight: 700;
-    padding: 3px 10px; border-radius: 20px;
-    background: #FFF3CD; color: #7A4500;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.75rem;
-  }
-  .defi-mode-badge.visible { display: inline-block; }
-  .defi-shape-display {
-    background: var(--surface2);
-    border-radius: var(--radius-lg);
-    padding: 1.25rem;
-    display: flex; flex-direction: column;
-    align-items: center; gap: 10px;
-    margin-bottom: 1.25rem;
-  }
-  .defi-shape-display svg { max-width: 200px; width: 100%; }
-  .defi-cotes {
-    font-size: 13px; color: var(--text2);
-    text-align: center; line-height: 1.7;
-  }
-  .defi-input-row {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 1rem;
-  }
-  .defi-input-row label { font-size: 14px; color: var(--text2); min-width: 100px; }
-  .defi-input-row input {
-    flex: 1; padding: 10px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    font-size: 18px; font-weight: 600;
-    background: var(--surface); color: var(--text);
-    max-width: 180px;
-  }
-  .defi-input-row input:focus { outline: none; border-color: var(--accent); }
-  .btn-check {
-    width: 100%; padding: 12px;
-    background: var(--accent); color: #fff;
-    border: none; border-radius: var(--radius);
-    font-size: 15px; font-weight: 600;
-    cursor: pointer; transition: opacity 0.15s;
-  }
-  .btn-check:hover { opacity: 0.88; }
-  .btn-next {
-    width: 100%; padding: 10px;
-    background: var(--surface2); color: var(--text);
-    border: 1px solid var(--border); border-radius: var(--radius);
-    font-size: 14px; font-weight: 500;
-    cursor: pointer; margin-top: 8px; transition: background 0.15s;
-  }
-  .btn-next:hover { background: var(--border); }
-  .feedback-box {
-    border-radius: var(--radius); padding: 12px 14px;
-    font-size: 14px; line-height: 1.5; margin-top: 1rem;
-    display: none;
-  }
-  .feedback-box.correct { background: var(--teal-bg); border-left: 3px solid var(--teal); color: var(--teal); }
-  .feedback-box.wrong { background: var(--red-bg); border-left: 3px solid var(--red); color: var(--red); }
-  .feedback-box.show { display: block; }
-  .progress-bar {
-    height: 4px; background: var(--surface2);
-    border-radius: 2px; margin-bottom: 1.25rem;
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%; background: var(--accent);
-    border-radius: 2px; transition: width 0.4s;
-  }
-  .btn-fiche {
-    width: 100%; padding: 10px;
-    background: var(--surface2); color: var(--text2);
-    border: 1px dashed var(--border2); border-radius: var(--radius);
-    font-size: 13px; font-weight: 500;
-    cursor: pointer; transition: all 0.15s;
-  }
-  .btn-fiche:hover { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  :root { --accent: var(--blue); --accent-bg: var(--blue-bg); }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="header-icon">📐</div>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <rect x="6" y="9" width="28" height="22" rx="2" stroke="var(--blue)"
+            stroke-width="3" class="lp-draw" style="--dash:110"/>
+    </svg></div>
   <div>
     <h1>Périmètre des pièces mécaniques</h1>
     <p>Usinage · Maintenance · 2nde Bac Pro</p>
@@ -327,9 +27,9 @@
 
   <!-- MODE SELECTOR -->
   <div class="mode-tabs">
-    <button class="mode-tab active" onclick="setMode('calc')">Calculateur</button>
-    <button class="mode-tab" onclick="setMode('defi')">Mode défi</button>
-    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus')">Défi ⁺</button>
+    <button class="mode-tab active" onclick="setMode('calc',this)">Calculateur</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi ⁺</button>
   </div>
 
   <!-- CALCULATEUR -->
@@ -651,6 +351,7 @@
 
 </div>
 
+<script src="/assets/lp-fiche.js"></script>
 <script>
 // ─── UTILITAIRES ─────────────────────────────────────────────────────────────
 function v(id){ return parseFloat(document.getElementById(id).value)||0; }
@@ -781,10 +482,10 @@ function setShape(id,btn){
 }
 
 let currentMode = 'calc';
-function setMode(m){
+function setMode(m,btn){
   currentMode = m;
   document.querySelectorAll('.mode-tab').forEach(t=>t.classList.remove('active'));
-  event.target.classList.add('active');
+  (btn || event.target).classList.add('active');
   document.getElementById('mode-calc').style.display = m==='calc'?'block':'none';
   const defi = document.getElementById('mode-defi');
   const isDefi = m==='defi' || m==='defiplus';
@@ -1003,241 +704,32 @@ document.addEventListener('keydown',e=>{
 // ─── GÉNÉRATION FICHE PDF ─────────────────────────────────────────────────────
 function generateFiche(){
   const isPlus = (currentMode === 'defiplus');
-  // Tirer 10 questions aléatoires (les 8 defs en cycle mélangé)
-  const pool = [];
-  const idx = [...Array(defiDefs.length).keys()];
-  shuffle(idx);
-  while(pool.length < 10){ idx.forEach(i=>{ if(pool.length<10) pool.push(i); }); }
-
-  const questions = pool.map((defIdx, q) => {
-    const def = defiDefs[defIdx];
-    const gen = def.generate();
-    return { num: q+1, nom: def.nom, hint: def.hint, ...gen };
+  LP.fiche({
+    icon: '\u{1F4D0}',
+    title: 'P\u00e9rim\u00e8tres des pi\u00e8ces m\u00e9caniques',
+    subtitle: 'Usinage \u00b7 Maintenance \u00b7 2nde Bac Pro',
+    modeLabel: isPlus ? 'D\u00e9fi +' : 'Mode d\u00e9fi',
+    isPlus: isPlus,
+    tolerance: '\u00b1 1 mm',
+    accent: '#185FA5',
+    answerLabel: 'P =',
+    unit: 'mm',
+    aide: 'Rectangle : P = 2\u00d7(L+l) &nbsp;|&nbsp; Cercle : P = \u03c0\u00d7d &nbsp;|&nbsp; '
+        + 'Oblong : P = 2L+2\u03c0r &nbsp;|&nbsp; Triangle / Trap\u00e8ze : somme des c\u00f4t\u00e9s &nbsp;|&nbsp; '
+        + 'Demi-cercle : P = r\u00d7(\u03c0+2) &nbsp;|&nbsp; Hexagone : P = 6\u00d7c',
+    questions: LP.pickQuestions(defiDefs, 10).map(function(q){
+      q.answerText = fmt(q.answer); return q;
+    })
   });
-
-  const today = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
-  const modeLabel = isPlus ? 'Défi +' : 'Mode défi';
-  const formulesText = isPlus ? '' : `
-    <div class="aide">
-      <strong>Aide-mémoire :</strong>
-      Rectangle : P = 2×(L+l) &nbsp;|&nbsp;
-      Cercle : P = π×d &nbsp;|&nbsp;
-      Oblong : P = 2L+2πr &nbsp;|&nbsp;
-      Triangle/Trapèze : somme des côtés &nbsp;|&nbsp;
-      Demi-cercle : P = r×(π+2) &nbsp;|&nbsp;
-      Hexagone : P = 6×c
-    </div>`;
-
-  const cardsHTML = questions.map(q => `
-    <div class="card">
-      <div class="card-header">
-        <span class="qnum">${q.num}</span>
-        <span class="qnom">${q.nom}</span>
-      </div>
-      <div class="card-body">
-        <div class="card-svg">
-          <svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">${q.svg}</svg>
-        </div>
-        <div class="card-info">
-          <div class="cotes">${q.cotes.replace(/·/g,'<br>')}</div>
-          ${!isPlus ? `<div class="hint">Formule : <em>${q.hint}</em></div>` : ''}
-          <div class="answer-zone">
-            <span class="answer-label">P =</span>
-            <span class="answer-line"></span>
-            <span class="answer-unit">mm</span>
-          </div>
-        </div>
-      </div>
-    </div>`).join('');
-
-  const corrHTML = questions.map(q => `
-    <div class="card">
-      <div class="card-header">
-        <span class="qnum">${q.num}</span>
-        <span class="qnom">${q.nom}</span>
-      </div>
-      <div class="card-body corr-body">
-        <div class="card-svg corr-svg">
-          <svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">${q.svg}</svg>
-        </div>
-        <div class="card-info">
-          <div class="cotes corr-cotes">${q.cotes}</div>
-          <div class="hint">Formule : <em>${q.hint}</em></div>
-          <div class="answer-filled">
-            <span class="af-label">P =</span>
-            <span class="af-val">${fmt(q.answer)} mm</span>
-          </div>
-        </div>
-      </div>
-    </div>`).join('');
-
-  const html = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>Fiche périmètres — ${modeLabel}</title>
-<style>
-  @page { size: A4 portrait; margin: 10mm; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13pt; color: #111; background: #fff; }
-
-  .page-header {
-    display: flex; justify-content: space-between; align-items: flex-end;
-    border-bottom: 2.5px solid #185FA5; padding-bottom: 5px; margin-bottom: 7px;
-  }
-  .page-header-left h1 { font-size: 15pt; color: #185FA5; font-weight: 700; }
-  .page-header-left p  { font-size: 10pt; color: #555; margin-top: 1px; }
-  .page-header-right   { font-size: 10pt; color: #555; text-align: right; line-height: 1.7; }
-  .badge-plus {
-    display: inline-block; background: #FFF3CD; color: #7A4500;
-    font-size: 9pt; font-weight: 700; padding: 2px 8px;
-    border-radius: 10px; border: 1px solid #e6c84a; margin-left: 6px;
-    vertical-align: middle;
-  }
-
-  .identity-row {
-    display: flex; gap: 20px; margin-bottom: 7px;
-    font-size: 12pt; color: #333;
-  }
-  .identity-row .field { flex:1; border-bottom: 1.5px solid #aaa; padding-bottom: 3px; }
-  .identity-row .field span { color: #888; font-size: 10pt; }
-
-  .aide {
-    background: #f0efe9; border: 1px solid #d8d6ce; border-radius: 4px;
-    padding: 6px 10px; font-size: 10pt; color: #333; margin-bottom: 7px;
-    line-height: 1.7; font-weight: 500;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .card {
-    border: 2px solid #b8b6ae; border-radius: 6px;
-    overflow: hidden;
-    page-break-inside: avoid;
-  }
-  .card-header {
-    background: #e8e6df; border-bottom: 1.5px solid #c2c0b6;
-    padding: 5px 9px; display: flex; align-items: center; gap: 7px;
-  }
-  .qnum {
-    background: #185FA5; color: #fff;
-    font-size: 11pt; font-weight: 700;
-    width: 24px; height: 24px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .qnom { font-size: 11pt; font-weight: 700; color: #222; }
-
-  .card-body {
-    display: flex; align-items: center; gap: 10px;
-    padding: 7px 10px;
-  }
-  .card-svg { flex-shrink: 0; width: 125px; }
-  .card-svg svg { width: 125px; height: 100px; }
-  .card-info { flex: 1; display: flex; flex-direction: column; gap: 5px; }
-  .cotes { font-size: 11.5pt; color: #222; line-height: 1.65; font-weight: 500; }
-  .hint  { font-size: 10.5pt; color: #185FA5; background: #E6F1FB; border-radius: 3px; padding: 3px 7px; font-weight: 500; }
-
-  .answer-zone {
-    display: flex; align-items: center; gap: 6px;
-    margin-top: 3px;
-  }
-  .answer-label { font-weight: 900; color: #111; white-space: nowrap; font-size: 16pt; }
-  .answer-line  { flex: 1; border-bottom: 2.5px solid #111; min-width: 55px; height: 24px; }
-  .answer-unit  { font-size: 13pt; color: #333; white-space: nowrap; font-weight: 600; }
-
-  @media print { .no-print { display: none !important; } }
-  .print-btn {
-    display: block; margin: 10px auto 0; padding: 9px 28px;
-    background: #185FA5; color: #fff; border: none; border-radius: 6px;
-    font-size: 12pt; font-weight: 600; cursor: pointer;
-  }
-
-  /* ── PAGE CORRIGÉ ───────────────────────────────── */
-  .page-corr { page-break-before: always; }
-  .corr-header {
-    display: flex; justify-content: space-between; align-items: flex-end;
-    border-bottom: 2.5px solid #185FA5; padding-bottom: 4px; margin-bottom: 6px;
-  }
-  .corr-header h2 { font-size: 13pt; color: #185FA5; font-weight: 700; }
-  .corr-header p  { font-size: 9pt; color: #555; margin-top: 1px; }
-  .corr-badge {
-    background: #d4edda; color: #155724; font-size: 9.5pt; font-weight: 700;
-    padding: 2px 10px; border-radius: 10px; border: 1px solid #92d4a8;
-    white-space: nowrap;
-  }
-  .page-corr .grid { gap: 6px; }
-  .page-corr .card-header { padding: 3px 8px; }
-  .page-corr .qnum { width: 20px; height: 20px; font-size: 9.5pt; }
-  .page-corr .qnom { font-size: 10pt; }
-  .page-corr .card-info { gap: 3px; }
-  .page-corr .hint { font-size: 9pt; padding: 2px 5px; }
-  .corr-body { padding: 5px 8px !important; gap: 7px !important; }
-  .corr-svg { width: 70px !important; }
-  .corr-svg svg { width: 70px !important; height: 56px !important; }
-  .corr-cotes { font-size: 9.5pt !important; line-height: 1.45 !important; font-weight: 500; }
-  .answer-filled {
-    display: flex; align-items: center; gap: 8px;
-    margin-top: 2px; background: #E6F5EC; border-radius: 4px;
-    padding: 3px 8px; border: 1.5px solid #9ACFAC;
-  }
-  .answer-filled .af-label { font-size: 14pt; font-weight: 900; color: #155724; white-space: nowrap; }
-  .answer-filled .af-val   { font-size: 14pt; font-weight: 700; color: #155724; }
-</style>
-</head>
-<body>
-
-<div class="page-header">
-  <div class="page-header-left">
-    <h1>📐 Périmètres des pièces mécaniques${isPlus ? '<span class="badge-plus">DÉFI +</span>' : ''}</h1>
-    <p>Usinage · Maintenance · 2nde Bac Pro &nbsp;—&nbsp; ${modeLabel}${isPlus ? ' · Formules masquées' : ''}</p>
-  </div>
-  <div class="page-header-right">
-    Date : ${today}<br>
-    Tolérance : ± 1 mm<br>
-    /10
-  </div>
-</div>
-
-<div class="identity-row">
-  <div class="field"><span>Nom · Prénom :</span>&nbsp;</div>
-  <div class="field"><span>Classe :</span>&nbsp;</div>
-</div>
-
-${formulesText}
-
-<div class="grid">${cardsHTML}</div>
-
-<div class="page-corr">
-  <div class="corr-header">
-    <div>
-      <h2>📐 Corrigé — Périmètres des pièces mécaniques</h2>
-      <p>Usinage · Maintenance · 2nde Bac Pro &nbsp;—&nbsp; ${modeLabel}${isPlus ? ' · Défi +' : ''} &nbsp;—&nbsp; Tolérance : ± 1 mm</p>
-    </div>
-    <span class="corr-badge">✓ CORRIGÉ</span>
-  </div>
-  <div class="grid">${corrHTML}</div>
-</div>
-
-<button class="print-btn no-print" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
-
-<script>
-  setTimeout(()=>{ window.print(); }, 400);
-<\/script>
-</body>
-</html>`;
-
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 randomizeShape('rect');
 calcCercleD(); calcCompose(); calcL(); calcTri(); calcTrap(); calcDc(); calcHex();
 </script>
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp; Licence MIT &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
+</footer>
 </body>
 </html>
