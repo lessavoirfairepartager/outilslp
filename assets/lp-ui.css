@@ -1,0 +1,634 @@
+/* ==========================================================================
+   lp-ui.css — Système de design commun des Outils LP
+   outilslp.netlify.app · Licence MIT
+   --------------------------------------------------------------------------
+   Un seul fichier pilote l'apparence de toutes les pages.
+   Thème        : html[data-theme="light"|"dark"]
+   Taille       : html[data-size="normal"|"projection"]
+   Lecture DYS  : html[data-dys="on"]
+   ========================================================================== */
+
+/* ── 1. JETONS DE COULEUR ────────────────────────────────────────────────── */
+
+:root {
+  --bg:        #f5f4f0;
+  --surface:   #ffffff;
+  --surface2:  #f0efe9;
+  --border:    #d8d6ce;
+  --border2:   #c2c0b6;
+  --text:      #1a1917;
+  --text2:     #55534e;
+  --text3:     #7d7a73;
+
+  --blue:   #185FA5;  --blue-bg:   #E6F1FB;
+  --teal:   #0F6E56;  --teal-bg:   #E1F5EE;
+  --amber:  #854F0B;  --amber-bg:  #FAEEDA;
+  --coral:  #993C1D;  --coral-bg:  #FAECE7;
+  --purple: #534AB7;  --purple-bg: #EEEDFE;
+  --pink:   #993556;  --pink-bg:   #FBEAF0;
+  --green:  #3B6D11;  --green-bg:  #EAF3DE;
+  --red:    #A32D2D;  --red-bg:    #FCEBEB;
+  --amber2: #633806;  --amber2-bg: #FAEEDA;
+
+  --accent:    var(--blue);
+  --accent-bg: var(--blue-bg);
+
+  /* Fond des croquis : reste clair même en thème sombre, pour que les
+     schémas techniques gardent le contraste d'un plan sur papier. */
+  --sketch-bg: #ffffff;
+
+  --radius:    8px;
+  --radius-lg: 12px;
+  --shadow:    0 1px 2px rgba(26,25,23,.06);
+}
+
+html[data-theme="dark"] {
+  --bg:        #14130f;
+  --surface:   #1e1d1a;
+  --surface2:  #282621;
+  --border:    #3a3833;
+  --border2:   #4f4c45;
+  --text:      #f3f1ea;
+  --text2:     #bab6ac;
+  --text3:     #8d8981;
+
+  --blue:   #6FB2F2;  --blue-bg:   #16293C;
+  --teal:   #4FD1A5;  --teal-bg:   #0E2C24;
+  --amber:  #E5AE55;  --amber-bg:  #332612;
+  --coral:  #F08A60;  --coral-bg:  #382016;
+  --purple: #A9A0F6;  --purple-bg: #221F3D;
+  --pink:   #EE81A4;  --pink-bg:   #331823;
+  --green:  #9DD25E;  --green-bg:  #1F2B12;
+  --red:    #F2807C;  --red-bg:    #3A1A19;
+  --amber2: #E5AE55;  --amber2-bg: #332612;
+
+  --sketch-bg: #f2f1ec;
+  --shadow:    0 1px 3px rgba(0,0,0,.4);
+}
+
+/* ── 2. ÉCHELLE TYPOGRAPHIQUE ────────────────────────────────────────────── */
+/* Mode normal : plancher à 16px (≈ Arial 12 pt), soit les tailles d'une
+   ancienne projection. Mode projection : tout monte encore d'un cran. */
+
+:root {
+  --font: Arial, "Helvetica Neue", Helvetica, "Liberation Sans", system-ui, sans-serif;
+  --font-mono: "Courier New", "DejaVu Sans Mono", monospace;
+
+  --fs-xs:   16px;  /* étiquettes, unités, notes — jamais en dessous */
+  --fs-sm:   17px;
+  --fs-base: 18px;
+  --fs-md:   20px;  /* champs de saisie, boutons */
+  --fs-lg:   24px;  /* titres de section */
+  --fs-xl:   28px;
+  --fs-xxl:  40px;  /* valeur de résultat */
+
+  --lh:      1.55;
+  --gap:     1.25rem;
+  --pad-card: 1.25rem;
+}
+
+html[data-size="projection"] {
+  --fs-xs:   21px;
+  --fs-sm:   23px;
+  --fs-base: 26px;
+  --fs-md:   30px;
+  --fs-lg:   34px;
+  --fs-xl:   40px;
+  --fs-xxl:  62px;
+
+  --lh:      1.5;
+  --gap:     1.5rem;
+  --pad-card: 1.5rem;
+}
+
+html[data-dys="on"] {
+  --lh: 1.8;
+}
+html[data-dys="on"] body {
+  letter-spacing: .06em;
+  word-spacing: .16em;
+}
+html[data-dys="on"] em,
+html[data-dys="on"] i { font-style: normal; font-weight: 700; }
+
+/* ── 3. BASE ─────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font);
+  font-size: var(--fs-base);
+  line-height: var(--lh);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background-color .2s, color .2s;
+}
+
+a { color: var(--accent); }
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+/* ── 4. BARRE D'OUTILS FLOTTANTE (injectée par lp-ui.js) ─────────────────── */
+
+.lp-toolbar {
+  position: fixed;
+  top: 10px; right: 10px;
+  z-index: 9999;
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+}
+.lp-toolbar button,
+.lp-toolbar a {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 19px;
+  line-height: 1;
+  text-decoration: none;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: background-color .15s, color .15s;
+}
+.lp-toolbar button:hover,
+.lp-toolbar a:hover { background: var(--accent-bg); color: var(--accent); }
+.lp-toolbar button[aria-pressed="true"] { background: var(--accent-bg); color: var(--accent); }
+
+html[data-size="projection"] .lp-toolbar button,
+html[data-size="projection"] .lp-toolbar a { width: 48px; height: 48px; font-size: 23px; }
+
+/* ── 5. EN-TÊTE ──────────────────────────────────────────────────────────── */
+
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.header-icon {
+  width: 48px; height: 48px;
+  flex-shrink: 0;
+  background: var(--accent-bg);
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  overflow: hidden;
+}
+.header-icon svg { width: 32px; height: 32px; display: block; }
+html[data-size="projection"] .header-icon { width: 62px; height: 62px; }
+html[data-size="projection"] .header-icon svg { width: 42px; height: 42px; }
+
+header h1 { font-size: var(--fs-lg); font-weight: 700; line-height: 1.2; }
+header p  { font-size: var(--fs-xs); color: var(--text2); margin-top: 2px; }
+
+/* Icônes animées — le mouvement s'arrête si l'utilisateur le demande */
+@keyframes lp-spin  { to { transform: rotate(360deg); } }
+@keyframes lp-pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes lp-draw  { to { stroke-dashoffset: 0; } }
+@keyframes lp-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.lp-spin  { transform-origin: center; animation: lp-spin 8s linear infinite; }
+.lp-pulse { animation: lp-pulse 2.4s ease-in-out infinite; }
+.lp-draw  { stroke-dasharray: var(--dash, 260); stroke-dashoffset: var(--dash, 260);
+            animation: lp-draw 2.8s ease-in-out infinite alternate; }
+.lp-float { animation: lp-float 3s ease-in-out infinite; }
+
+/* ── 6. MISE EN PAGE ─────────────────────────────────────────────────────── */
+
+.main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+html[data-size="projection"] .main { max-width: 1400px; }
+
+/* ── 7. ONGLETS DE MODE ──────────────────────────────────────────────────── */
+
+.mode-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 5px;
+  margin-bottom: var(--gap);
+  width: fit-content;
+  max-width: 100%;
+}
+.mode-tab {
+  padding: 9px 20px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text2);
+  transition: background-color .15s, color .15s;
+}
+.mode-tab:hover { color: var(--text); }
+.mode-tab.active { background: var(--accent-bg); color: var(--accent); }
+.mode-tab.defiplus-tab.active { background: var(--amber-bg); color: var(--amber); }
+
+/* ── 8. ONGLETS DE FORME ─────────────────────────────────────────────────── */
+
+.shape-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: var(--gap);
+}
+.shape-tabs { display: flex; gap: 7px; flex-wrap: wrap; }
+.shape-tab {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--text2);
+  transition: background-color .15s, color .15s, border-color .15s;
+  display: flex; align-items: center; gap: 7px;
+}
+.shape-tab:hover { color: var(--text); border-color: var(--border2); }
+.shape-tab .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+.shape-tab[data-color="blue"].active   { color: var(--blue);   background: var(--blue-bg);   border-color: var(--blue); }
+.shape-tab[data-color="teal"].active   { color: var(--teal);   background: var(--teal-bg);   border-color: var(--teal); }
+.shape-tab[data-color="amber"].active  { color: var(--amber);  background: var(--amber-bg);  border-color: var(--amber); }
+.shape-tab[data-color="coral"].active  { color: var(--coral);  background: var(--coral-bg);  border-color: var(--coral); }
+.shape-tab[data-color="purple"].active { color: var(--purple); background: var(--purple-bg); border-color: var(--purple); }
+.shape-tab[data-color="pink"].active   { color: var(--pink);   background: var(--pink-bg);   border-color: var(--pink); }
+.shape-tab[data-color="green"].active  { color: var(--green);  background: var(--green-bg);  border-color: var(--green); }
+.shape-tab[data-color="amber2"].active { color: var(--amber2); background: var(--amber2-bg); border-color: var(--amber2); }
+
+/* ── 9. PANNEAUX ─────────────────────────────────────────────────────────── */
+
+.panel { display: none; }
+.panel.active {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: var(--gap);
+}
+@media (max-width: 860px) {
+  .panel.active { grid-template-columns: 1fr; }
+}
+
+/* ── 10. CARTE CROQUIS ───────────────────────────────────────────────────── */
+
+.sketch-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--pad-card);
+  display: flex; flex-direction: column;
+  align-items: center; gap: 14px;
+}
+.sketch-card svg {
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  background: var(--sketch-bg);
+  border-radius: var(--radius);
+}
+html[data-size="projection"] .sketch-card svg { max-width: 440px; }
+
+.context-label {
+  font-size: var(--fs-xs);
+  color: var(--text2);
+  text-align: center;
+  line-height: 1.45;
+}
+.shape-badge {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  letter-spacing: .03em;
+}
+
+/* ── 11. CARTE DE COMMANDES ──────────────────────────────────────────────── */
+
+.controls-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--pad-card);
+  display: flex; flex-direction: column; gap: 1rem;
+}
+.section-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text3);
+}
+.fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .fields-grid { grid-template-columns: 1fr; } }
+
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: var(--fs-xs); color: var(--text2); font-weight: 600; }
+.field-row { display: flex; align-items: center; gap: 8px; }
+.field input[type="number"] {
+  width: 100%;
+  max-width: 150px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  background: var(--surface2);
+  color: var(--text);
+  transition: border-color .15s, background-color .15s;
+}
+.field input[type="number"]:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.unit { font-size: var(--fs-xs); color: var(--text3); white-space: nowrap; }
+
+.formula-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: var(--fs-xs);
+  color: var(--text2);
+  line-height: 1.7;
+}
+.formula-box code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
+}
+.formula-detail { font-size: var(--fs-xs); color: var(--text2); margin-top: 4px; }
+
+.result-block {
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+.result-label { font-size: var(--fs-xs); color: var(--text2); margin-bottom: 2px; }
+.result-value {
+  font-size: var(--fs-xxl);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+.result-value .result-unit {
+  font-size: var(--fs-md);
+  font-weight: 400;
+  color: var(--text2);
+  margin-left: 6px;
+}
+.result-sub { font-size: var(--fs-xs); color: var(--text3); margin-top: 6px; }
+
+.error-box {
+  border-left: 4px solid var(--red);
+  background: var(--red-bg);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 12px 14px;
+  font-size: var(--fs-xs);
+  color: var(--text2);
+  line-height: 1.5;
+}
+.error-box strong { color: var(--red); font-weight: 700; }
+
+/* ── 12. MODE DÉFI ───────────────────────────────────────────────────────── */
+
+#mode-defi { display: none; }
+#mode-defi.active { display: block; }
+
+.defi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  max-width: 780px;
+  margin: 0 auto;
+}
+html[data-size="projection"] .defi-card { max-width: 1100px; }
+
+.defi-header {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap; gap: 10px;
+  margin-bottom: 1rem;
+}
+.defi-title { font-size: var(--fs-lg); font-weight: 700; }
+.defi-score {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text2);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 14px;
+  white-space: nowrap;
+}
+.defi-mode-badge {
+  display: none;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--amber-bg);
+  color: var(--amber);
+  letter-spacing: .04em;
+  margin-bottom: .75rem;
+}
+.defi-mode-badge.visible { display: inline-block; }
+
+.defi-shape-display {
+  background: var(--surface2);
+  border-radius: var(--radius-lg);
+  padding: var(--pad-card);
+  display: flex; flex-direction: column;
+  align-items: center; gap: 12px;
+  margin-bottom: var(--gap);
+}
+.defi-shape-display svg {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  background: var(--sketch-bg);
+  border-radius: var(--radius);
+}
+html[data-size="projection"] .defi-shape-display svg { max-width: 420px; }
+
+.defi-cotes {
+  font-size: var(--fs-base);
+  color: var(--text);
+  text-align: center;
+  line-height: 1.7;
+  font-weight: 500;
+}
+.defi-cotes .lp-hint { font-size: var(--fs-xs); color: var(--text3); font-weight: 400; }
+
+.defi-input-row {
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.defi-input-row label {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--text2);
+  min-width: 110px;
+}
+.defi-input-row input {
+  flex: 1;
+  min-width: 140px;
+  max-width: 240px;
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  background: var(--surface);
+  color: var(--text);
+}
+.defi-input-row input:focus { border-color: var(--accent); }
+
+.feedback-box {
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-size: var(--fs-base);
+  line-height: 1.55;
+  margin-top: 1rem;
+  display: none;
+}
+.feedback-box.correct { background: var(--teal-bg); border-left: 4px solid var(--teal); color: var(--teal); }
+.feedback-box.wrong   { background: var(--red-bg);  border-left: 4px solid var(--red);  color: var(--red); }
+.feedback-box.show    { display: block; }
+.feedback-box strong  { font-weight: 700; }
+
+.progress-bar {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  margin-bottom: var(--gap);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width .4s;
+}
+
+/* ── 13. BOUTONS ─────────────────────────────────────────────────────────── */
+
+.btn-rnd {
+  padding: 9px 16px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--text2);
+  transition: background-color .15s, color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.btn-rnd:hover { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+
+.btn-check {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter .15s;
+}
+html[data-theme="dark"] .btn-check { color: #14130f; }
+.btn-check:hover { filter: brightness(1.08); }
+
+.btn-next {
+  width: 100%;
+  padding: 12px;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background-color .15s;
+}
+.btn-next:hover { background: var(--border); }
+
+.btn-fiche {
+  width: 100%;
+  padding: 12px;
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1.5px dashed var(--border2);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color .15s, color .15s, border-color .15s;
+}
+.btn-fiche:hover { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+
+/* ── 14. PIED DE PAGE ────────────────────────────────────────────────────── */
+
+.lp-footer {
+  max-width: 1000px;
+  margin: 2rem auto 0;
+  padding: 1rem;
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--text3);
+}
+.lp-footer a { color: var(--text2); }
+
+/* ── 15. IMPRESSION ──────────────────────────────────────────────────────── */
+
+@media print {
+  .lp-toolbar, .mode-tabs, .btn-rnd, .btn-fiche, .no-print { display: none !important; }
+  body { background: #fff; color: #000; }
+}
