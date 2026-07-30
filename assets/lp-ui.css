@@ -659,7 +659,18 @@ html[data-theme="dark"] .btn-check { color: #14130f; }
 }
 .lp-footer a { color: var(--text2); }
 
-/* ── 15. IMPRESSION ──────────────────────────────────────────────────────── */
+/* ── 15. COMPTEUR DE VISITES ─────────────────────────────────────────────── */
+/* Injecté par lp-ui.js dans .lp-footer quand un code GoatCounter est réglé. */
+
+.lp-count {
+  display: block;
+  margin-top: .45rem;
+  font-size: var(--fs-xs);
+  color: var(--text3);
+}
+.lp-count strong { color: var(--text2); font-weight: 700; }
+
+/* ── 16. IMPRESSION ──────────────────────────────────────────────────────── */
 
 @media print {
   .lp-toolbar, .mode-tabs, .btn-rnd, .btn-fiche, .no-print { display: none !important; }

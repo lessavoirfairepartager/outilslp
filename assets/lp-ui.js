@@ -5,14 +5,33 @@
    À charger dans <head>, SANS defer, pour que le thème soit posé avant le
    premier rendu (évite le flash blanc au chargement en thème sombre).
 
+   S'occupe aussi, pour toutes les pages d'un coup :
+     · l'application installable (manifeste + service worker)
+     · le compteur de visites en pied de page
+
    Expose window.LP = { theme, size, dys, set… }
    ========================================================================== */
 
 (function () {
   'use strict';
 
+  // ── RÉGLAGES DU SITE ────────────────────────────────────────────────────
+  // Le seul endroit à modifier. Tout est débrayable sans rien casser.
+  var CONF = {
+    // Code GoatCounter, tel qu'il apparaît dans https://XXXX.goatcounter.com
+    // Laissé vide : aucun compteur, aucune requête vers l'extérieur.
+    gcCode: '',
+    // Afficher « vues sur cette page · sur le site » en pied de page.
+    showCount: true,
+    // Application installable et fonctionnement hors ligne.
+    pwa: true
+  };
+
   var KEYS = { theme: 'lp-theme', size: 'lp-size', dys: 'lp-dys', motion: 'lp-motion' };
   var root = document.documentElement;
+
+  // Couleur de la barre système sur Android et en application installée.
+  var THEME_COLOR = { light: '#f5f4f0', dark: '#14130f' };
 
   function read(key, fallback) {
     try { return localStorage.getItem(key) || fallback; }
@@ -40,8 +59,36 @@
     root.setAttribute('data-size',   state.size);
     root.setAttribute('data-dys',    state.dys);
     root.setAttribute('data-motion', state.motion);
+    setMeta('theme-color', THEME_COLOR[state.theme] || THEME_COLOR.light);
   }
+
+  function setMeta(name, content) {
+    if (!document.head) return;
+    var m = document.head.querySelector('meta[name="' + name + '"]');
+    if (!m) { m = document.createElement('meta'); m.name = name; document.head.appendChild(m); }
+    m.content = content;
+  }
+
   apply(); // immédiat : avant le rendu du <body>
+
+  // ── APPLICATION INSTALLABLE ─────────────────────────────────────────────
+  // Le manifeste est injecté ici plutôt que copié dans les 16 pages : une
+  // seule ligne à changer le jour où il évolue.
+  (function pwaHead() {
+    if (!CONF.pwa || !document.head) return;
+    if (!document.head.querySelector('link[rel="manifest"]')) {
+      var m = document.createElement('link');
+      m.rel = 'manifest';
+      m.href = '/manifest.webmanifest';
+      document.head.appendChild(m);
+    }
+    var a = document.createElement('link');
+    a.rel = 'apple-touch-icon';
+    a.href = '/assets/icons/apple-touch-icon.png';
+    document.head.appendChild(a);
+    setMeta('mobile-web-app-capable', 'yes');
+    setMeta('application-name', 'Outils LP');
+  })();
 
   // ── Actions ─────────────────────────────────────────────────────────────
   function setTheme(v) { state.theme = v; write(KEYS.theme, v); apply(); sync(); }
@@ -124,7 +171,123 @@
     bar.appendChild(els.dys);
     bar.appendChild(els.motion);
     document.body.appendChild(bar);
+    els.bar = bar;
     sync();
+    showInstall();
+  }
+
+  // ── BOUTON « INSTALLER » ────────────────────────────────────────────────
+  // N'apparaît que si le navigateur propose vraiment l'installation ; sur
+  // iPhone il faut passer par Partager › Sur l'écran d'accueil, Safari ne
+  // laisse pas le choix.
+  var installEvt = null;
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    installEvt = e;
+    showInstall();
+  });
+
+  window.addEventListener('appinstalled', function () {
+    installEvt = null;
+    if (els.install) { els.install.remove(); els.install = null; }
+  });
+
+  function showInstall() {
+    if (!installEvt || !els.bar || els.install) return;
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = '\u2B07';
+    b.title = 'Installer l\'application sur cet appareil';
+    b.setAttribute('aria-label', 'Installer l\'application');
+    b.addEventListener('click', function () {
+      if (!installEvt) return;
+      installEvt.prompt();
+      installEvt.userChoice.then(function () {
+        installEvt = null;
+        if (els.install) { els.install.remove(); els.install = null; }
+      });
+    });
+    els.bar.insertBefore(b, els.bar.firstChild);
+    els.install = b;
+  }
+
+  // ── SERVICE WORKER ──────────────────────────────────────────────────────
+  function registerSW() {
+    if (!CONF.pwa || !('serviceWorker' in navigator)) return;
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
+    navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
+      .then(function (reg) {
+        reg.update();
+        // Retour sur l'onglet : on redemande au serveur s'il y a du neuf.
+        // La nouvelle version s'appliquera au chargement suivant, jamais
+        // en rechargeant la page pendant qu'on s'en sert.
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) reg.update();
+        });
+      })
+      .catch(function () { /* sans hors-ligne, le site fonctionne quand même */ });
+  }
+
+  // ── COMPTEUR DE VISITES ─────────────────────────────────────────────────
+  // GoatCounter : pas de cookie, rien d'écrit sur l'appareil du visiteur.
+  // L'adresse IP est hachée avec un sel qui change chaque jour, puis jetée.
+  function countPath() {
+    return location.pathname.replace(/index\.html$/, '') || '/';
+  }
+
+  function trackVisit() {
+    if (!CONF.gcCode) return;
+    // Ouvrir n'importe quelle page avec ?skipgc : ce navigateur cesse d'être
+    // compté, définitivement. Pratique quand on teste ses propres pages.
+    if (/[?&]skipgc/.test(location.search)) write('skipgc', 't');
+    if (read('skipgc', '') === 't') return;
+
+    window.goatcounter = window.goatcounter || {};
+    window.goatcounter.path = countPath();
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://gc.zgo.at/count.js';
+    s.setAttribute('data-goatcounter', 'https://' + CONF.gcCode + '.goatcounter.com/count');
+    document.body.appendChild(s);
+  }
+
+  function grabCount(url) {
+    if (!window.fetch) return Promise.resolve(null);
+    return fetch(url).then(function (r) {
+      if (r.status === 404) return '0';       // page encore jamais vue
+      if (!r.ok) return null;
+      return r.json().then(function (j) { return j.count; });
+    }).catch(function () { return null; });
+  }
+
+  function frNum(v) {
+    // GoatCounter formate à l'anglaise (« 1,234 ») : espace fine insécable.
+    return String(v).replace(/,/g, '\u202f');
+  }
+
+  function showCount() {
+    if (!CONF.gcCode || !CONF.showCount) return;
+    var foot = document.querySelector('.lp-footer');
+    if (!foot) return;
+
+    var box = document.createElement('span');
+    box.className = 'lp-count no-print';
+    box.hidden = true;
+    box.title = 'Compteur sans cookie · valeurs mises en cache environ 4 h';
+    foot.appendChild(box);
+
+    var base = 'https://' + CONF.gcCode + '.goatcounter.com/counter/';
+    Promise.all([
+      grabCount(base + encodeURIComponent(countPath()) + '.json'),
+      grabCount(base + 'TOTAL.json')
+    ]).then(function (r) {
+      if (r[0] === null && r[1] === null) return;   // hors ligne : on se tait
+      box.innerHTML = '\uD83D\uDC41 <strong>' + (r[0] === null ? '\u2014' : frNum(r[0])) +
+        '</strong> vues sur cette page &nbsp;\u00b7&nbsp; <strong>' +
+        (r[1] === null ? '\u2014' : frNum(r[1])) + '</strong> sur le site';
+      box.hidden = false;
+    });
   }
 
   // ── Raccourcis clavier ──────────────────────────────────────────────────
@@ -145,10 +308,17 @@
   });
 
   // ── Démarrage ───────────────────────────────────────────────────────────
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', buildToolbar);
-  } else {
+  function start() {
     buildToolbar();
+    trackVisit();
+    showCount();
+    registerSW();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
   }
 
   window.LP = window.LP || {};
