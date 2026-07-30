@@ -28,7 +28,7 @@
      Modèle exact à recopier :   var GOATCOUNTER = 'outilslp';
      ═══════════════════════════════════════════════════════════════════════ */
 
-  var GOATCOUNTER = 'lessavoirfairepatager';
+  var GOATCOUNTER = '';
 
   /* ═══════════════════════════════════════════════════════════════════════ */
 
@@ -311,77 +311,58 @@
     });
   }
 
-  // Le compteur d'AFFICHAGE utilise le mécanisme officiel de GoatCounter :
-  // visit_count() injecte un petit bloc HTML via count.js. On ne peut PAS le
-  // remplacer par un fetch() direct de l'API JSON : depuis un autre domaine,
-  // le navigateur bloque cette lecture (CORS). Le script, lui, passe.
+  // Attend que count.js soit prêt (il se charge en async), puis exécute cb.
+  function whenReady(cb) {
+    if (window.goatcounter && window.goatcounter.count) { cb(); return; }
+    var n = 0;
+    var t = setInterval(function () {
+      if (window.goatcounter && window.goatcounter.count) { clearInterval(t); cb(); }
+      else if (++n > 100) { clearInterval(t); }   // ~10 s : on renonce
+    }, 100);
+  }
+
+  // ── COMPTEUR D'AFFICHAGE ────────────────────────────────────────────────
+  // Le JSON de GoatCounter est bloqué par CORS en lecture directe (bug connu),
+  // et sa version HTML arrive dans une iframe illisible (police coupée par le
+  // CSP). La parade : un PROXY Netlify. La règle dans _redirects fait relayer
+  //   /gc/<chemin>   →   https://CODE.goatcounter.com/counter/<chemin>
+  // par le serveur Netlify. Côté navigateur, la requête vise TON domaine :
+  // same-origin, donc plus de CORS. On reçoit le JSON propre et on l'habille
+  // nous-mêmes, en français, à la charte du site.
   function showCount() {
-    if (!CONF.gcCode || !CONF.showCount) return;
+    if (!CONF.gcCode || !CONF.showCount || !window.fetch) return;
     var foot = document.querySelector('.lp-footer');
     if (!foot) return;
 
-    // Deux réceptacles : cette page, puis le total du site.
-    var wrap = document.createElement('span');
-    wrap.className = 'lp-count no-print';
-    var here = document.createElement('span');
-    here.id = 'lp-count-here';
-    var all = document.createElement('span');
-    all.id = 'lp-count-total';
-    wrap.appendChild(here);
-    wrap.appendChild(all);
-    foot.appendChild(wrap);
+    var box = document.createElement('span');
+    box.className = 'lp-count no-print';
+    box.hidden = true;
+    box.title = 'Compteur sans cookie \u00b7 valeurs mises en cache environ 4 h';
+    foot.appendChild(box);
 
-    // Style commun aux deux compteurs : on efface l'encadré GoatCounter pour
-    // ne garder que le chiffre, fondu dans le pied de page.
-    var style =
-      'div{border:0;background:none;padding:0;margin:0;font:inherit;color:inherit;' +
-      'display:inline;}' +
-      '#gcvc-for,#gcvc-by{display:none;}' +
-      '#gcvc-views{font:inherit;font-weight:700;color:var(--text2);}';
-
-    loadCountJS();
-    whenReady(function () {
-      try {
-        window.goatcounter.visit_count({
-          append: '#lp-count-here', type: 'html', no_branding: true, style: style
-        });
-        window.goatcounter.visit_count({
-          append: '#lp-count-total', type: 'html', no_branding: true, path: 'TOTAL', style: style
-        });
-        // Habillage : préfixe œil + libellés, une fois les blocs insérés.
-        dressCount(here, '\uD83D\uDC41\u00A0', '\u00A0vues ici');
-        dressCount(all, '\u00A0\u00B7\u00A0', '\u00A0sur le site');
-      } catch (e) {
-        wrap.remove();   // rien plutôt qu'un compteur à moitié cassé
-      }
+    Promise.all([
+      grabCount('/gc/' + encodeURIComponent(countPath()) + '.json'),
+      grabCount('/gc/TOTAL.json')
+    ]).then(function (r) {
+      if (r[0] === null && r[1] === null) return;    // hors ligne : on se tait
+      box.innerHTML =
+        '\uD83D\uDC41 <strong>' + affiche(r[0]) + '</strong> vues ici' +
+        '\u00A0\u00B7\u00A0<strong>' + affiche(r[1]) + '</strong> sur le site';
+      box.hidden = false;
     });
   }
 
-  // Attend que count.js ait fini de se charger (il est async).
-  function whenReady(cb) {
-    if (window.goatcounter && window.goatcounter.visit_count) { cb(); return; }
-    var n = 0;
-    var t = setInterval(function () {
-      if (window.goatcounter && window.goatcounter.visit_count) {
-        clearInterval(t); cb();
-      } else if (++n > 100) {          // ~10 s : on renonce en silence
-        clearInterval(t);
-      }
-    }, 100);
+  function grabCount(url) {
+    return fetch(url).then(function (r) {
+      if (r.status === 404) return '0';              // page encore jamais vue
+      if (!r.ok) return null;
+      return r.json().then(function (j) { return j.count; });
+    }).catch(function () { return null; });
   }
 
-  // Ajoute un préfixe et un suffixe autour du chiffre dès qu'il apparaît.
-  function dressCount(box, avant, apres) {
-    var n = 0;
-    var t = setInterval(function () {
-      if (box.querySelector('#gcvc-views')) {
-        clearInterval(t);
-        var p = document.createElement('span'); p.textContent = avant;
-        var s2 = document.createElement('span'); s2.textContent = apres;
-        box.insertBefore(p, box.firstChild);
-        box.appendChild(s2);
-      } else if (++n > 100) { clearInterval(t); }
-    }, 100);
+  function affiche(v) {
+    // GoatCounter formate \u00e0 l'anglaise (« 1,234 ») : espace fine.
+    return v === null ? '\u2014' : String(v).replace(/,/g, '\u202f');
   }
 
   // ── Raccourcis clavier ──────────────────────────────────────────────────
