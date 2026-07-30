@@ -17,7 +17,7 @@
 
   // ── RÉGLAGES DU SITE ────────────────────────────────────────────────────
   // Le seul endroit à modifier. Tout est débrayable sans rien casser.
-  var CONF = {
+  var CONF = {https://lessavoirfairepatager.goatcounter.com/count
     // Code GoatCounter, tel qu'il apparaît dans https://XXXX.goatcounter.com
     // Laissé vide : aucun compteur, aucune requête vers l'extérieur.
     gcCode: '',
