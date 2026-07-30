@@ -75,11 +75,15 @@
     bar.setAttribute('role', 'toolbar');
     bar.setAttribute('aria-label', 'Affichage');
 
-    var home = document.createElement('a');
-    home.href = '/';
-    home.textContent = '🏠';
-    home.title = 'Retour au portail des outils';
-    home.setAttribute('aria-label', 'Retour au portail des outils');
+    var atHome = /^\/(index\.html)?$/.test(location.pathname);
+    if (!atHome) {
+      var home = document.createElement('a');
+      home.href = '/';
+      home.textContent = '🏠';
+      home.title = 'Retour au portail des outils';
+      home.setAttribute('aria-label', 'Retour au portail des outils');
+      bar.appendChild(home);
+    }
 
     els.theme = document.createElement('button');
     els.theme.type = 'button';
@@ -99,7 +103,6 @@
     els.dys.setAttribute('aria-label', 'Lecture facilitée');
     els.dys.addEventListener('click', toggleDys);
 
-    bar.appendChild(home);
     bar.appendChild(els.theme);
     bar.appendChild(els.size);
     bar.appendChild(els.dys);
