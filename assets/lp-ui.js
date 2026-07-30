@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  var KEYS = { theme: 'lp-theme', size: 'lp-size', dys: 'lp-dys' };
+  var KEYS = { theme: 'lp-theme', size: 'lp-size', dys: 'lp-dys', motion: 'lp-motion' };
   var root = document.documentElement;
 
   function read(key, fallback) {
@@ -23,19 +23,23 @@
   }
 
   // ── État initial ────────────────────────────────────────────────────────
-  var prefersDark = window.matchMedia &&
-                    window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var mq = function (q) { return window.matchMedia && window.matchMedia(q).matches; };
+  var prefersDark   = mq('(prefers-color-scheme: dark)');
+  var prefersCalm   = mq('(prefers-reduced-motion: reduce)');
 
   var state = {
-    theme: read(KEYS.theme, prefersDark ? 'dark' : 'light'),
-    size:  read(KEYS.size,  'normal'),
-    dys:   read(KEYS.dys,   'off')
+    theme:  read(KEYS.theme,  prefersDark ? 'dark' : 'light'),
+    size:   read(KEYS.size,   'normal'),
+    dys:    read(KEYS.dys,    'off'),
+    // La préférence système n'est qu'un défaut : l'utilisateur peut la surcharger.
+    motion: read(KEYS.motion, prefersCalm ? 'off' : 'on')
   };
 
   function apply() {
-    root.setAttribute('data-theme', state.theme);
-    root.setAttribute('data-size',  state.size);
-    root.setAttribute('data-dys',   state.dys);
+    root.setAttribute('data-theme',  state.theme);
+    root.setAttribute('data-size',   state.size);
+    root.setAttribute('data-dys',    state.dys);
+    root.setAttribute('data-motion', state.motion);
   }
   apply(); // immédiat : avant le rendu du <body>
 
@@ -43,10 +47,12 @@
   function setTheme(v) { state.theme = v; write(KEYS.theme, v); apply(); sync(); }
   function setSize(v)  { state.size  = v; write(KEYS.size,  v); apply(); sync(); }
   function setDys(v)   { state.dys   = v; write(KEYS.dys,   v); apply(); sync(); }
+  function setMotion(v){ state.motion= v; write(KEYS.motion,v); apply(); sync(); }
 
   function toggleTheme() { setTheme(state.theme === 'dark' ? 'light' : 'dark'); }
   function toggleSize()  { setSize(state.size === 'projection' ? 'normal' : 'projection'); }
   function toggleDys()   { setDys(state.dys === 'on' ? 'off' : 'on'); }
+  function toggleMotion(){ setMotion(state.motion === 'on' ? 'off' : 'on'); }
 
   // ── Barre d'outils ──────────────────────────────────────────────────────
   var els = {};
@@ -65,6 +71,10 @@
     els.dys.title = state.dys === 'on'
       ? 'Désactiver la lecture facilitée  (D)'
       : 'Lecture facilitée : plus d\'espace entre les lettres  (D)';
+    els.motion.setAttribute('aria-pressed', state.motion === 'on');
+    els.motion.title = state.motion === 'on'
+      ? 'Figer les animations  (M)'
+      : 'Animer les icônes  (M)';
   }
 
   function buildToolbar() {
@@ -103,9 +113,16 @@
     els.dys.setAttribute('aria-label', 'Lecture facilitée');
     els.dys.addEventListener('click', toggleDys);
 
+    els.motion = document.createElement('button');
+    els.motion.type = 'button';
+    els.motion.textContent = '\u2728';
+    els.motion.setAttribute('aria-label', 'Animations');
+    els.motion.addEventListener('click', toggleMotion);
+
     bar.appendChild(els.theme);
     bar.appendChild(els.size);
     bar.appendChild(els.dys);
+    bar.appendChild(els.motion);
     document.body.appendChild(bar);
     sync();
   }
@@ -124,6 +141,7 @@
     if (k === 't') { toggleTheme(); }
     else if (k === 'p') { toggleSize(); }
     else if (k === 'd') { toggleDys(); }
+    else if (k === 'm') { toggleMotion(); }
   });
 
   // ── Démarrage ───────────────────────────────────────────────────────────
@@ -138,4 +156,5 @@
   window.LP.setTheme = setTheme;
   window.LP.setSize = setSize;
   window.LP.setDys = setDys;
+  window.LP.setMotion = setMotion;
 })();

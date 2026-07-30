@@ -135,12 +135,17 @@ a { color: var(--accent); }
   border-radius: 4px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .001ms !important;
-  }
+/* Animations : la préférence système ne fait que fixer le DÉFAUT.
+   Un clic sur ✨ dans la barre d'outils tranche, et le choix est mémorisé.
+   (Un @media prefers-reduced-motion en dur figeait tout sans recours :
+    beaucoup de postes ont les effets d'animation Windows désactivés.) */
+html[data-motion="off"] *,
+html[data-motion="off"] *::before,
+html[data-motion="off"] *::after {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* ── 4. BARRE D'OUTILS FLOTTANTE (injectée par lp-ui.js) ─────────────────── */
@@ -205,16 +210,44 @@ html[data-size="projection"] .header-icon svg { width: 42px; height: 42px; }
 header h1 { font-size: var(--fs-lg); font-weight: 700; line-height: 1.2; }
 header p  { font-size: var(--fs-xs); color: var(--text2); margin-top: 2px; }
 
-/* Icônes animées — le mouvement s'arrête si l'utilisateur le demande */
-@keyframes lp-spin  { to { transform: rotate(360deg); } }
-@keyframes lp-pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
-@keyframes lp-draw  { to { stroke-dashoffset: 0; } }
-@keyframes lp-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-.lp-spin  { transform-origin: center; animation: lp-spin 8s linear infinite; }
-.lp-pulse { animation: lp-pulse 2.4s ease-in-out infinite; }
-.lp-draw  { stroke-dasharray: var(--dash, 260); stroke-dashoffset: var(--dash, 260);
-            animation: lp-draw 2.8s ease-in-out infinite alternate; }
-.lp-float { animation: lp-float 3s ease-in-out infinite; }
+/* Icônes animées — mouvement géométrique, pas de simple fondu.
+   Tout s'arrête si le système demande de réduire les animations (§3). */
+@keyframes lp-spin   { to { transform: rotate(360deg); } }
+@keyframes lp-beat   { 0%,100% { transform: scale(1);   opacity: 1; }
+                       50%     { transform: scale(.80); opacity: .3; } }
+@keyframes lp-blink  { 0%,58%   { opacity: .18; }
+                       61%,76%  { opacity: 1; }
+                       79%,100% { opacity: .18; } }
+@keyframes lp-draw   { to { stroke-dashoffset: 0; } }
+@keyframes lp-float  { 0%,100% { transform: translateY(0); }
+                       50%     { transform: translateY(-4px); } }
+@keyframes lp-swing  { 0%,100% { transform: rotate(-12deg); }
+                       50%     { transform: rotate(12deg); } }
+@keyframes lp-grow   { from { transform: scaleY(.08); } to { transform: scaleY(1); } }
+@keyframes lp-rise   { 0%   { transform: translateY(2px);   opacity: 0; }
+                       28%  { opacity: 1; }
+                       100% { transform: translateY(-11px); opacity: 0; } }
+@keyframes lp-ripple { 0%   { transform: scale(.35); opacity: 1; }
+                       100% { transform: scale(1.95); opacity: 0; } }
+
+/* Rotation et ondes : autour du centre du dessin */
+.lp-spin, .lp-ripple { transform-box: view-box; transform-origin: center; }
+/* Battement et bascule : autour de l'élément lui-même */
+.lp-beat, .lp-swing, .lp-pulse { transform-box: fill-box; transform-origin: center; }
+.lp-grow { transform-box: fill-box; transform-origin: bottom; }
+
+.lp-spin   { animation: lp-spin   4.5s linear      infinite; }
+.lp-beat   { animation: lp-beat   1.7s ease-in-out infinite; }
+.lp-blink  { animation: lp-blink  1.9s linear      infinite; }
+.lp-float  { animation: lp-float  1.9s ease-in-out infinite; }
+.lp-swing  { animation: lp-swing  2.2s ease-in-out infinite; }
+.lp-grow   { animation: lp-grow   2.2s ease-in-out infinite alternate; }
+.lp-rise   { animation: lp-rise   2.4s ease-in     infinite; }
+.lp-ripple { animation: lp-ripple 2.1s ease-out    infinite; }
+.lp-draw   { stroke-dasharray: var(--dash, 260); stroke-dashoffset: var(--dash, 260);
+             animation: lp-draw 2.2s ease-in-out infinite alternate; }
+/* Conservé pour compatibilité, désormais aussi franc que lp-beat */
+.lp-pulse  { animation: lp-beat 1.7s ease-in-out infinite; }
 
 /* ── 6. MISE EN PAGE ─────────────────────────────────────────────────────── */
 
