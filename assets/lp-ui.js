@@ -28,7 +28,7 @@
      Modèle exact à recopier :   var GOATCOUNTER = 'outilslp';
      ═══════════════════════════════════════════════════════════════════════ */
 
-  var GOATCOUNTER = 'https://lessavoirfairepatager.goatcounter.com/count';
+  var GOATCOUNTER = 'lessavoirfairepatager';
 
   /* ═══════════════════════════════════════════════════════════════════════ */
 
