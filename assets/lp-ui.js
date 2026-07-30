@@ -15,17 +15,40 @@
 (function () {
   'use strict';
 
-  // ── RÉGLAGES DU SITE ────────────────────────────────────────────────────
-  // Le seul endroit à modifier. Tout est débrayable sans rien casser.
-  var CONF = {https://lessavoirfairepatager.goatcounter.com/count
-    // Code GoatCounter, tel qu'il apparaît dans https://XXXX.goatcounter.com
-    // Laissé vide : aucun compteur, aucune requête vers l'extérieur.
-    gcCode: '',
-    // Afficher « vues sur cette page · sur le site » en pied de page.
-    showCount: true,
-    // Application installable et fonctionnement hors ligne.
-    pwa: true
+  /* ═══════════════════════════════════════════════════════════════════════
+     RÉGLAGE — LA SEULE LIGNE À MODIFIER DANS TOUT LE FICHIER
+
+     Ton code GoatCounter, celui de https://TON-CODE.goatcounter.com
+     Laisser vide : aucun compteur, aucune requête vers l'extérieur.
+
+     Les apostrophes doivent être DROITES, celles de la touche 4 du clavier.
+     Word et LibreOffice les remplacent automatiquement par des apostrophes
+     courbes, et JavaScript refuse alors le fichier ENTIER : plus de barre
+     d'affichage, plus de compteur. Éditer avec un éditeur de texte simple.
+     Modèle exact à recopier :   var GOATCOUNTER = 'outilslp';
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  var GOATCOUNTER = '';
+
+  /* ═══════════════════════════════════════════════════════════════════════ */
+
+  var CONF = {
+    gcCode:    typeof GOATCOUNTER === 'string' ? GOATCOUNTER.trim() : '',
+    showCount: true,   // « vues sur cette page · sur le site » en pied de page
+    pwa:       true    // application installable et hors ligne
   };
+
+  // Journal de bord, lisible dans la console avec :  LP.diag
+  var DIAG = { version: '2026-07-30', gcCode: CONF.gcCode, erreurs: [] };
+
+  // Un module qui tombe ne doit jamais entraîner les autres avec lui.
+  function safe(nom, fn) {
+    try { fn(); }
+    catch (e) {
+      DIAG.erreurs.push(nom + ' — ' + (e && e.message ? e.message : e));
+      if (window.console && console.error) console.error('[lp-ui] ' + nom, e);
+    }
+  }
 
   var KEYS = { theme: 'lp-theme', size: 'lp-size', dys: 'lp-dys', motion: 'lp-motion' };
   var root = document.documentElement;
@@ -59,7 +82,8 @@
     root.setAttribute('data-size',   state.size);
     root.setAttribute('data-dys',    state.dys);
     root.setAttribute('data-motion', state.motion);
-    setMeta('theme-color', THEME_COLOR[state.theme] || THEME_COLOR.light);
+    try { setMeta('theme-color', THEME_COLOR[state.theme] || THEME_COLOR.light); }
+    catch (e) { /* l'affichage prime sur la couleur de barre système */ }
   }
 
   function setMeta(name, content) {
@@ -74,7 +98,7 @@
   // ── APPLICATION INSTALLABLE ─────────────────────────────────────────────
   // Le manifeste est injecté ici plutôt que copié dans les 16 pages : une
   // seule ligne à changer le jour où il évolue.
-  (function pwaHead() {
+  function pwaHead() {
     if (!CONF.pwa || !document.head) return;
     if (!document.head.querySelector('link[rel="manifest"]')) {
       var m = document.createElement('link');
@@ -88,7 +112,8 @@
     document.head.appendChild(a);
     setMeta('mobile-web-app-capable', 'yes');
     setMeta('application-name', 'Outils LP');
-  })();
+  }
+  safe('manifeste', pwaHead);
 
   // ── Actions ─────────────────────────────────────────────────────────────
   function setTheme(v) { state.theme = v; write(KEYS.theme, v); apply(); sync(); }
@@ -309,10 +334,12 @@
 
   // ── Démarrage ───────────────────────────────────────────────────────────
   function start() {
-    buildToolbar();
-    trackVisit();
-    showCount();
-    registerSW();
+    // Ordre volontaire : la barre d'affichage est le cœur du site, elle part
+    // en premier et aucun ajout ultérieur ne peut l'empêcher d'exister.
+    safe('barre d\'outils', buildToolbar);
+    safe('compteur',         trackVisit);
+    safe('affichage compteur', showCount);
+    safe('service worker',   registerSW);
   }
 
   if (document.readyState === 'loading') {
@@ -327,4 +354,6 @@
   window.LP.setSize = setSize;
   window.LP.setDys = setDys;
   window.LP.setMotion = setMotion;
+  window.LP.conf = CONF;
+  window.LP.diag = DIAG;
 })();
