@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hors connexion — Outils LP</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <path d="M8 26 L20 12 L32 26" stroke="var(--blue)" stroke-width="3"
+            stroke-linecap="round" stroke-linejoin="round" class="lp-draw" style="--dash:60"/>
+      <circle cx="20" cy="31" r="2.6" fill="var(--blue)" class="lp-blink"/>
+    </svg></div>
+  <div>
+    <h1>Pas de connexion</h1>
+    <p>Cette page n'a pas encore été enregistrée sur l'appareil</p>
+  </div>
+</header>
+
+<div class="main">
+  <div class="controls-card">
+    <p class="section-label">Ce qui reste disponible</p>
+    <p style="font-size:var(--fs-base);line-height:1.6;">
+      Les outils déjà ouverts au moins une fois depuis cet appareil fonctionnent
+      normalement, connexion ou pas : calculateurs, modes défi et fiches
+      d'exercices imprimables. Seules les pages jamais visitées manquent à l'appel.
+    </p>
+    <div class="error-box">
+      <strong>À savoir :</strong> la vue 3D des atomes et le compteur de visites
+      ont besoin du réseau. Tout le reste est calculé sur l'appareil.
+    </div>
+    <button class="btn-check" onclick="location.reload()">Réessayer</button>
+    <button class="btn-next" onclick="location.href='/'">Aller au portail des outils</button>
+  </div>
+</div>
+
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp; Licence MIT
+</footer>
+</body>
+</html>

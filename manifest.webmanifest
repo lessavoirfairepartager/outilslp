@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "Outils LP — Maths & Physique-chimie",
+  "short_name": "Outils LP",
+  "description": "Outils interactifs, calculatrices et défis pour les mathématiques et la physique-chimie en lycée professionnel.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f4f0",
+  "theme_color": "#f5f4f0",
+  "categories": ["education"],
+  "icons": [
+    { "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Périmètres des pièces", "short_name": "Périmètres", "url": "/outils/perimetre_usinage.html" },
+    { "name": "Aires des pièces", "short_name": "Aires", "url": "/outils/aire_usinage.html" },
+    { "name": "Atomes — modèle de Bohr", "short_name": "Atomes", "url": "/outils/atome_bohr2.html" }
+  ]
+}

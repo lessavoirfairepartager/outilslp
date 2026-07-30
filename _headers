@@ -1,0 +1,13 @@
+# Le service worker ne doit jamais être servi depuis le cache HTTP :
+# c'est lui qui décide de tout le reste.
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Feuille de style et scripts partagés : pas de nom versionné, donc on
+# revalide à chaque fois (Netlify répond 304 si rien n'a bougé).
+/assets/*
+  Cache-Control: public, max-age=0, must-revalidate
