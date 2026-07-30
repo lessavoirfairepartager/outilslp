@@ -1,652 +1,959 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tableau Périodique Interactif 3D - Modèle de Bohr</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #000000 0%, #1a1a2e 100%);
-            color: #fff;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        h1 {
-            text-align: center;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
-        }
-        .subtitle {
-            text-align: center;
-            color: #aaa;
-            font-size: 1.1em;
-            margin-bottom: 30px;
-        }
-        
-        /* Tableau périodique */
-        .periodic-table {
-            display: grid;
-            grid-template-columns: repeat(18, 1fr);
-            gap: 3px;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-        }
-        .element {
-            aspect-ratio: 1;
-            background: linear-gradient(135deg, #2a2a3e 0%, #1a1a2e 100%);
-            border: 2px solid #444;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 5px;
-            position: relative;
-        }
-        .element:hover {
-            transform: scale(1.1);
-            border-color: #00ff88;
-            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
-            z-index: 10;
-        }
-        .element.active {
-            border-color: #00ffff;
-            background: linear-gradient(135deg, #00ffff22 0%, #00ff8822 100%);
-            box-shadow: 0 0 25px rgba(0, 255, 255, 0.7);
-        }
-        .element-number {
-            font-size: 0.7em;
-            color: #888;
-            position: absolute;
-            top: 2px;
-            left: 4px;
-        }
-        .element-symbol {
-            font-size: 1.5em;
-            font-weight: bold;
-            margin: 2px 0;
-        }
-        .element-name {
-            font-size: 0.65em;
-            color: #aaa;
-            text-align: center;
-        }
-        .element-mass {
-            font-size: 0.6em;
-            color: #666;
-        }
-        .empty {
-            background: transparent;
-            border: none;
-            cursor: default;
-        }
-        .empty:hover {
-            transform: none;
-            box-shadow: none;
-        }
-        
-        /* Section visualisation */
-        .visualization-section {
-            display: none;
-            animation: fadeIn 0.5s;
-        }
-        .visualization-section.active {
-            display: block;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .viz-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .viz-header h2 {
-            font-size: 2em;
-            margin-bottom: 5px;
-        }
-        .viz-header .atom-info {
-            color: #aaa;
-            font-size: 1.2em;
-        }
-        .content-wrapper {
-            display: flex;
-            gap: 30px;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        #canvas-container {
-            border: 2px solid #444;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
-        }
-        .info-panel {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border: 1px solid #444;
-            border-radius: 10px;
-            padding: 25px;
-            max-width: 500px;
-            flex: 1;
-            min-width: 300px;
-        }
-        .info-panel h3 {
-            font-size: 1.5em;
-            margin-bottom: 20px;
-            color: #00ff88;
-        }
-        .particle-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        .particle-dot {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        .proton { background-color: #FF0000; border: 2px solid #FF6666; }
-        .neutron { background-color: #4444FF; border: 2px solid #8888FF; }
-        .electron { 
-            background-color: #00FF00; 
-            border: 2px solid #66FF66;
-            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-        }
-        .config-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #444;
-        }
-        .config-section p {
-            margin-bottom: 10px;
-            line-height: 1.6;
-        }
-        .small-text {
-            font-size: 0.9em;
-            color: #888;
-            margin-top: 10px;
-        }
-        button {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 1em;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin: 10px 5px;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
-        }
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
-        }
-        .button-group {
-            text-align: center;
-            margin-top: 20px;
-        }
-        
-        /* Responsive */
-        @media (max-width: 1200px) {
-            .periodic-table {
-                font-size: 0.75em;
-                padding: 15px;
-            }
-            h1 {
-                font-size: 2em;
-            }
-        }
-        
-        @media (max-width: 992px) {
-            .periodic-table {
-                font-size: 0.65em;
-                gap: 2px;
-                padding: 10px;
-            }
-            .content-wrapper {
-                flex-direction: column;
-                align-items: center;
-            }
-            #canvas-container {
-                width: 100%;
-                max-width: 600px;
-            }
-            .info-panel {
-                max-width: 600px;
-                width: 100%;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            h1 {
-                font-size: 1.5em;
-            }
-            .subtitle {
-                font-size: 0.9em;
-            }
-            .periodic-table {
-                font-size: 0.55em;
-                gap: 1px;
-                padding: 8px;
-            }
-            .element {
-                border-radius: 4px;
-                border-width: 1px;
-            }
-            .element:hover {
-                transform: scale(1.05);
-            }
-            .viz-header h2 {
-                font-size: 1.5em;
-            }
-            .viz-header .atom-info {
-                font-size: 1em;
-            }
-            #canvas-container {
-                max-width: 100%;
-            }
-            .info-panel {
-                padding: 20px;
-            }
-            .info-panel h3 {
-                font-size: 1.2em;
-            }
-            button {
-                padding: 10px 18px;
-                font-size: 0.9em;
-                width: 100%;
-                max-width: 250px;
-            }
-            .button-group {
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                align-items: center;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            h1 {
-                font-size: 1.2em;
-            }
-            .subtitle {
-                font-size: 0.8em;
-            }
-            .periodic-table {
-                font-size: 0.45em;
-                gap: 1px;
-                padding: 5px;
-            }
-            .element-symbol {
-                font-size: 1.2em;
-            }
-            .element-name {
-                font-size: 0.55em;
-            }
-            .viz-header h2 {
-                font-size: 1.2em;
-            }
-            .particle-info {
-                font-size: 0.9em;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atomes — modèle de Bohr</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root {
+    --accent: var(--purple);
+    --accent-bg: var(--purple-bg);
+    /* Le canevas 3D reste sombre dans les deux thèmes : les électrons sont
+       lumineux, ils disparaissent sur un fond clair. */
+    --canvas-bg: #100f0d;
+  }
+
+  /* ── Tableau périodique (20 premiers éléments) ──────────────────────────── */
+  /* 8 colonnes utiles seulement : les groupes 3 à 12 (métaux de transition)
+     n'apparaissent qu'à partir de Z = 21. Une colonne étroite marque la
+     coupure au lieu de dix colonnes vides. */
+  .pt-scroll { overflow-x: auto; padding-bottom: 6px; }
+  .periodic-table {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr) .4fr repeat(6, 1fr);
+    gap: 5px;
+    min-width: 900px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 10px;
+  }
+  html[data-size="projection"] .periodic-table { min-width: 1180px; }
+
+  .grp-label { font-size: var(--fs-xs); font-weight: 700; color: var(--text3); text-align: center; }
+  .pt-gap { justify-self: center; width: 0; border-left: 2px dashed var(--border2); }
+
+  .el {
+    aspect-ratio: 1;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 1px; padding: 3px;
+    position: relative;
+    cursor: pointer;
+    line-height: 1.15;
+    transition: border-color .15s, background-color .15s;
+  }
+  .el .z  { position: absolute; top: 3px; left: 6px; font-size: var(--fs-xs); color: var(--text3); }
+  .el .sym { font-size: var(--fs-lg); font-weight: 700; }
+  .el .nm { font-size: var(--fs-xs); color: var(--text2); text-align: center; }
+  .el .ma { font-size: var(--fs-xs); color: var(--text3); }
+
+  .el[data-fam="metal"]      { background: var(--coral-bg);  }
+  .el[data-fam="metal"] .sym { color: var(--coral);  }
+  .el[data-fam="metalloide"]      { background: var(--amber-bg); }
+  .el[data-fam="metalloide"] .sym { color: var(--amber); }
+  .el[data-fam="nonmetal"]      { background: var(--teal-bg); }
+  .el[data-fam="nonmetal"] .sym { color: var(--teal); }
+  .el[data-fam="noble"]      { background: var(--blue-bg); }
+  .el[data-fam="noble"] .sym { color: var(--blue); }
+
+  .el:hover { border-color: var(--border2); }
+  /* Après les règles de famille : l'élément choisi doit gagner. */
+  .el.active { border-color: var(--accent); border-width: 2.5px; background: var(--accent-bg); }
+  .el.active .sym { color: var(--accent); }
+  .el.empty { visibility: hidden; cursor: default; }
+
+  @media (max-width: 760px) {
+    .periodic-table { min-width: 470px; gap: 3px; }
+    .el .nm, .el .ma { display: none; }
+    .el .sym { font-size: var(--fs-md); }
+    .el .z { top: 1px; left: 3px; }
+  }
+
+  .fam-legend { display: flex; gap: 7px; flex-wrap: wrap; }
+  .fam-badge {
+    font-size: var(--fs-xs); font-weight: 700;
+    padding: 4px 12px; border-radius: 999px;
+    border: 1px solid var(--border);
+  }
+  .fam-badge[data-fam="metal"]      { background: var(--coral-bg);  color: var(--coral);  border-color: var(--coral); }
+  .fam-badge[data-fam="metalloide"] { background: var(--amber-bg);  color: var(--amber);  border-color: var(--amber); }
+  .fam-badge[data-fam="nonmetal"]   { background: var(--teal-bg);   color: var(--teal);   border-color: var(--teal); }
+  .fam-badge[data-fam="noble"]      { background: var(--blue-bg);   color: var(--blue);   border-color: var(--blue); }
+
+  .pt-note {
+    font-size: var(--fs-xs); color: var(--text3);
+    margin: 10px 0 var(--gap); line-height: 1.5;
+  }
+
+  /* ── Fiche d'identité de l'atome ────────────────────────────────────────── */
+  .atom-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--gap);
+  }
+  @media (max-width: 860px) { .atom-layout { grid-template-columns: 1fr; } }
+
+  .prow { display: flex; align-items: flex-start; gap: 11px; font-size: var(--fs-xs); line-height: 1.5; }
+  .prow + .prow { margin-top: 8px; }
+  .pdot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .pdot.pp { background: var(--red);   }
+  .pdot.pn { background: var(--blue);  }
+  .pdot.pe { background: var(--green); }
+
+  /* Une configuration à 4 couches est longue : un cran sous la taille
+     habituelle des résultats, sinon elle déborde sur téléphone. */
+  .config-value { font-size: var(--fs-xl); letter-spacing: .02em; }
+
+  /* ── Vue 3D ─────────────────────────────────────────────────────────────── */
+  .viz3d-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--pad-card);
+    margin-top: var(--gap);
+    display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+  }
+  /* display:flex l'emporterait sur l'attribut hidden du repli sans three.js */
+  .viz3d-card[hidden] { display: none; }
+  .viz3d-head {
+    width: 100%;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px;
+  }
+  #canvas-container {
+    width: 100%;
+    border-radius: var(--radius);
+    background: var(--canvas-bg);
+    overflow: hidden;
+    display: flex; justify-content: center;
+    min-height: 240px;
+  }
+  #canvas-container canvas { display: block; max-width: 100%; height: auto; }
+
+  @media print {
+    .pt-scroll, .viz3d-card, .fam-legend, .pt-note { display: none !important; }
+    .atom-layout { grid-template-columns: 1fr 1fr; }
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>⚛️ Tableau Périodique Interactif 3D</h1>
-        <p class="subtitle">Modèle de Bohr - Cliquez sur un élément pour visualiser sa structure atomique</p>
-        
-        <!-- Tableau périodique -->
-        <div class="periodic-table" id="periodicTable"></div>
-        
-        <!-- Section de visualisation 3D -->
-        <div class="visualization-section" id="vizSection">
-            <div class="viz-header">
-                <h2 id="atomTitle">Oxygène-16 (¹⁶O)</h2>
-                <p class="atom-info" id="atomSubtitle">Modèle de Bohr - Z=8, A=16</p>
-            </div>
-            
-            <div class="content-wrapper">
-                <div id="canvas-container"></div>
-                
-                <div class="info-panel">
-                    <h3>Configuration atomique</h3>
-                    <div id="atomicInfo"></div>
-                    <div class="button-group">
-                        <button id="toggleRotation">Pause rotation</button>
-                        <button id="backButton">← Retour au tableau</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" style="color:var(--purple)">
+      <ellipse cx="20" cy="20" rx="15" ry="6" fill="none" stroke="currentColor" stroke-width="2" opacity=".5"/>
+      <ellipse cx="20" cy="20" rx="15" ry="6" fill="none" stroke="currentColor" stroke-width="2" opacity=".5" transform="rotate(60 20 20)"/>
+      <ellipse cx="20" cy="20" rx="15" ry="6" fill="none" stroke="currentColor" stroke-width="2" opacity=".5" transform="rotate(120 20 20)"/>
+      <circle cx="20" cy="20" r="4.2" fill="currentColor"/>
+      <g class="lp-spin" style="animation-duration:3s"><circle cx="35" cy="20" r="2.9" fill="currentColor"/></g>
+    </svg></div>
+  <div>
+    <h1>Atomes — modèle de Bohr</h1>
+    <p>Structure de la matière · 3ᵉ Prépa-Métiers · CAP · Bac Pro</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- SÉLECTEUR DE MODE -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('explo',this)">Explorateur</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi ⁺</button>
+  </div>
+
+  <!-- ═══════════════ EXPLORATEUR ═══════════════ -->
+  <div id="mode-explo">
+
+    <div class="shape-tabs-row">
+      <div class="fam-legend">
+        <span class="fam-badge" data-fam="metal">Métaux</span>
+        <span class="fam-badge" data-fam="metalloide">Métalloïdes</span>
+        <span class="fam-badge" data-fam="nonmetal">Non-métaux</span>
+        <span class="fam-badge" data-fam="noble">Gaz nobles</span>
+      </div>
+      <button class="btn-rnd" onclick="randomElement()">🎲 Élément au hasard</button>
     </div>
-<footer class="footer">
-    <p>© 2026 - Ressources Pédagogiques | Lycée Professionnel</p>
-    <p>Site conçu pour l'enseignement des mathématiques et des sciences</p>
-    <p style="margin-top: 15px; font-size: 0.8em; color: #a0aec0;">
-        <strong>Licence MIT</strong> - Créé par <a href="mailto:lessavoirfaire.partager@gmail.com" style="color: #667eea;">lessavoirfaire.partager@gmail.com</a><br>
-        Ce projet est sous licence libre. 
-        <a href="#" onclick="alert('MIT License\n\nCopyright (c) 2025 lessavoirfaire.partager@gmail.com\n\nPermission is hereby granted, free of charge...')" style="color: #667eea;">Voir licence complète</a>
+
+    <div class="pt-scroll">
+      <div class="periodic-table" id="periodicTable"></div>
+    </div>
+    <p class="pt-note">
+      Cliquer sur un élément pour voir sa structure. Le trait pointillé remplace les
+      groupes 3 à 12 (métaux de transition, à partir de Z = 21) : au-delà de Z = 20,
+      la règle simple K (2) · L (8) · M (8) ne suffit plus.
     </p>
+
+    <div class="atom-layout">
+      <div class="sketch-card">
+        <span class="shape-badge" id="atom-badge">—</span>
+        <svg id="bohr2d" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label" id="atom-caption"></div>
+      </div>
+
+      <div class="controls-card">
+        <p class="section-label">Composition de l'atome</p>
+        <div id="atomicInfo"></div>
+        <div class="formula-box">
+          <code>A = Z + N</code>
+          <div class="formula-detail" id="mass-detail"></div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Configuration électronique</div>
+          <div class="result-value config-value" id="config-value"></div>
+          <div class="result-sub" id="config-sub"></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> confondre Z et A.
+          Z compte les protons, A compte les nucléons (protons + neutrons). Le nombre
+          de neutrons ne se lit jamais directement sur le tableau : il se calcule, N = A − Z.</div>
+      </div>
+    </div>
+
+    <div class="viz3d-card" id="viz3d">
+      <div class="viz3d-head">
+        <span class="shape-badge" style="background:var(--purple-bg);color:var(--purple)">Vue 3D animée</span>
+        <button class="btn-rnd" id="toggleRotation" onclick="toggleRotation()">⏸ Figer le noyau</button>
+      </div>
+      <div id="canvas-container"></div>
+      <div class="context-label">
+        Le modèle de Bohr est une image utile pour compter les électrons, pas une photo :
+        les électrons ne parcourent pas de véritables orbites, ils occupent des zones de probabilité.
+      </div>
+    </div>
+
+    <div class="error-box" id="no3d" hidden style="margin-top:var(--gap)">
+      <strong>Vue 3D indisponible :</strong> la bibliothèque three.js n'a pas pu être chargée
+      (pas de connexion ou accès bloqué). Le schéma de Bohr ci-dessus et les deux modes défi
+      fonctionnent hors ligne.
+    </div>
+  </div>
+
+  <!-- ═══════════════ DÉFI + DÉFI ⁺ ═══════════════ -->
+  <div id="mode-defi">
+    <div class="defi-card">
+      <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI + — Règles masquées</div>
+      <div class="defi-header">
+        <div class="defi-title" id="defi-mode-title">Mode défi — Atome mystère</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
+      <div class="defi-shape-display">
+        <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:230px;width:100%;"></svg>
+        <div class="defi-cotes" id="defi-cotes"></div>
+      </div>
+      <div class="defi-input-row">
+        <label for="defi-input">Réponse =</label>
+        <input type="number" id="defi-input" placeholder="?" min="0" step="1">
+      </div>
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;">Un nombre entier est attendu.</div>
+      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+      <div class="feedback-box" id="defi-feedback"></div>
+      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Atome suivant →</button>
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="generateFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- fin main -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/assets/lp-fiche.js"></script>
+<script>
+// ─── DONNÉES : 20 premiers éléments ──────────────────────────────────────────
+// a = nombre de masse de l'isotope le plus abondant · cfg = électrons par couche
+// grp = numéro de colonne (groupe) · fam = famille chimique
+const ELEMENTS = [
+  { z:1,  a:1,  sym:'H',  name:'Hydrogène',  cfg:[1],       fam:'nonmetal',   grp:1  },
+  { z:2,  a:4,  sym:'He', name:'Hélium',     cfg:[2],       fam:'noble',      grp:18 },
+  { z:3,  a:7,  sym:'Li', name:'Lithium',    cfg:[2,1],     fam:'metal',      grp:1  },
+  { z:4,  a:9,  sym:'Be', name:'Béryllium',  cfg:[2,2],     fam:'metal',      grp:2  },
+  { z:5,  a:11, sym:'B',  name:'Bore',       cfg:[2,3],     fam:'metalloide', grp:13 },
+  { z:6,  a:12, sym:'C',  name:'Carbone',    cfg:[2,4],     fam:'nonmetal',   grp:14 },
+  { z:7,  a:14, sym:'N',  name:'Azote',      cfg:[2,5],     fam:'nonmetal',   grp:15 },
+  { z:8,  a:16, sym:'O',  name:'Oxygène',    cfg:[2,6],     fam:'nonmetal',   grp:16 },
+  { z:9,  a:19, sym:'F',  name:'Fluor',      cfg:[2,7],     fam:'nonmetal',   grp:17 },
+  { z:10, a:20, sym:'Ne', name:'Néon',       cfg:[2,8],     fam:'noble',      grp:18 },
+  { z:11, a:23, sym:'Na', name:'Sodium',     cfg:[2,8,1],   fam:'metal',      grp:1  },
+  { z:12, a:24, sym:'Mg', name:'Magnésium',  cfg:[2,8,2],   fam:'metal',      grp:2  },
+  { z:13, a:27, sym:'Al', name:'Aluminium',  cfg:[2,8,3],   fam:'metal',      grp:13 },
+  { z:14, a:28, sym:'Si', name:'Silicium',   cfg:[2,8,4],   fam:'metalloide', grp:14 },
+  { z:15, a:31, sym:'P',  name:'Phosphore',  cfg:[2,8,5],   fam:'nonmetal',   grp:15 },
+  { z:16, a:32, sym:'S',  name:'Soufre',     cfg:[2,8,6],   fam:'nonmetal',   grp:16 },
+  { z:17, a:35, sym:'Cl', name:'Chlore',     cfg:[2,8,7],   fam:'nonmetal',   grp:17 },
+  { z:18, a:40, sym:'Ar', name:'Argon',      cfg:[2,8,8],   fam:'noble',      grp:18 },
+  { z:19, a:39, sym:'K',  name:'Potassium',  cfg:[2,8,8,1], fam:'metal',      grp:1  },
+  { z:20, a:40, sym:'Ca', name:'Calcium',    cfg:[2,8,8,2], fam:'metal',      grp:2  }
+];
+const EL = {};
+ELEMENTS.forEach(function(e){ EL[e.z] = e; });
+
+const GROUPS = [1, 2, 13, 14, 15, 16, 17, 18];
+const ROWS = [
+  [1,    null, null, null, null, null, null, 2 ],
+  [3,    4,    5,    6,    7,    8,    9,    10],
+  [11,   12,   13,   14,   15,   16,   17,   18],
+  [19,   20,   null, null, null, null, null, null]
+];
+const SHELLS = ['K', 'L', 'M', 'N'];
+const FAM = {
+  metal:      { fg:'#993C1D', bg:'#FAECE7', nom:'métal'      },
+  metalloide: { fg:'#854F0B', bg:'#FAEEDA', nom:'métalloïde' },
+  nonmetal:   { fg:'#0F6E56', bg:'#E1F5EE', nom:'non-métal'  },
+  noble:      { fg:'#185FA5', bg:'#E6F1FB', nom:'gaz noble'  }
+};
+
+// ─── UTILITAIRES ─────────────────────────────────────────────────────────────
+const SUPS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+function sup(n){ return String(n).split('').map(function(d){ return SUPS[+d]; }).join(''); }
+function cfgText(e){
+  return e.cfg.map(function(c,i){ return '(' + SHELLS[i] + ')' + sup(c); }).join('');
+}
+function ext(e){ return e.cfg[e.cfg.length - 1]; }
+// « 2 + 8 + 6 = 16 » pour plusieurs couches, « 2 électrons » pour une seule
+function sumText(e){
+  return e.cfg.length > 1 ? e.cfg.join(' + ') + ' = ' + e.z
+                          : e.z + ' électron' + (e.z > 1 ? 's' : '');
+}
+function plur(n){ return n > 1 ? 's' : ''; }
+function rnd(n){ return Math.floor(Math.random() * n); }
+function pick(list){ return list[rnd(list.length)]; }
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){ const j=rnd(i+1); const t=a[i]; a[i]=a[j]; a[j]=t; }
+}
+
+// ─── CROQUIS SVG (viewBox 0 0 200 160, fond clair) ───────────────────────────
+// Mêmes dessins à l'écran et sur la fiche imprimée : un seul jeu de fonctions.
+const SKETCH = { p:'#A32D2D', n:'#185FA5', e:'#3B6D11', shell:'#9a988f',
+                 outer:'#854F0B', ink:'#55534e', dim:'#7d7a73' };
+const SHELL_R = [25, 41, 57, 71];
+
+function electronDots(count, r){
+  let s = '';
+  for(let i=0;i<count;i++){
+    // décalage de 20° : aucun électron ne tombe sur l'étiquette de couche
+    const a = (-70 + i * 360 / count) * Math.PI / 180;
+    s += '<circle cx="' + (100 + r*Math.cos(a)).toFixed(1) +
+         '" cy="' + (80 + r*Math.sin(a)).toFixed(1) +
+         '" r="3.6" fill="' + SKETCH.e + '"/>';
+  }
+  return s;
+}
+
+function bohrSVG(e, o){
+  o = o || {};
+  const cfg = e.cfg;
+  let s = '';
+  cfg.forEach(function(count, i){
+    const r = SHELL_R[i];
+    const hl = o.highlightOuter && i === cfg.length - 1;
+    s += '<circle cx="100" cy="80" r="' + r + '" fill="none" stroke="' +
+         (hl ? SKETCH.outer : SKETCH.shell) + '" stroke-width="' + (hl ? 2 : 1) + '"' +
+         (hl ? '' : ' stroke-dasharray="3,3"') + '/>';
+  });
+  if(o.shellNames){
+    cfg.forEach(function(count, i){
+      s += '<text x="' + (100 - SHELL_R[i] - 4) + '" y="84" text-anchor="end" font-size="10"' +
+           ' font-weight="700" fill="' + SKETCH.dim + '">' + SHELLS[i] + '</text>';
+    });
+  }
+  s += '<circle cx="100" cy="80" r="18" fill="#FCEBEB" stroke="' + SKETCH.p + '" stroke-width="2"/>';
+  if(o.hideNucleus){
+    s += '<text x="100" y="87" text-anchor="middle" font-size="19" font-weight="700" fill="' +
+         SKETCH.p + '">?</text>';
+  } else {
+    s += '<text x="100" y="77" text-anchor="middle" font-size="9.5" font-weight="700" fill="' +
+         SKETCH.p + '">' + e.z + ' p⁺</text>';
+    s += '<text x="100" y="90" text-anchor="middle" font-size="9.5" font-weight="700" fill="' +
+         SKETCH.n + '">' + (e.a - e.z) + ' n</text>';
+  }
+  cfg.forEach(function(count, i){ s += electronDots(count, SHELL_R[i]); });
+  return s;
+}
+
+// Carte d'élément en notation isotopique : A en haut, Z en bas, symbole à droite
+function tileSVG(e, o){
+  o = o || {};
+  const f = FAM[e.fam];
+  return '<rect x="34" y="14" width="132" height="132" rx="8" fill="' + f.bg +
+         '" stroke="' + f.fg + '" stroke-width="2.5"/>' +
+    '<text x="56" y="58" font-size="17" font-weight="700" fill="' + SKETCH.ink + '">' +
+      (o.hideA ? '?' : e.a) + '</text>' +
+    '<text x="56" y="110" font-size="17" font-weight="700" fill="' + SKETCH.ink + '">' +
+      (o.hideZ ? '?' : e.z) + '</text>' +
+    '<text x="118" y="100" text-anchor="middle" font-size="46" font-weight="700" fill="' +
+      f.fg + '">' + e.sym + '</text>' +
+    '<text x="100" y="138" text-anchor="middle" font-size="12" fill="' + SKETCH.ink + '">' +
+      e.name + '</text>';
+}
+
+// Noyau seul : nucléons répartis en spirale de Vogel, protons et neutrons mêlés
+function nucleusSVG(e){
+  const a = e.a, z = e.z;
+  const R = 14 + 24 * Math.cbrt(a / 40);
+  const GA = Math.PI * (3 - Math.sqrt(5));
+  let s = '<circle cx="100" cy="70" r="' + (R + 9).toFixed(1) +
+          '" fill="#FBF7F6" stroke="#c9c7bf" stroke-width="1" stroke-dasharray="3,3"/>';
+  for(let i=0;i<a;i++){
+    // répartition de Bresenham : exactement z protons, régulièrement mêlés
+    const isP = Math.floor((i+1)*z/a) - Math.floor(i*z/a) === 1;
+    const rr = a === 1 ? 0 : R * Math.sqrt((i + 0.4) / a);
+    const th = i * GA;
+    s += '<circle cx="' + (100 + rr*Math.cos(th)).toFixed(1) +
+         '" cy="' + (70 + rr*Math.sin(th)).toFixed(1) +
+         '" r="4.4" fill="' + (isP ? SKETCH.p : SKETCH.n) +
+         '" stroke="#fff" stroke-width="0.8"/>';
+  }
+  const hasN = a > z;   // ¹H : pas de neutron, pas de clé neutron dans la légende
+  s += '<circle cx="' + (hasN ? 52 : 74) + '" cy="142" r="4.4" fill="' + SKETCH.p + '"/>' +
+       '<text x="' + (hasN ? 62 : 84) + '" y="146" font-size="11" fill="' + SKETCH.ink +
+       '">proton p⁺</text>';
+  if(hasN){
+    s += '<circle cx="124" cy="142" r="4.4" fill="' + SKETCH.n + '"/>' +
+         '<text x="134" y="146" font-size="11" fill="' + SKETCH.ink + '">neutron n</text>';
+  }
+  return s;
+}
+
+// Carte « configuration électronique » (le symbole reste caché)
+function configSVG(e){
+  return '<rect x="14" y="46" width="172" height="66" rx="8" fill="#EEEDFE" stroke="#7F77DD" stroke-width="2.5"/>' +
+    '<text x="100" y="38" text-anchor="middle" font-size="11" fill="' + SKETCH.ink +
+      '">Configuration électronique</text>' +
+    '<text x="100" y="88" text-anchor="middle" font-size="16" font-weight="700" fill="#534AB7">' +
+      cfgText(e) + '</text>' +
+    '<text x="100" y="136" text-anchor="middle" font-size="11" fill="' + SKETCH.dim +
+      '">atome neutre</text>';
+}
+
+// ─── CONSTRUCTION DU TABLEAU ─────────────────────────────────────────────────
+const table = document.getElementById('periodicTable');
+
+function addGapCell(){
+  const g = document.createElement('div');
+  g.className = 'pt-gap';
+  g.title = 'Groupes 3 à 12 — métaux de transition, à partir de Z = 21';
+  table.appendChild(g);
+}
+
+GROUPS.forEach(function(g, i){
+  if(i === 2) addGapCell();
+  const d = document.createElement('div');
+  d.className = 'grp-label';
+  d.textContent = g;
+  d.title = 'Colonne ' + g;
+  table.appendChild(d);
+});
+
+ROWS.forEach(function(row){
+  row.forEach(function(z, i){
+    if(i === 2) addGapCell();
+    const d = document.createElement('div');
+    if(z === null){
+      d.className = 'el empty';
+    } else {
+      const e = EL[z];
+      d.className = 'el';
+      d.dataset.fam = e.fam;
+      d.dataset.z = z;
+      d.setAttribute('role', 'button');
+      d.tabIndex = 0;
+      d.setAttribute('aria-label', e.name + ', numéro atomique ' + e.z + ', ' + FAM[e.fam].nom);
+      d.innerHTML = '<span class="z">' + e.z + '</span>' +
+                    '<span class="sym">' + e.sym + '</span>' +
+                    '<span class="nm">' + e.name + '</span>' +
+                    '<span class="ma">' + e.a + '</span>';
+      d.addEventListener('click', function(){ showAtom(z); });
+      d.addEventListener('keydown', function(ev){
+        if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); showAtom(z); }
+      });
+    }
+    table.appendChild(d);
+  });
+});
+
+// ─── EXPLORATEUR ─────────────────────────────────────────────────────────────
+let currentZ = 8;
+
+function showAtom(z){
+  const e = EL[z];
+  if(!e) return;
+  currentZ = z;
+  const n = e.a - e.z, x = ext(e), f = FAM[e.fam];
+
+  document.querySelectorAll('.el').forEach(function(c){
+    c.classList.toggle('active', c.dataset.z === String(z));
+  });
+
+  const badge = document.getElementById('atom-badge');
+  badge.textContent = e.name + ' — ' + e.sym + ' · Z = ' + e.z + ' · A = ' + e.a;
+  badge.style.background = f.bg;
+  badge.style.color = f.fg;
+
+  document.getElementById('bohr2d').innerHTML =
+    bohrSVG(e, { shellNames:true });
+  document.getElementById('atom-caption').innerHTML =
+    'Schéma à reproduire sur le cahier : le noyau (' + e.z + ' p⁺, ' + n + ' n),<br>' +
+    'puis les couches remplies de l\'intérieur vers l\'extérieur.';
+
+  let h = '<div class="prow"><span class="pdot pp"></span><span><strong>Noyau :</strong> ' +
+          e.z + ' proton' + plur(e.z) + ' (p⁺) + ' + n + ' neutron' + plur(n) +
+          ' (n) = ' + e.a + ' nucléons</span></div>' +
+          '<div class="prow"><span class="pdot pn"></span><span>Charge du noyau : + ' + e.z +
+          ' · les neutrons ne portent aucune charge</span></div>';
+  e.cfg.forEach(function(c, i){
+    h += '<div class="prow"><span class="pdot pe"></span><span><strong>Couche ' + SHELLS[i] +
+         '</strong> (n = ' + (i+1) + ') : ' + c + ' électron' + plur(c) + ' (e⁻)' +
+         (i === e.cfg.length - 1 ? ' — <strong>couche externe</strong>' : '') + '</span></div>';
+  });
+  document.getElementById('atomicInfo').innerHTML = h;
+
+  document.getElementById('mass-detail').innerHTML =
+    e.a + ' = ' + e.z + ' + ' + n + '  →  N = A − Z = ' + e.a + ' − ' + e.z + ' = ' + n;
+
+  document.getElementById('config-value').textContent = cfgText(e);
+  document.getElementById('config-sub').textContent =
+    e.z + ' électrons au total (atome neutre) · couche externe : ' + x + ' e⁻ · colonne ' +
+    e.grp + ' · ' + f.nom;
+
+  if(THREE_OK) buildAtom3D(e);
+}
+
+function randomElement(){
+  let z = currentZ;
+  while(z === currentZ) z = 1 + rnd(20);
+  showAtom(z);
+  document.querySelector('.el[data-z="' + z + '"]').scrollIntoView(
+    { behavior:'smooth', block:'nearest', inline:'center' });
+}
+
+// ─── VUE 3D (three.js, optionnelle) ──────────────────────────────────────────
+const THREE_OK = (typeof THREE !== 'undefined');
+let scene, camera, renderer, atomGroup, nucleusGroup, electrons = [];
+let rotating = true, tick = 0, lastW = 0;
+
+function initThree(){
+  const box = document.getElementById('canvas-container');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x100f0d);
+  camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+  renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  box.appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0x404040, 0.9));
+  const dl = new THREE.DirectionalLight(0xffffff, 1.2);
+  dl.position.set(-10, 6, 6);
+  scene.add(dl);
+
+  const starPos = [];
+  for(let i=0;i<160;i++){
+    starPos.push((Math.random()-0.5)*200, (Math.random()-0.5)*200, (Math.random()-0.5)*200);
+  }
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
+  scene.add(new THREE.Points(starGeo,
+    new THREE.PointsMaterial({ color:0xffffff, size:0.35, transparent:true, opacity:0.35 })));
+
+  resizeThree();
+  if(window.ResizeObserver) new ResizeObserver(resizeThree).observe(box);
+  window.addEventListener('resize', resizeThree);
+  loop();
+}
+
+function resizeThree(){
+  if(!renderer) return;
+  const box = document.getElementById('canvas-container');
+  const max = document.documentElement.getAttribute('data-size') === 'projection' ? 800 : 600;
+  const w = Math.max(240, Math.min(box.clientWidth || 420, max));
+  if(Math.abs(w - lastW) < 2) return;   // évite la boucle de redimensionnement
+  lastW = w;
+  renderer.setSize(w, w);
+  camera.aspect = 1;
+  camera.updateProjectionMatrix();
+}
+
+function disposeTree(obj){
+  obj.traverse(function(c){
+    if(c.geometry) c.geometry.dispose();
+    if(c.material){
+      (Array.isArray(c.material) ? c.material : [c.material]).forEach(function(m){ m.dispose(); });
+    }
+  });
+}
+
+function buildAtom3D(e){
+  if(atomGroup){ scene.remove(atomGroup); disposeTree(atomGroup); }
+  atomGroup = new THREE.Group();
+  scene.add(atomGroup);
+  electrons = [];
+
+  // NOYAU — nucléons répartis dans le volume (spirale de Fibonacci)
+  nucleusGroup = new THREE.Group();
+  const R = 0.30 * Math.cbrt(e.a) + 0.15;
+  const nucGeo = new THREE.SphereGeometry(0.28, 16, 16);
+  const protonMat = new THREE.MeshPhongMaterial({ color:0xC0392B, emissive:0x4a0f0a, shininess:90 });
+  const neutronMat = new THREE.MeshPhongMaterial({ color:0x4A7FD4, emissive:0x0a1a3a, shininess:90 });
+  const GA = Math.PI * (3 - Math.sqrt(5));
+  for(let i=0;i<e.a;i++){
+    const isP = Math.floor((i+1)*e.z/e.a) - Math.floor(i*e.z/e.a) === 1;
+    const rr = e.a === 1 ? 0 : R * Math.cbrt((i + 0.5) / e.a);
+    const ct = 1 - 2 * (i + 0.5) / e.a;
+    const st = Math.sqrt(Math.max(0, 1 - ct*ct));
+    const ph = i * GA;
+    const m = new THREE.Mesh(nucGeo, isP ? protonMat : neutronMat);
+    m.position.set(rr*st*Math.cos(ph), rr*st*Math.sin(ph), rr*ct);
+    nucleusGroup.add(m);
+  }
+  atomGroup.add(nucleusGroup);
+
+  // ÉLECTRONS ET ORBITES
+  const eGeo = new THREE.SphereGeometry(0.16, 12, 12);
+  const eMat = new THREE.MeshPhongMaterial({ color:0x7CFF3F, emissive:0x2f7a13 });
+  const orbitMat = new THREE.LineBasicMaterial({ color:0x7CFF3F, transparent:true, opacity:0.28 });
+
+  e.cfg.forEach(function(count, layer){
+    const rad = (layer + 1) * 4;
+    for(let i=0;i<count;i++){
+      const mesh = new THREE.Mesh(eGeo, eMat);
+      atomGroup.add(mesh);
+      electrons.push({ mesh:mesh, layer:layer, idx:i, count:count });
+
+      const pts = [];
+      const tilt = i * Math.PI / count;
+      for(let j=0;j<=64;j++){
+        const ang = (j / 64) * Math.PI * 2;
+        pts.push(Math.cos(ang)*rad, Math.sin(ang)*rad*Math.sin(tilt), Math.sin(ang)*rad*Math.cos(tilt));
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      atomGroup.add(new THREE.Line(g, orbitMat));
+    }
+  });
+
+  const maxR = e.cfg.length * 4 + 5;
+  camera.position.set(maxR*1.2, maxR*0.8, maxR*1.2);
+  camera.lookAt(0, 0, 0);
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  // rien à rendre pendant les modes défi : on épargne la carte graphique
+  if(document.getElementById('mode-explo').style.display === 'none') return;
+  const moving = document.documentElement.getAttribute('data-motion') !== 'off';
+  if(moving) tick += 0.01;
+  if(moving && rotating && nucleusGroup){
+    nucleusGroup.rotation.y += 0.002;
+    nucleusGroup.rotation.x += 0.001;
+  }
+  electrons.forEach(function(o){
+    const rad = (o.layer + 1) * 4;
+    const ang = tick * (1.5 - o.layer*0.2) + o.idx * 2 * Math.PI / o.count;
+    const tilt = o.idx * Math.PI / o.count;
+    o.mesh.position.set(Math.cos(ang)*rad,
+                        Math.sin(ang)*rad*Math.sin(tilt),
+                        Math.sin(ang)*rad*Math.cos(tilt));
+  });
+  if(renderer) renderer.render(scene, camera);
+}
+
+function toggleRotation(){
+  rotating = !rotating;
+  document.getElementById('toggleRotation').textContent =
+    rotating ? '⏸ Figer le noyau' : '▶ Faire tourner le noyau';
+}
+
+// ─── NAVIGATION ENTRE MODES ──────────────────────────────────────────────────
+let currentMode = 'explo';
+
+function setMode(m, btn){
+  currentMode = m;
+  document.querySelectorAll('.mode-tab').forEach(function(t){ t.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById('mode-explo').style.display = m === 'explo' ? 'block' : 'none';
+
+  const defi = document.getElementById('mode-defi');
+  const isDefi = (m === 'defi' || m === 'defiplus');
+  defi.style.display = isDefi ? 'block' : 'none';
+  if(isDefi){
+    defi.classList.add('active');
+    const badge = document.getElementById('defi-plus-badge');
+    if(m === 'defiplus'){
+      document.getElementById('defi-mode-title').textContent = 'Défi ⁺ — Atome mystère';
+      badge.classList.add('visible');
+    } else {
+      document.getElementById('defi-mode-title').textContent = 'Mode défi — Atome mystère';
+      badge.classList.remove('visible');
+    }
+    correct = 0; total = 0; defiIndex = 0;
+    shuffle(order);
+    updateScore();
+    nextDefi();
+  } else {
+    resizeThree();
+  }
+}
+
+// ─── DÉFINITIONS DES DÉFIS ───────────────────────────────────────────────────
+// Chaque générateur rend un croquis, une question, ses données et une réponse
+// ENTIÈRE (pas de tolérance : on compte, on ne mesure pas).
+const OCTET_POOL = ELEMENTS.filter(function(e){
+  const cap = e.cfg.length === 1 ? 2 : 8;
+  const manque = cap - ext(e);
+  return manque > 0 && manque <= 4;          // atomes qui gagnent des électrons
+});
+const GRP_POOL = ELEMENTS.filter(function(e){ return e.z !== 2; }); // He : 2 e⁻ mais colonne 18
+
+const defiDefs = [
+  {
+    nom: 'Neutrons du noyau',
+    hint: 'N = A − Z',
+    generate: function(){
+      const e = pick(ELEMENTS);
+      return {
+        svg: tileSVG(e),
+        q: 'Combien de neutrons contient ce noyau ?',
+        data: e.name + ' (' + e.sym + ') · A = ' + e.a + ' · Z = ' + e.z,
+        answer: e.a - e.z,
+        sol: 'N = A − Z = ' + e.a + ' − ' + e.z + ' = ' + (e.a - e.z)
+      };
+    }
+  },
+  {
+    nom: 'Lire un schéma de Bohr',
+    hint: 'dans un atome neutre, nombre d\'électrons = Z',
+    generate: function(){
+      const e = pick(ELEMENTS);
+      return {
+        svg: bohrSVG(e, { hideNucleus:true }),
+        q: 'Ce schéma représente un atome neutre. Quel est son numéro atomique Z ?',
+        data: 'compter les électrons sur toutes les couches',
+        answer: e.z,
+        sol: cfgText(e) + ' → ' + sumText(e) + ' au total, donc Z = ' + e.z + ' (' + e.name + ')'
+      };
+    }
+  },
+  {
+    nom: 'Couche externe',
+    hint: 'la couche externe est la dernière couche occupée',
+    generate: function(){
+      const e = pick(ELEMENTS);
+      return {
+        svg: bohrSVG(e, { shellNames:true }),
+        q: 'Combien d\'électrons sur la couche externe ?',
+        data: e.name + ' · Z = ' + e.z,
+        answer: ext(e),
+        sol: cfgText(e) + ' → couche ' + SHELLS[e.cfg.length-1] + ' : ' + ext(e) + ' e⁻'
+      };
+    }
+  },
+  {
+    nom: 'Nombre de nucléons',
+    hint: 'A = Z + N',
+    generate: function(){
+      const e = pick(ELEMENTS);
+      const n = e.a - e.z;
+      return {
+        svg: nucleusSVG(e),
+        q: 'Quel est le nombre de nucléons A de ce noyau ?',
+        data: e.z + ' proton' + plur(e.z) + ' · ' + n + ' neutron' + plur(n),
+        answer: e.a,
+        sol: 'A = Z + N = ' + e.z + ' + ' + n + ' = ' + e.a + ' (' + e.name + ')'
+      };
+    }
+  },
+  {
+    nom: 'Nombre de couches occupées',
+    hint: 'on remplit K (2 e⁻ max), puis L (8 e⁻ max), puis M (8 e⁻ max)',
+    generate: function(){
+      const e = pick(ELEMENTS);
+      return {
+        svg: tileSVG(e),
+        q: 'Combien de couches électroniques cet atome occupe-t-il ?',
+        data: e.name + ' · Z = ' + e.z,
+        answer: e.cfg.length,
+        sol: cfgText(e) + ' → ' + e.cfg.length + ' couche' + plur(e.cfg.length) + ' occupée' +
+             plur(e.cfg.length)
+      };
+    }
+  },
+  {
+    nom: 'Duet et octet',
+    hint: 'couche externe saturée : 2 e⁻ pour la couche K (duet), 8 e⁻ sinon (octet)',
+    generate: function(){
+      const e = pick(OCTET_POOL);
+      const cap = e.cfg.length === 1 ? 2 : 8;
+      return {
+        svg: bohrSVG(e, { shellNames:true, highlightOuter:true }),
+        q: 'Combien d\'électrons lui manque-t-il pour saturer sa couche externe ?',
+        data: e.name + ' · Z = ' + e.z + ' · couche externe : ' + ext(e) + ' e⁻',
+        answer: cap - ext(e),
+        sol: 'règle ' + (cap === 2 ? 'du duet' : 'de l\'octet') + ' : ' + cap + ' − ' + ext(e) +
+             ' = ' + (cap - ext(e)) + ' e⁻ à gagner'
+      };
+    }
+  },
+  {
+    nom: 'Retrouver Z',
+    hint: 'Z = nombre total d\'électrons d\'un atome neutre',
+    generate: function(){
+      const e = pick(ELEMENTS);
+      return {
+        svg: configSVG(e),
+        q: 'Quel est le numéro atomique Z de cet atome ?',
+        data: 'additionner les électrons de toutes les couches',
+        answer: e.z,
+        sol: sumText(e) + ' → Z = ' + e.z + ' (' + e.name + ')'
+      };
+    }
+  },
+  {
+    nom: 'Colonne du tableau',
+    hint: 'colonnes 1 et 2 : 1 ou 2 e⁻ externes · colonnes 13 à 18 : de 3 à 8 e⁻ externes',
+    generate: function(){
+      const e = pick(GRP_POOL);
+      return {
+        svg: bohrSVG(e, { shellNames:true, highlightOuter:true }),
+        q: 'Dans quelle colonne du tableau périodique se trouve cet atome ?',
+        data: e.name + ' · couche externe : ' + ext(e) + ' e⁻',
+        answer: e.grp,
+        sol: ext(e) + ' e⁻ externes → colonne ' + e.grp + ' (' + e.name + ')'
+      };
+    }
+  }
+];
+
+// ─── LOGIQUE DÉFI ────────────────────────────────────────────────────────────
+let defiIndex = 0, correct = 0, total = 0, answered = false;
+let curAnswer = 0, curHint = '', curSol = '';
+const order = defiDefs.map(function(_, i){ return i; });
+shuffle(order);
+
+function nextDefi(){
+  if(defiIndex >= order.length){ defiIndex = 0; shuffle(order); }
+  const def = defiDefs[order[defiIndex]];
+  const g = def.generate();
+  curAnswer = g.answer;
+  curHint = def.hint;
+  curSol = g.sol;
+
+  document.getElementById('defi-svg').innerHTML = g.svg;
+
+  let html = '<strong>' + g.q + '</strong><br>' + g.data;
+  if(currentMode !== 'defiplus'){
+    html += '<br><span class="lp-hint">Règle : ' + def.hint + '</span>';
+  }
+  document.getElementById('defi-cotes').innerHTML = html;
+
+  const inp = document.getElementById('defi-input');
+  inp.value = '';
+  const fb = document.getElementById('defi-feedback');
+  fb.className = 'feedback-box';
+  fb.textContent = '';
+  document.getElementById('btn-next').style.display = 'none';
+  inp.focus();
+  answered = false;
+  defiIndex++;
+  updateScore();
+}
+
+function checkDefi(){
+  if(answered) return;
+  const raw = document.getElementById('defi-input').value;
+  const val = parseFloat(raw);
+  if(raw === '' || isNaN(val)){ alert('Entre un nombre entier.'); return; }
+  const ok = Math.abs(val - curAnswer) < 1e-9;
+  answered = true;
+  total++;
+  if(ok) correct++;
+  const fb = document.getElementById('defi-feedback');
+  fb.className = 'feedback-box ' + (ok ? 'correct' : 'wrong') + ' show';
+  if(ok){
+    fb.innerHTML = '<strong>Correct !</strong> ' + curSol + '.';
+  } else {
+    fb.innerHTML = '<strong>Pas tout à fait.</strong> La bonne réponse est <strong>' +
+                   curAnswer + '</strong>.<br>' + curSol + '.<br>Rappel : ' + curHint;
+  }
+  document.getElementById('btn-next').style.display = 'block';
+  updateScore();
+}
+
+function updateScore(){
+  document.getElementById('defi-score').textContent =
+    correct + ' / ' + total + ' correct' + (total > 1 ? 's' : '');
+  document.getElementById('defi-progress').style.width =
+    (total > 0 ? (correct / total * 100) : 0) + '%';
+}
+
+document.addEventListener('keydown', function(e){
+  if(currentMode === 'explo') return;
+  if(e.key !== 'Enter') return;
+  if(!answered) checkDefi();
+  else if(document.getElementById('btn-next').style.display !== 'none') nextDefi();
+});
+
+// ─── FICHE IMPRIMABLE ────────────────────────────────────────────────────────
+// Même tirage que LP.pickQuestions, mais l'aide s'appelle « Règle » et non
+// « Formule » : ici on applique des règles de remplissage, pas des formules.
+function pickQuestions(defs, n){
+  const ord = defs.map(function(_, i){ return i; });
+  shuffle(ord);
+  const out = [];
+  while(out.length < n){
+    for(let k=0; k<ord.length && out.length<n; k++){
+      const def = defs[ord[k]];
+      const g = def.generate();
+      out.push({
+        num: out.length + 1,
+        nom: def.nom,
+        hint: 'Règle : ' + def.hint,
+        svg: g.svg,
+        cotes: g.q + ' · ' + g.data,
+        answerText: String(g.answer)
+      });
+    }
+  }
+  return out;
+}
+
+function generateFiche(){
+  const isPlus = (currentMode === 'defiplus');
+  LP.fiche({
+    icon: '\u269B\uFE0F',
+    title: 'Structure de l\u2019atome \u2014 mod\u00e8le de Bohr',
+    subtitle: 'Physique-chimie \u00b7 3\u1d49 Pr\u00e9pa-M\u00e9tiers \u00b7 CAP \u00b7 Bac Pro',
+    modeLabel: isPlus ? 'D\u00e9fi +' : 'Mode d\u00e9fi',
+    isPlus: isPlus,
+    accent: '#534AB7',
+    answerLabel: 'R\u00e9ponse =',
+    unit: '',
+    aide: 'N = A \u2212 Z &nbsp;|&nbsp; A = Z + N &nbsp;|&nbsp; atome neutre : nombre d\u2019e\u207b = Z '
+        + '&nbsp;|&nbsp; remplissage K (2 max) puis L (8 max) puis M (8 max) &nbsp;|&nbsp; '
+        + 'couche externe satur\u00e9e : 2 e\u207b (duet) ou 8 e\u207b (octet) &nbsp;|&nbsp; '
+        + 'colonnes 1 \u00e0 2 et 13 \u00e0 18',
+    questions: pickQuestions(defiDefs, 10)
+  });
+}
+
+// ─── DÉMARRAGE ───────────────────────────────────────────────────────────────
+if(THREE_OK){
+  initThree();
+} else {
+  document.getElementById('viz3d').hidden = true;
+  document.getElementById('no3d').hidden = false;
+}
+showAtom(8);   // oxygène : 2 couches, 8 nucléons, cas d'école
+</script>
+
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp; Licence MIT &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée · M : animations">Raccourcis : T · P · D · M</span>
 </footer>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script>
-        // Données des éléments (Z, A, nom, symbole, configuration)
-        const elements = {
-            1: { z: 1, a: 1, name: "Hydrogène", symbol: "H", config: [1] },
-            2: { z: 2, a: 4, name: "Hélium", symbol: "He", config: [2] },
-            3: { z: 3, a: 7, name: "Lithium", symbol: "Li", config: [2, 1] },
-            4: { z: 4, a: 9, name: "Béryllium", symbol: "Be", config: [2, 2] },
-            5: { z: 5, a: 11, name: "Bore", symbol: "B", config: [2, 3] },
-            6: { z: 6, a: 12, name: "Carbone", symbol: "C", config: [2, 4] },
-            7: { z: 7, a: 14, name: "Azote", symbol: "N", config: [2, 5] },
-            8: { z: 8, a: 16, name: "Oxygène", symbol: "O", config: [2, 6] },
-            9: { z: 9, a: 19, name: "Fluor", symbol: "F", config: [2, 7] },
-            10: { z: 10, a: 20, name: "Néon", symbol: "Ne", config: [2, 8] },
-            11: { z: 11, a: 23, name: "Sodium", symbol: "Na", config: [2, 8, 1] },
-            12: { z: 12, a: 24, name: "Magnésium", symbol: "Mg", config: [2, 8, 2] },
-            13: { z: 13, a: 27, name: "Aluminium", symbol: "Al", config: [2, 8, 3] },
-            14: { z: 14, a: 28, name: "Silicium", symbol: "Si", config: [2, 8, 4] },
-            15: { z: 15, a: 31, name: "Phosphore", symbol: "P", config: [2, 8, 5] },
-            16: { z: 16, a: 32, name: "Soufre", symbol: "S", config: [2, 8, 6] },
-            17: { z: 17, a: 35, name: "Chlore", symbol: "Cl", config: [2, 8, 7] },
-            18: { z: 18, a: 40, name: "Argon", symbol: "Ar", config: [2, 8, 8] },
-            19: { z: 19, a: 39, name: "Potassium", symbol: "K", config: [2, 8, 8, 1] },
-            20: { z: 20, a: 40, name: "Calcium", symbol: "Ca", config: [2, 8, 8, 2] }
-        };
-
-        // Structure du tableau périodique (positions)
-        const tableStructure = [
-            [1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 2],
-            [3, 4, null, null, null, null, null, null, null, null, null, null, 5, 6, 7, 8, 9, 10],
-            [11, 12, null, null, null, null, null, null, null, null, null, null, 13, 14, 15, 16, 17, 18],
-            [19, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
-        ];
-
-        // Créer le tableau périodique
-        const periodicTable = document.getElementById('periodicTable');
-        tableStructure.forEach(row => {
-            row.forEach(z => {
-                const cell = document.createElement('div');
-                if (z === null) {
-                    cell.className = 'element empty';
-                } else {
-                    const el = elements[z];
-                    cell.className = 'element';
-                    cell.innerHTML = `
-                        <span class="element-number">${el.z}</span>
-                        <div class="element-symbol">${el.symbol}</div>
-                        <div class="element-name">${el.name}</div>
-                        <div class="element-mass">${el.a}</div>
-                    `;
-                    cell.onclick = () => showAtom(z);
-                }
-                periodicTable.appendChild(cell);
-            });
-        });
-
-        // Variables globales pour Three.js
-        let scene, camera, renderer, nucleusGroup, electrons, orbits;
-        let isRotating = true;
-        let animationId;
-
-        // Afficher un atome
-        function showAtom(z) {
-            const el = elements[z];
-            if (!el) return;
-
-            // Mettre à jour l'interface
-            document.querySelectorAll('.element').forEach(e => e.classList.remove('active'));
-            event.target.closest('.element').classList.add('active');
-            
-            document.getElementById('atomTitle').textContent = `${el.name}-${el.a} (${el.a}${el.symbol})`;
-            document.getElementById('atomSubtitle').textContent = `Modèle de Bohr - Z=${el.z}, A=${el.a}`;
-            
-            // Afficher la section de visualisation
-            document.getElementById('vizSection').classList.add('active');
-            document.getElementById('vizSection').scrollIntoView({ behavior: 'smooth' });
-            
-            // Générer les infos atomiques
-            generateAtomicInfo(el);
-            
-            // Nettoyer et créer la nouvelle visualisation 3D
-            if (renderer) {
-                cancelAnimationFrame(animationId);
-                document.getElementById('canvas-container').innerHTML = '';
-            }
-            create3DVisualization(el);
-        }
-
-        // Générer les informations atomiques
-        function generateAtomicInfo(el) {
-            const neutrons = el.a - el.z;
-            let configText = '';
-            const layers = ['K', 'L', 'M', 'N'];
-            el.config.forEach((e, i) => {
-                if (i > 0) configText += ' ';
-                configText += `${layers[i]}${e > 1 ? '⁰¹²³⁴⁵⁶⁷⁸'.charAt(e) : ''}`;
-            });
-
-            let html = `
-                <div class="particle-info">
-                    <div class="particle-dot proton"></div>
-                    <span><strong>Noyau :</strong> ${el.z} proton${el.z > 1 ? 's' : ''} (p⁺) + ${neutrons} neutron${neutrons > 1 ? 's' : ''} (n) = ${el.a} nucléons</span>
-                </div>
-                <div class="particle-info">
-                    <div class="particle-dot neutron"></div>
-                    <span style="margin-left: 31px;">${neutrons} neutron${neutrons > 1 ? 's' : ''} (charge neutre)</span>
-                </div>
-            `;
-
-            el.config.forEach((count, i) => {
-                html += `
-                    <div class="particle-info">
-                        <div class="particle-dot electron"></div>
-                        <span><strong>Couche ${layers[i]} (n=${i+1}) :</strong> ${count} électron${count > 1 ? 's' : ''} (e⁻)</span>
-                    </div>
-                `;
-            });
-
-            html += `
-                <div class="config-section">
-                    <p><strong>Configuration électronique :</strong> ${configText}</p>
-                    <p class="small-text">Total : ${el.z} e⁻ = charge neutre (${el.z} p⁺)</p>
-                </div>
-            `;
-
-            document.getElementById('atomicInfo').innerHTML = html;
-        }
-
-        // Créer la visualisation 3D
-        function create3DVisualization(el) {
-            // Configuration de la scène
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000000);
-            
-            camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-            const maxRadius = el.config.length * 4 + 5;
-            camera.position.set(maxRadius * 1.2, maxRadius * 0.8, maxRadius * 1.2);
-            camera.lookAt(0, 0, 0);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(700, 700);
-            renderer.shadowMap.enabled = true;
-            document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-            // Lumières
-            const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
-            scene.add(ambientLight);
-
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-            directionalLight.position.set(-10, 5, 5);
-            scene.add(directionalLight);
-
-            const pointLight = new THREE.PointLight(0xffffff, 0.5);
-            scene.add(pointLight);
-
-            // Étoiles de fond
-            const starGeometry = new THREE.BufferGeometry();
-            const starVertices = [];
-            for (let i = 0; i < 200; i++) {
-                starVertices.push(
-                    (Math.random() - 0.5) * 200,
-                    (Math.random() - 0.5) * 200,
-                    (Math.random() - 0.5) * 200
-                );
-            }
-            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
-            const stars = new THREE.Points(starGeometry, 
-                new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.3 }));
-            scene.add(stars);
-
-            // NOYAU
-            nucleusGroup = new THREE.Group();
-            const nucleonRadius = 0.25;
-            const neutrons = el.a - el.z;
-            
-            // Positions des nucléons
-            for (let i = 0; i < el.a; i++) {
-                const isProton = i < el.z;
-                const phi = Math.acos(-1 + (2 * i) / el.a);
-                const theta = Math.sqrt(el.a * Math.PI) * phi;
-                
-                const geometry = new THREE.SphereGeometry(nucleonRadius, 16, 16);
-                const material = new THREE.MeshPhongMaterial({
-                    color: isProton ? 0xFF0000 : 0x4444FF,
-                    emissive: isProton ? 0x660000 : 0x000066,
-                    shininess: 100,
-                    specular: 0xffffff
-                });
-                const nucleon = new THREE.Mesh(geometry, material);
-                nucleon.position.setFromSphericalCoords(0.5, phi, theta);
-                nucleusGroup.add(nucleon);
-            }
-            scene.add(nucleusGroup);
-
-            // ÉLECTRONS et ORBITES
-            electrons = [];
-            orbits = [];
-            const electronRadius = 0.15;
-            const electronMaterial = new THREE.MeshPhongMaterial({
-                color: 0x00FF00,
-                emissive: 0x00FF00,
-                emissiveIntensity: 0.8,
-                transparent: true,
-                opacity: 0.9
-            });
-
-            el.config.forEach((count, layerIndex) => {
-                const layerRadius = (layerIndex + 1) * 4;
-                const layerElectrons = [];
-
-                for (let i = 0; i < count; i++) {
-                    const electron = new THREE.Mesh(
-                        new THREE.SphereGeometry(electronRadius, 12, 12),
-                        electronMaterial
-                    );
-                    layerElectrons.push({ mesh: electron, layerIndex, electronIndex: i });
-                    scene.add(electron);
-
-                    // Halo
-                    const glow = new THREE.Mesh(
-                        new THREE.SphereGeometry(electronRadius * 2, 12, 12),
-                        new THREE.MeshBasicMaterial({ color: 0x00FF00, transparent: true, opacity: 0.2 })
-                    );
-                    electron.add(glow);
-
-                    // Orbite
-                    const orbitGeometry = new THREE.BufferGeometry();
-                    const orbitPoints = [];
-                    const tilt = i * Math.PI / count;
-                    for (let j = 0; j <= 64; j++) {
-                        const angle = (j / 64) * Math.PI * 2;
-                        orbitPoints.push(
-                            Math.cos(angle) * layerRadius,
-                            Math.sin(angle) * layerRadius * Math.sin(tilt),
-                            Math.sin(angle) * layerRadius * Math.cos(tilt)
-                        );
-                    }
-                    orbitGeometry.setAttribute('position', new THREE.Float32BufferAttribute(orbitPoints, 3));
-                    const orbit = new THREE.Line(orbitGeometry,
-                        new THREE.LineBasicMaterial({ color: 0x00FF00, transparent: true, opacity: 0.3 }));
-                    scene.add(orbit);
-                    orbits.push(orbit);
-                }
-
-                electrons.push(...layerElectrons);
-            });
-
-            // Animation
-            let time = 0;
-            const animate = () => {
-                animationId = requestAnimationFrame(animate);
-                time += 0.01;
-
-                if (isRotating) {
-                    nucleusGroup.rotation.y += 0.002;
-                    nucleusGroup.rotation.x += 0.001;
-                }
-
-                electrons.forEach(({ mesh, layerIndex, electronIndex }) => {
-                    const layerRadius = (layerIndex + 1) * 4;
-                    const speed = 1.5 - layerIndex * 0.2;
-                    const count = el.config[layerIndex];
-                    const angle = time * speed + (electronIndex * 2 * Math.PI / count);
-                    const tilt = electronIndex * Math.PI / count;
-                    
-                    mesh.position.x = Math.cos(angle) * layerRadius;
-                    mesh.position.y = Math.sin(angle) * layerRadius * Math.sin(tilt);
-                    mesh.position.z = Math.sin(angle) * layerRadius * Math.cos(tilt);
-                });
-
-                renderer.render(scene, camera);
-            };
-
-            animate();
-        }
-
-        // Boutons
-        document.getElementById('toggleRotation').addEventListener('click', () => {
-            isRotating = !isRotating;
-            document.getElementById('toggleRotation').textContent = 
-                isRotating ? 'Pause rotation' : 'Reprendre rotation';
-        });
-
-        document.getElementById('backButton').addEventListener('click', () => {
-            document.getElementById('vizSection').classList.remove('active');
-            document.querySelectorAll('.element').forEach(e => e.classList.remove('active'));
-            periodicTable.scrollIntoView({ behavior: 'smooth' });
-        });
-
-        // Afficher l'oxygène par défaut au chargement
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                const oxygenElement = Array.from(document.querySelectorAll('.element'))
-                    .find(el => el.textContent.includes('Oxygène'));
-                if (oxygenElement) oxygenElement.click();
-            }, 500);
-        });
-    </script>
 </body>
 </html>
