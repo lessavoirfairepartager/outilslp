@@ -32,8 +32,22 @@
 
   /* ═══════════════════════════════════════════════════════════════════════ */
 
+  // Tolérant : accepte le code seul ('outilslp') aussi bien que l'URL entière
+  // copiée depuis la doc GoatCounter ('https://outilslp.goatcounter.com/count').
+  // On ne garde que le sous-domaine, quoi qu'on lui donne.
+  function codeGC(v) {
+    if (typeof v !== 'string') return '';
+    v = v.trim();
+    if (!v) return '';
+    var m = v.match(/^https?:\/\/([^.\/]+)\.goatcounter\.com/i);
+    if (m) return m[1];                    // URL complète → sous-domaine
+    return v.replace(/\.goatcounter\.com.*$/i, '')   // au cas où il reste un suffixe
+            .replace(/^https?:\/\//i, '')
+            .replace(/\/.*$/, '');
+  }
+
   var CONF = {
-    gcCode:    typeof GOATCOUNTER === 'string' ? GOATCOUNTER.trim() : '',
+    gcCode:    codeGC(GOATCOUNTER),
     showCount: true,   // « vues sur cette page · sur le site » en pied de page
     pwa:       true    // application installable et hors ligne
   };
@@ -261,15 +275,26 @@
     return location.pathname.replace(/index\.html$/, '') || '/';
   }
 
-  function trackVisit() {
-    if (!CONF.gcCode) return;
-    // Ouvrir n'importe quelle page avec ?skipgc : ce navigateur cesse d'être
-    // compté, définitivement. Pratique quand on teste ses propres pages.
-    if (/[?&]skipgc/.test(location.search)) write('skipgc', 't');
-    if (read('skipgc', '') === 't') return;
+  // Faut-il ARRÊTER de compter ce navigateur ? (test de ses propres pages)
+  // ?skipgc dans l'URL pose le drapeau une fois pour toutes.
+  function exclu() {
+    if (/[?&]skipgc/.test(location.search)) { try { write('skipgc', 't'); } catch (e) {} }
+    try { return read('skipgc', '') === 't'; } catch (e) { return false; }
+  }
 
+  // Charge count.js UNE seule fois. Ce script sert à deux choses distinctes :
+  // enregistrer la visite ET afficher le compteur. On le charge donc même
+  // quand ce navigateur est exclu du comptage — sinon le compteur qu'on veut
+  // AFFICHER ne s'afficherait pas non plus.
+  var gcLoading = false;
+  function loadCountJS() {
+    if (gcLoading || !CONF.gcCode) return;
+    gcLoading = true;
     window.goatcounter = window.goatcounter || {};
     window.goatcounter.path = countPath();
+    // no_onload : count.js se charge sans enregistrer automatiquement la
+    // visite. C'est trackVisit() qui décidera de compter, ou pas.
+    window.goatcounter.no_onload = true;
     var s = document.createElement('script');
     s.async = true;
     s.src = 'https://gc.zgo.at/count.js';
@@ -277,42 +302,86 @@
     document.body.appendChild(s);
   }
 
-  function grabCount(url) {
-    if (!window.fetch) return Promise.resolve(null);
-    return fetch(url).then(function (r) {
-      if (r.status === 404) return '0';       // page encore jamais vue
-      if (!r.ok) return null;
-      return r.json().then(function (j) { return j.count; });
-    }).catch(function () { return null; });
+  function trackVisit() {
+    if (!CONF.gcCode) return;
+    loadCountJS();
+    if (exclu()) return;               // navigateur exclu : on n'enregistre pas
+    whenReady(function () {
+      try { window.goatcounter.count({ path: countPath() }); } catch (e) {}
+    });
   }
 
-  function frNum(v) {
-    // GoatCounter formate à l'anglaise (« 1,234 ») : espace fine insécable.
-    return String(v).replace(/,/g, '\u202f');
-  }
-
+  // Le compteur d'AFFICHAGE utilise le mécanisme officiel de GoatCounter :
+  // visit_count() injecte un petit bloc HTML via count.js. On ne peut PAS le
+  // remplacer par un fetch() direct de l'API JSON : depuis un autre domaine,
+  // le navigateur bloque cette lecture (CORS). Le script, lui, passe.
   function showCount() {
     if (!CONF.gcCode || !CONF.showCount) return;
     var foot = document.querySelector('.lp-footer');
     if (!foot) return;
 
-    var box = document.createElement('span');
-    box.className = 'lp-count no-print';
-    box.hidden = true;
-    box.title = 'Compteur sans cookie · valeurs mises en cache environ 4 h';
-    foot.appendChild(box);
+    // Deux réceptacles : cette page, puis le total du site.
+    var wrap = document.createElement('span');
+    wrap.className = 'lp-count no-print';
+    var here = document.createElement('span');
+    here.id = 'lp-count-here';
+    var all = document.createElement('span');
+    all.id = 'lp-count-total';
+    wrap.appendChild(here);
+    wrap.appendChild(all);
+    foot.appendChild(wrap);
 
-    var base = 'https://' + CONF.gcCode + '.goatcounter.com/counter/';
-    Promise.all([
-      grabCount(base + encodeURIComponent(countPath()) + '.json'),
-      grabCount(base + 'TOTAL.json')
-    ]).then(function (r) {
-      if (r[0] === null && r[1] === null) return;   // hors ligne : on se tait
-      box.innerHTML = '\uD83D\uDC41 <strong>' + (r[0] === null ? '\u2014' : frNum(r[0])) +
-        '</strong> vues sur cette page &nbsp;\u00b7&nbsp; <strong>' +
-        (r[1] === null ? '\u2014' : frNum(r[1])) + '</strong> sur le site';
-      box.hidden = false;
+    // Style commun aux deux compteurs : on efface l'encadré GoatCounter pour
+    // ne garder que le chiffre, fondu dans le pied de page.
+    var style =
+      'div{border:0;background:none;padding:0;margin:0;font:inherit;color:inherit;' +
+      'display:inline;}' +
+      '#gcvc-for,#gcvc-by{display:none;}' +
+      '#gcvc-views{font:inherit;font-weight:700;color:var(--text2);}';
+
+    loadCountJS();
+    whenReady(function () {
+      try {
+        window.goatcounter.visit_count({
+          append: '#lp-count-here', type: 'html', no_branding: true, style: style
+        });
+        window.goatcounter.visit_count({
+          append: '#lp-count-total', type: 'html', no_branding: true, path: 'TOTAL', style: style
+        });
+        // Habillage : préfixe œil + libellés, une fois les blocs insérés.
+        dressCount(here, '\uD83D\uDC41\u00A0', '\u00A0vues ici');
+        dressCount(all, '\u00A0\u00B7\u00A0', '\u00A0sur le site');
+      } catch (e) {
+        wrap.remove();   // rien plutôt qu'un compteur à moitié cassé
+      }
     });
+  }
+
+  // Attend que count.js ait fini de se charger (il est async).
+  function whenReady(cb) {
+    if (window.goatcounter && window.goatcounter.visit_count) { cb(); return; }
+    var n = 0;
+    var t = setInterval(function () {
+      if (window.goatcounter && window.goatcounter.visit_count) {
+        clearInterval(t); cb();
+      } else if (++n > 100) {          // ~10 s : on renonce en silence
+        clearInterval(t);
+      }
+    }, 100);
+  }
+
+  // Ajoute un préfixe et un suffixe autour du chiffre dès qu'il apparaît.
+  function dressCount(box, avant, apres) {
+    var n = 0;
+    var t = setInterval(function () {
+      if (box.querySelector('#gcvc-views')) {
+        clearInterval(t);
+        var p = document.createElement('span'); p.textContent = avant;
+        var s2 = document.createElement('span'); s2.textContent = apres;
+        box.insertBefore(p, box.firstChild);
+        box.appendChild(s2);
+      } else if (++n > 100) { clearInterval(t); }
+    }, 100);
   }
 
   // ── Raccourcis clavier ──────────────────────────────────────────────────
