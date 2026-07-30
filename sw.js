@@ -71,6 +71,9 @@ self.addEventListener('fetch', function (e) {
   // Fonctions Netlify : toujours en direct.
   if (url.pathname.indexOf('/.netlify/') === 0) return;
 
+  // Proxy du compteur : jamais mis en cache, sinon le chiffre se fige.
+  if (url.pathname.indexOf('/gc/') === 0) return;
+
   e.respondWith(networkFirst(req));
 });
 

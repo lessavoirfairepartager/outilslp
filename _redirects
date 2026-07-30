@@ -1,0 +1,6 @@
+# ── Proxy compteur GoatCounter ──────────────────────────────────────────────
+# Relaie le compteur depuis TON domaine pour contourner le blocage CORS.
+# Le navigateur interroge /gc/… (same-origin), Netlify va chercher la réponse
+# chez GoatCounter. La ligne ci-dessous est la SEULE à adapter : remplace
+# lessavoirfairepatager par ton propre code si un jour il change.
+/gc/*  https://lessavoirfairepatager.goatcounter.com/counter/:splat  200
