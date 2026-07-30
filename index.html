@@ -1,308 +1,456 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ressources Pédagogiques - Maths & Sciences</title>
-    <style>
-        :root {
-            --primary: #667eea;
-            --secondary: #764ba2;
-            --bg-body: #f8fafc;
-            --bg-card: #ffffff;
-            --text-main: #1e293b;
-            --shadow: 0 5px 15px rgba(0,0,0,0.08);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ressources pédagogiques — Maths & Physique-chimie en lycée pro</title>
+<meta name="description" content="Outils interactifs, calculatrices en ligne et ressources pour les mathématiques et la physique-chimie en lycée professionnel.">
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  /* ── Bandeau : papier millimétré, clin d'œil au dessin technique ──────── */
+  .portal-head {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 2.6rem 1.5rem 2.1rem;
+  }
+  .portal-head::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 26px 26px;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.9), transparent 88%);
+            mask-image: linear-gradient(180deg, rgba(0,0,0,.9), transparent 88%);
+    pointer-events: none;
+  }
+  :root                    { --grid: rgba(24,95,165,.11); }
+  html[data-theme="dark"]  { --grid: rgba(111,178,242,.10); }
 
-        /* MODE SOMBRE PAR DÉFAUT */
-        body.dark {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --text-main: #f1f5f9;
-            --shadow: 0 5px 20px rgba(0,0,0,0.3);
-        }
+  .portal-head-inner { position: relative; max-width: 1000px; margin: 0 auto; }
+  html[data-size="projection"] .portal-head-inner { max-width: 1400px; }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            background: var(--bg-body);
-            color: var(--text-main);
-            transition: all 0.3s ease;
-            line-height: 1.6;
-        }
+  .portal-head h1 {
+    font-size: calc(var(--fs-lg) * 1.5);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -.015em;
+  }
+  .portal-head h1 .accent { color: var(--accent); }
+  .portal-head .tagline {
+    font-size: var(--fs-base);
+    color: var(--text2);
+    margin-top: .45rem;
+  }
+  .portal-head .meta {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-top: 1.1rem;
+  }
+  .chip {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--text2);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 13px;
+  }
+  .chip strong { color: var(--text); }
 
-        body.classmode {
-            background: #000 !important;
-        }
-        body.classmode .card {
-            font-size: 1.4em;
-            padding: 25px;
-            border: 2px solid #667eea;
-        }
-        body.classmode h2 { color: #fff; }
+  /* ── Filtres ──────────────────────────────────────────────────────────── */
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 2rem; }
 
-        /* HEADER */
-        header {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            text-align: center;
-            padding: 50px 20px;
-            margin-bottom: 30px;
-        }
+  /* ── Sections ─────────────────────────────────────────────────────────── */
+  .section { margin-bottom: 2.6rem; }
+  .section-head {
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px;
+    padding-bottom: .5rem;
+    margin-bottom: 1.1rem;
+    border-bottom: 2px solid var(--border);
+  }
+  .section-head h2 { font-size: var(--fs-lg); font-weight: 700; }
+  .section-head .count { font-size: var(--fs-xs); color: var(--text3); font-weight: 600; }
+  .section-head p { flex-basis: 100%; font-size: var(--fs-xs); color: var(--text2); }
 
-        .top-buttons {
-            position: fixed;
-            top: 15px;
-            right: 15px;
-            display: flex;
-            gap: 10px;
-            z-index: 1000;
-        }
+  /* ── Cartes ───────────────────────────────────────────────────────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 12px;
+  }
+  html[data-size="projection"] .grid { grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); }
 
-        .top-buttons button {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            background: rgba(255,255,255,0.2);
-            backdrop-filter: blur(5px);
-            color: white;
-            font-size: 1.2em;
-            transition: 0.3s;
-        }
-        .top-buttons button:hover { background: rgba(255,255,255,0.4); }
+  .card {
+    position: relative;
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 15px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--c);
+    border-radius: var(--radius-lg);
+    color: var(--text);
+    text-decoration: none;
+    transition: transform .16s, border-color .16s, box-shadow .16s;
+  }
+  .card:hover, .card:focus-visible {
+    transform: translateY(-2px);
+    border-color: var(--c);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--c) 22%, transparent);
+  }
+  .card-ico {
+    width: 46px; height: 46px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--c-bg);
+    color: var(--c);
+    border-radius: var(--radius);
+  }
+  .card-ico svg { width: 30px; height: 30px; display: block; }
+  html[data-size="projection"] .card-ico { width: 60px; height: 60px; }
+  html[data-size="projection"] .card-ico svg { width: 40px; height: 40px; }
 
-        /* FILTERS */
-        .filters {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-            padding: 0 20px;
-        }
+  .card-txt { min-width: 0; }
+  .card-name { display: block; font-size: var(--fs-sm); font-weight: 700; line-height: 1.3; }
+  .card-desc { display: block; font-size: var(--fs-xs); color: var(--text2); line-height: 1.35; margin-top: 2px; }
+  .card-ext {
+    position: absolute; top: 9px; right: 11px;
+    font-size: 13px; color: var(--text3);
+  }
+  html[data-size="projection"] .card-ext { font-size: 17px; }
 
-        .filter-btn {
-            padding: 8px 18px;
-            border-radius: 25px;
-            border: 2px solid var(--primary);
-            background: transparent;
-            color: var(--primary);
-            cursor: pointer;
-            font-weight: 600;
-            transition: 0.3s;
-        }
+  .hidden { display: none !important; }
+  .empty { font-size: var(--fs-sm); color: var(--text3); padding: 1rem 0; }
 
-        .filter-btn.active, .filter-btn:hover {
-            background: var(--primary);
-            color: white;
-        }
-
-        /* LAYOUT */
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        .section { margin-bottom: 50px; }
-        
-        h2 {
-            font-size: 1.6em;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid var(--primary);
-            display: inline-block;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-        }
-
-        /* CARD STYLE */
-        .card {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 18px;
-            background: var(--bg-card);
-            color: var(--text-main);
-            text-decoration: none;
-            border-radius: 15px;
-            box-shadow: var(--shadow);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.25);
-        }
-
-        .card img, .card svg {
-            width: 45px;
-            height: 45px;
-            flex-shrink: 0;
-        }
-
-        .hidden { display: none; }
-
-        footer {
-            text-align: center;
-            padding: 40px;
-            margin-top: 50px;
-            background: #edf2f7;
-            color: #718096;
-        }
-        .dark footer { background: #1e293b; color: #94a3b8; }
-    </style>
+  /* ── Animations propres aux icônes ────────────────────────────────────── */
+  @keyframes i-bar    { 0%,100% { transform: scaleY(.55); } 50% { transform: scaleY(1); } }
+  @keyframes i-ripple { 0% { transform: scale(.4); opacity: 1; } 100% { transform: scale(1.9); opacity: 0; } }
+  @keyframes i-angle  { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-38deg); } }
+  .i-bar    { transform-origin: 50% 80%; animation: i-bar 1.3s ease-in-out infinite; }
+  .i-ripple { transform-origin: 20px 20px; animation: i-ripple 2.1s ease-out infinite; }
+  .i-angle  { transform-origin: 10px 30px; animation: i-angle 2.6s ease-in-out infinite; }
+</style>
 </head>
-<body class="dark">
+<body>
 
-<div class="top-buttons">
-    <button onclick="document.body.classList.toggle('dark')" title="Changer de Mode">🌓</button>
-    <button onclick="document.body.classList.toggle('classmode')" title="Mode Projection Classe">🎥</button>
-</div>
-
-<header>
-    <h1>Ressources Pédagogiques</h1>
-    <p>Mathématiques, Physique, Chimie & Programmation</p>
+<header class="portal-head">
+  <div class="portal-head-inner">
+    <h1>Ressources <span class="accent">pédagogiques</span></h1>
+    <p class="tagline">Mathématiques · Physique-chimie · Lycée professionnel</p>
+    <div class="meta">
+      <span class="chip"><strong id="n-maison">—</strong> outils maison</span>
+      <span class="chip"><strong id="n-total">—</strong> ressources en tout</span>
+      <span class="chip">Licence MIT</span>
+    </div>
+  </div>
 </header>
 
-<div class="container">
-    <div class="filters">
-        <button class="filter-btn active" onclick="filter('all', this)">Tout</button>
-        <button class="filter-btn" onclick="filter('math', this)">Maths</button>
-        <button class="filter-btn" onclick="filter('science', this)">Sciences</button>
-        <button class="filter-btn" onclick="filter('outil', this)">Outils</button>
-        <button class="filter-btn" onclick="filter('prof', this)">Profs</button>
-    </div>
+<main class="main">
+  <div class="filters" id="filters" role="group" aria-label="Filtrer par discipline"></div>
+  <div id="sections"></div>
+  <p class="empty hidden" id="empty">Aucune ressource dans ce filtre.</p>
+</main>
 
-    <div class="section">
-        <h2>🎯 Outils en ligne</h2>
-        <div class="grid">
-            <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" class="card math outil" target="_blank">🧮 Casio fx-92 Collège</a>
-            <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY090" class="card math outil" target="_blank">🧮 Casio Graph Light</a>
-            <a href="https://maclasseti.fr/calculatrice" class="card math outil" target="_blank">🧮 Scientifique TI</a>
-            <a href="https://www.numworks.com/fr/simulateur/" class="card math outil" target="_blank">🧮 NUMWORKS</a>
-            <a href="https://www.geogebra.org/classic?lang=fr" class="card math" target="_blank">📐 GeoGebra</a>
-            <a href="https://framacalc.org/abc/fr/" class="card outil" target="_blank">📊 Tableur</a>
-            <a href="https://unitconvr.com/fr" class="card science outil" target="_blank">🔄 Convertisseur Unités</a>
-            <a href="https://www.desmos.com/calculator?lang=fr" class="card math" target="_blank">📈 Traceur Desmos</a>
-        </div>
-    </div>
+<noscript>
+  <p style="max-width:1000px;margin:2rem auto;padding:0 1rem">
+    Cette page a besoin de JavaScript pour afficher la liste des outils.
+  </p>
+</noscript>
 
-    <div class="section" id="section-home">
-        <h2>🛠️ Outils Maison</h2>
-        <div class="grid">
-            <a href="outils/horloge.html" class="card outil" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes rotate {from{transform:rotate(0deg);}to{transform:rotate(360deg);}}.hand{transform-origin:50px 50px; animation:rotate 6s linear infinite;}</style><circle cx='50' cy='50' r='35' fill='%23fff3e0' stroke='%23ef6c00' stroke-width='3'/><line class='hand' x1='50' y1='50' x2='50' y2='25' stroke='%23ef6c00' stroke-width='4'/><circle cx='50' cy='50' r='3' fill='%23ef6c00'/></svg>">
-                Horloge Interactive
-            </a>
-            <a href="outils/sonometre.html" class="card science outil" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes sound {0%{height:10px;}50%{height:40px;}100%{height:15px;}}.bar{animation:sound 1s infinite;}.bar:nth-child(2){animation-delay:0.2s;}.bar:nth-child(3){animation-delay:0.4s;}</style><rect x='20' y='60' width='10' height='20' fill='%2300acc1' class='bar'/><rect x='40' y='40' width='10' height='40' fill='%2300acc1' class='bar'/><rect x='60' y='50' width='10' height='30' fill='%2300acc1' class='bar'/></svg>">
-                Sonomètre de classe
-            </a>
-            <a href="outils/quiz_diviseurs.html" class="card math outil" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes p {0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.1);opacity:0.8}}</style><g style='transform-origin:50px 50px;animation:p 2s infinite'><circle cx='50' cy='50' r='40' fill='%232e7d32'/><text x='50' y='68' text-anchor='middle' font-size='60' fill='white' font-weight='bold'>÷</text></g></svg>">
-                Diviseurs et Facteurs
-            </a>
-            <a href="outils/graph_stats.html" class="card math outil" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes draw {0%{stroke-dashoffset:100;}100%{stroke-dashoffset:0;}}.line{stroke-dasharray:100; stroke-dashoffset:100; animation:draw 2s linear infinite;}</style><polyline points='10,70 40,40 70,60 90,20' fill='none' stroke='%232e7dff' stroke-width='4' class='line'/></svg>">
-                Stats & Diagrammes
-            </a>
-            <a href="outils/atome_bohr2.html" class="card science outil" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes orbit {from{transform:rotate(0deg);}to{transform:rotate(360deg);}}.e{transform-origin:50px 50px; animation:orbit 3s linear infinite;}</style><circle cx='50' cy='50' r='10' fill='%23ab47bc'/><g class='e'><circle cx='50' cy='20' r='5' fill='%236a1b9a'/></g></svg>">
-                Atomes : Modèle Bohr
-            </a>
-            <a href="outils/trigo_trainer.html" class="card math outil" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes open {0%{transform:rotate(10deg);}100%{transform:rotate(80deg);}}.line{transform-origin:50px 50px; animation:open 2s ease-in-out infinite alternate;}</style><line x1='50' y1='50' x2='80' y2='50' stroke='%234fc3f2' stroke-width='6'/><line class='line' x1='50' y1='50' x2='50' y2='20' stroke='%234fc3f2' stroke-width='6'/></svg>">
-                Entraînement Trigo
-            </a>
-            <a href="jeux/juniper_green_final_licence.html" class="card math outil" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes f {0%{fill-opacity:0.4;}50%{fill-opacity:1;}100%{fill-opacity:0.4;}}.sq{animation:f 2s infinite;}</style><rect x='20' y='20' width='60' height='60' fill='%234caf50' class='sq' rx='5'/><text x='50' y='58' text-anchor='middle' font-size='28' fill='white' font-weight='bold'>JG</text></svg>">
-                Juniper Green
-            </a>
-            <a href="jeux/quizz_pgcd_licence.html" class="card math outil" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes move {0%{transform:translateY(0)}50%{transform:translateY(-8px)}100%{transform:translateY(0)}}.n{animation:move 1.5s infinite;}</style><text x='50' y='45' text-anchor='middle' font-size='24' fill='%23a5d6a7' font-weight='bold' class='n'>12|18</text><line x1='20' y1='55' x2='80' y2='55' stroke='%23a5d6a7' stroke-width='4'/><text x='50' y='85' text-anchor='middle' font-size='22' fill='%23a5d6a7' font-weight='bold'>PGCD</text></svg>">
-                Diviseurs & PGCD
-            </a>
-            <a href="jeux/pythagore_trainer.html" class="card math outil" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes dash {0%{stroke-dashoffset:150}100%{stroke-dashoffset:0}}.tri{stroke-dasharray:150; stroke-dashoffset:150; animation:dash 3s linear infinite;}</style><path d='M30,70 L70,70 L30,30 Z' fill='none' stroke='%23ff5252' stroke-width='4' class='tri'/><rect x='30' y='60' width='10' height='10' fill='none' stroke='%23ff5252' stroke-width='2'/></svg>">
-                Pythagore Trainer
-            </a>
-            <a href="outils/infographie_nuisances sonores.html" class="card science outil" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes wave {0%{r:10;opacity:1;}100%{r:35;opacity:0;}}.w{animation:wave 1.5s infinite;}</style><circle cx='50' cy='50' r='10' fill='%23ff7043'/><circle cx='50' cy='50' r='10' fill='none' stroke='%23ff7043' stroke-width='3' class='w'/></svg>">
-                Nuisances Sonores
-            </a>
-            <a href="outils/perimetre_usinage.html" class="card math outil" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes d{0%{stroke-dashoffset:240}100%{stroke-dashoffset:0}}</style><rect x='20' y='20' width='60' height='60' fill='none' stroke='%23ff5252' stroke-width='5' stroke-dasharray='240' style='animation:d 2s infinite'/><text x='50' y='58' text-anchor='middle' font-size='32' fill='%23ff5252' font-weight='bold'>P</text></svg>">
-                Périmètre Usinage
-            </a>
-			<a href="outils/aire_usinage.html" class="card math outil" target="_blank">
-				<img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes a{0%,100%{opacity:.05;transform:scale(.75)}55%{opacity:.42;transform:scale(1)}}.f{transform-origin:50px 50px;animation:a 2s ease-in-out infinite}</style><rect class='f' x='18' y='18' width='64' height='64' fill='%230F6E56'/><rect x='18' y='18' width='64' height='64' fill='none' stroke='%230F6E56' stroke-width='4'/><text x='50' y='60' text-anchor='middle' font-size='30' fill='%230F6E56' font-weight='bold'>A</text></svg>"> 
-				Aires Usinage
-			</a>
-			<a href="outils/calcul_litteral.html" class="card math outil" target="_blank">
-				<img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><style>@keyframes d{0%{stroke-dashoffset:240}100%{stroke-dashoffset:0}}@keyframes p{0%,100%{opacity:1}50%{opacity:.45}}</style><rect x='20' y='20' width='60' height='60' fill='none' stroke='%230891b2' stroke-width='5' stroke-dasharray='240' style='animation:d 2s infinite'/><text x='50' y='65' text-anchor='middle' font-size='44' fill='%230891b2' font-weight='bold' font-style='italic' font-family='Cambria Math,Times New Roman,serif' style='animation:p 2s infinite'>x</text></svg>"> 
-				Calcul littéral
-			</a>
-        </div>
-    </div>
-
-    <div class="section">
-        <h2>🥷🏽 Le coin des profs</h2>
-        <div class="grid">
-            <a href="https://phet.colorado.edu/fr/simulations/filter?type=html" class="card prof science" target="_blank">
-                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='none' stroke='%23ffeb3b' stroke-width='4'><animate attributeName='r' values='35;45;35' dur='2s' repeatCount='indefinite'/></circle><polygon points='40,35 70,50 40,65' fill='%23ffeb3b'/></svg>">
-                Simulations PhET (HTML5)
-            </a>
-            <a href="profs/liensGMPCIE.html" class="card prof" target="_blank">💂🏻‍♂️ Liens officiels</a>
-            <a href="https://s.42l.fr/" class="card prof" target="_blank">⛓️ Raccourcisseur 42l</a>
-            <a href="https://javalab.org/en/" class="card prof science" target="_blank">⏯️ Simulations Javalab</a>
-            <a href="https://ladigitale.dev/" class="card prof" target="_blank">🔮 La Digitale</a>
-            <a href="https://portail.apps.education.fr/signin" class="card prof" target="_blank">🚀 Apps Education</a>
-            <a href="https://console.basthon.fr/" class="card prof math" target="_blank">🐍 Console Python</a>
-            <a href="https://chemix.org/" class="card prof science" target="_blank">🧪 Dessin Labo Chemix</a>
-        </div>
-    </div>
-
-    <div class="section">
-        <h2>🎓 Exercices & Évaluations</h2>
-        <div class="grid">
-            <a href="https://wayground.com/" class="card" target="_blank">🎮 Quizz Waygroud</a>
-            <a href="https://wims.univ-cotedazur.fr" class="card math" target="_blank">🎲 Wims exerciseurs</a>
-            <a href="https://www.quiziniere.com/" class="card" target="_blank">🎮 Quizinière</a>
-            <a href="https://www.blooket.com/" class="card" target="_blank">🎮 Blooket</a>
-            <a href="https://www.plickers.com/" class="card" target="_blank">🎮 Plickers</a>
-        </div>
-    </div>
-</div>
-
-<footer>
-    <p>© 2026 - Ressources Pédagogiques | Lycée Professionnel</p>
-    <p>Licence MIT - <a href="mailto:lessavoirfaire.partager@gmail.com" style="color: var(--primary);">Contact</a></p>
+<footer class="lp-footer">
+  <p>© 2026 · Ressources pédagogiques · Lycée professionnel</p>
+  <p>Licence MIT — <a href="mailto:lessavoirfaire.partager@gmail.com">Contact</a>
+     &nbsp;·&nbsp; Raccourcis : T thème · P projection · D lecture facilitée</p>
 </footer>
 
 <script>
-    function filter(cat, btn) {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+/* =========================================================================
+   ICÔNES — SVG 40×40, couleur héritée via currentColor.
+   Les classes lp-spin / lp-pulse / lp-draw / lp-float viennent de lp-ui.css
+   et s'arrêtent si le système demande de réduire les animations.
+   ========================================================================= */
+const ICONS = {
+calc:`<rect x="10" y="4" width="20" height="32" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/>
+<rect x="14" y="8" width="12" height="6" rx="1" fill="currentColor" class="lp-pulse"/>
+<circle cx="15" cy="21" r="1.7" fill="currentColor"/><circle cx="20" cy="21" r="1.7" fill="currentColor"/><circle cx="25" cy="21" r="1.7" fill="currentColor"/>
+<circle cx="15" cy="28" r="1.7" fill="currentColor"/><circle cx="20" cy="28" r="1.7" fill="currentColor"/><circle cx="25" cy="28" r="1.7" fill="currentColor"/>`,
 
-        document.querySelectorAll('.card').forEach(card => {
-            if (cat === 'all' || card.classList.contains(cat)) {
-                card.classList.remove('hidden');
-            } else {
-                card.classList.add('hidden');
-            }
-        });
+geom:`<path d="M8 31 L32 31 L20 10 Z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" class="lp-draw" style="--dash:82"/>
+<circle cx="20" cy="10" r="2.6" fill="currentColor"/><circle cx="8" cy="31" r="2.6" fill="currentColor"/><circle cx="32" cy="31" r="2.6" fill="currentColor"/>`,
 
-        document.querySelectorAll('.section').forEach(sec => {
-            const visibleCards = sec.querySelectorAll('.card:not(.hidden)').length;
-            sec.style.display = (visibleCards === 0) ? 'none' : 'block';
-        });
-    }
+grid:`<rect x="6" y="9" width="28" height="23" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.5"/>
+<line x1="6" y1="17" x2="34" y2="17" stroke="currentColor" stroke-width="2"/>
+<line x1="16" y1="9" x2="16" y2="32" stroke="currentColor" stroke-width="2"/>
+<rect x="18.5" y="19.5" width="13" height="4.5" rx="1" fill="currentColor" class="lp-pulse"/>`,
+
+convert:`<g class="lp-spin">
+<path d="M20 7 A13 13 0 0 1 33 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+<path d="M29 6 L33.5 20 L20 16 Z" fill="currentColor"/>
+<path d="M20 33 A13 13 0 0 1 7 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+<path d="M11 34 L6.5 20 L20 24 Z" fill="currentColor"/></g>`,
+
+curve:`<path d="M5 31 L5 8" stroke="currentColor" stroke-width="2" opacity=".45"/>
+<path d="M5 31 L35 31" stroke="currentColor" stroke-width="2" opacity=".45"/>
+<path d="M6 29 Q14 6 20 19 T34 9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="lp-draw" style="--dash:64"/>`,
+
+clock:`<circle cx="20" cy="20" r="14" fill="none" stroke="currentColor" stroke-width="2.5"/>
+<line x1="20" y1="20" x2="20" y2="11" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" class="lp-spin"/>
+<line x1="20" y1="20" x2="26" y2="20" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>
+<circle cx="20" cy="20" r="2.1" fill="currentColor"/>`,
+
+sound:`<rect x="9" y="15" width="5" height="15" rx="2" fill="currentColor" class="i-bar"/>
+<rect x="17.5" y="9" width="5" height="21" rx="2" fill="currentColor" class="i-bar" style="animation-delay:.3s"/>
+<rect x="26" y="18" width="5" height="12" rx="2" fill="currentColor" class="i-bar" style="animation-delay:.6s"/>`,
+
+divide:`<g class="lp-float"><circle cx="20" cy="20" r="14" fill="currentColor" opacity=".16"/>
+<circle cx="20" cy="13" r="2.6" fill="currentColor"/>
+<rect x="10" y="18.4" width="20" height="3.2" rx="1.6" fill="currentColor"/>
+<circle cx="20" cy="27" r="2.6" fill="currentColor"/></g>`,
+
+chart:`<rect x="8" y="21" width="6.5" height="11" rx="1.5" fill="currentColor" class="i-bar"/>
+<rect x="16.7" y="11" width="6.5" height="21" rx="1.5" fill="currentColor" class="i-bar" style="animation-delay:.25s"/>
+<rect x="25.5" y="16" width="6.5" height="16" rx="1.5" fill="currentColor" class="i-bar" style="animation-delay:.5s"/>`,
+
+atom:`<ellipse cx="20" cy="20" rx="15" ry="6" fill="none" stroke="currentColor" stroke-width="2" opacity=".5"/>
+<ellipse cx="20" cy="20" rx="15" ry="6" fill="none" stroke="currentColor" stroke-width="2" opacity=".5" transform="rotate(60 20 20)"/>
+<ellipse cx="20" cy="20" rx="15" ry="6" fill="none" stroke="currentColor" stroke-width="2" opacity=".5" transform="rotate(120 20 20)"/>
+<circle cx="20" cy="20" r="4.2" fill="currentColor"/>
+<g class="lp-spin"><circle cx="35" cy="20" r="2.9" fill="currentColor"/></g>`,
+
+angle:`<line x1="10" y1="30" x2="33" y2="30" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+<line x1="10" y1="30" x2="31" y2="13" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="i-angle"/>
+<path d="M19 30 A9 9 0 0 0 17.2 24.5" fill="none" stroke="currentColor" stroke-width="2" opacity=".7"/>`,
+
+triangle:`<path d="M10 30 L31 30 L10 11 Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" class="lp-draw" style="--dash:74"/>
+<rect x="10" y="25.5" width="4.5" height="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/>`,
+
+ripple:`<circle cx="20" cy="20" r="5" fill="currentColor"/>
+<g class="i-ripple"><circle cx="20" cy="20" r="8.5" fill="none" stroke="currentColor" stroke-width="2.6"/></g>
+<g class="i-ripple" style="animation-delay:.7s"><circle cx="20" cy="20" r="8.5" fill="none" stroke="currentColor" stroke-width="2.6"/></g>`,
+
+perim:`<rect x="8" y="11" width="24" height="19" rx="1.5" fill="none" stroke="currentColor" stroke-width="3" class="lp-draw" style="--dash:88"/>
+<text x="20" y="25" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor" opacity=".75">P</text>`,
+
+aire:`<rect x="8" y="11" width="24" height="19" rx="1.5" fill="currentColor" class="lp-pulse"/>
+<rect x="8" y="11" width="24" height="19" rx="1.5" fill="none" stroke="currentColor" stroke-width="3"/>`,
+
+algebre:`<rect x="7" y="9" width="26" height="22" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.6" class="lp-draw" style="--dash:96"/>
+<text x="20" y="26" text-anchor="middle" font-size="17" font-weight="700" font-style="italic" fill="currentColor" class="lp-pulse">x</text>`,
+
+play:`<circle cx="20" cy="20" r="14" fill="none" stroke="currentColor" stroke-width="2.6" class="lp-pulse"/>
+<polygon points="16.5,13 29,20 16.5,27" fill="currentColor"/>`,
+
+link:`<g class="lp-float">
+<rect x="5" y="15.5" width="17" height="9" rx="4.5" fill="none" stroke="currentColor" stroke-width="2.8"/>
+<rect x="18" y="15.5" width="17" height="9" rx="4.5" fill="none" stroke="currentColor" stroke-width="2.8"/></g>`,
+
+rocket:`<g class="lp-float">
+<path d="M20 5 C26.5 11.5 27.5 20 24.5 27 L15.5 27 C12.5 20 13.5 11.5 20 5 Z" fill="currentColor"/>
+<circle cx="20" cy="15" r="3.1" fill="var(--surface)"/>
+<path d="M15.5 21 L9 27 L15.5 27 Z" fill="currentColor" opacity=".55"/>
+<path d="M24.5 21 L31 27 L24.5 27 Z" fill="currentColor" opacity=".55"/>
+<path d="M17 29 L20 36 L23 29 Z" fill="currentColor" opacity=".6" class="lp-pulse"/></g>`,
+
+python:`<rect x="5" y="9" width="30" height="22" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/>
+<path d="M11 16.5 L15.5 20 L11 23.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="18.5" y="22" width="10" height="2.6" rx="1.3" fill="currentColor" class="lp-pulse"/>`,
+
+flask:`<path d="M16.5 5 L16.5 16 L9 29 a2.4 2.4 0 0 0 2.1 3.6 h17.8 a2.4 2.4 0 0 0 2.1-3.6 L23.5 16 L23.5 5"
+ fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+<line x1="14.5" y1="5" x2="25.5" y2="5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M12.6 25 h14.8 l3.6 4 a2.4 2.4 0 0 1 -2.1 3.6 h-17.8 a2.4 2.4 0 0 1 -2.1-3.6 Z" fill="currentColor" opacity=".32"/>
+<circle cx="17" cy="27.5" r="1.7" fill="currentColor" class="lp-float"/>
+<circle cx="23" cy="29.5" r="1.2" fill="currentColor" class="lp-float" style="animation-delay:.6s"/>`,
+
+dice:`<g class="lp-float"><rect x="8" y="8" width="24" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="2.6"/>
+<circle cx="15" cy="15" r="2.2" fill="currentColor"/><circle cx="25" cy="15" r="2.2" fill="currentColor"/>
+<circle cx="20" cy="20" r="2.2" fill="currentColor"/>
+<circle cx="15" cy="25" r="2.2" fill="currentColor"/><circle cx="25" cy="25" r="2.2" fill="currentColor"/></g>`,
+
+quiz:`<circle cx="20" cy="20" r="14" fill="currentColor" opacity=".16"/>
+<text x="20" y="27.5" text-anchor="middle" font-size="20" font-weight="700" fill="currentColor" class="lp-float">?</text>`,
+
+clip:`<rect x="9" y="7" width="22" height="27" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/>
+<rect x="15" y="3.5" width="10" height="6" rx="2" fill="currentColor"/>
+<path d="M14 21 L17.5 24.5 L26 16" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" class="lp-draw" style="--dash:26"/>`,
+
+qr:`<rect x="6" y="6" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.5"/>
+<rect x="23" y="6" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.5"/>
+<rect x="6" y="23" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.5"/>
+<rect x="23" y="23" width="4.5" height="4.5" fill="currentColor" class="lp-pulse"/>
+<rect x="29.5" y="29.5" width="4.5" height="4.5" fill="currentColor" class="lp-pulse" style="animation-delay:.5s"/>`,
+
+sparkle:`<g class="lp-pulse"><path d="M20 4 L23.2 16.8 L36 20 L23.2 23.2 L20 36 L16.8 23.2 L4 20 L16.8 16.8 Z" fill="currentColor"/></g>`,
+
+jg:`<rect x="7" y="7" width="26" height="26" rx="4" fill="currentColor" opacity=".18" class="lp-pulse"/>
+<rect x="7" y="7" width="26" height="26" rx="4" fill="none" stroke="currentColor" stroke-width="2.6"/>
+<text x="20" y="26" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">JG</text>`,
+
+pgcd:`<text x="20" y="17" text-anchor="middle" font-size="11.5" font-weight="700" fill="currentColor" class="lp-float">12 · 18</text>
+<line x1="7" y1="21" x2="33" y2="21" stroke="currentColor" stroke-width="2.6"/>
+<text x="20" y="32" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor">PGCD</text>`
+};
+
+/* =========================================================================
+   DONNÉES — pour ajouter un outil, ajoute une ligne dans la bonne section.
+   cats : math | science | outil | prof | eval   (la 1re donne la couleur)
+   ext  : true si le lien sort du site (ouvre un nouvel onglet)
+   ========================================================================= */
+const COULEURS = { math:'blue', science:'teal', outil:'amber', prof:'purple', eval:'coral' };
+
+const SECTIONS = [
+{
+  titre: '🛠️ Outils maison',
+  note: "Développés pour mes classes — libres d'usage et de modification.",
+  maison: true,
+  items: [
+    { url:'outils/perimetre_usinage.html', nom:'Périmètres — usinage', desc:'Calculateur, mode défi et fiche imprimable', ico:'perim', cats:['math','outil'] },
+    { url:'outils/aire_usinage.html', nom:'Aires — usinage', desc:'Calculateur, mode défi et fiche imprimable', ico:'aire', cats:['math','outil'] },
+    { url:'outils/calcul_litteral.html', nom:'Calcul littéral', desc:'Développer, factoriser, réduire — avec fiches', ico:'algebre', cats:['math','outil'] },
+    { url:'outils/trigo_trainer.html', nom:'Entraînement trigonométrie', desc:'Cosinus, sinus et tangente dans le triangle rectangle', ico:'angle', cats:['math','outil'] },
+    { url:'jeux/pythagore_trainer.html', nom:'Pythagore', desc:"Calcul d'un côté et réciproque", ico:'triangle', cats:['math','outil'] },
+    { url:'outils/graph_stats.html', nom:'Statistiques & diagrammes', desc:'Bâtons, camemberts et histogrammes à construire', ico:'chart', cats:['math','outil'] },
+    { url:'outils/quiz_diviseurs.html', nom:'Diviseurs et facteurs', desc:'Quiz sur les nombres premiers', ico:'divide', cats:['math','outil'] },
+    { url:'jeux/quizz_pgcd_licence.html', nom:'Diviseurs & PGCD', desc:'Quiz sur les facteurs et le plus grand diviseur commun', ico:'pgcd', cats:['math','outil'] },
+    { url:'jeux/juniper_green_final_licence.html', nom:'Juniper Green', desc:'Jeu des diviseurs et des multiples, à deux', ico:'jg', cats:['math','outil'] },
+    { url:'outils/atome_bohr2.html', nom:'Atomes — modèle de Bohr', desc:"Tableau périodique et structure de l'atome", ico:'atom', cats:['science','outil'] },
+    { url:'outils/sonometre.html', nom:'Sonomètre de classe', desc:'Mesure le niveau sonore avec le micro', ico:'sound', cats:['science','outil'] },
+    { url:'outils/infographie_nuisances sonores.html', nom:'Nuisances sonores', desc:'Infographie sur les dangers du bruit', ico:'ripple', cats:['science','outil'] },
+    { url:'outils/horloge.html', nom:'Horloge interactive', desc:"Lecture de l'heure et calcul de durées, au tableau", ico:'clock', cats:['outil'] }
+  ]
+},
+{
+  titre: '🎯 Outils en ligne',
+  note: 'Calculatrices et logiciels utilisables directement dans le navigateur.',
+  items: [
+    { url:'https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006', nom:'Casio fx-92 Collège', desc:'Émulateur officiel de la calculatrice collège', ico:'calc', cats:['math','outil'], ext:true },
+    { url:'https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY090', nom:'Casio Graph Light', desc:'Émulateur de la calculatrice graphique lycée', ico:'calc', cats:['math','outil'], ext:true },
+    { url:'https://maclasseti.fr/calculatrice', nom:'Calculatrice TI', desc:'Calculatrice scientifique Texas Instruments', ico:'calc', cats:['math','outil'], ext:true },
+    { url:'https://www.numworks.com/fr/simulateur/', nom:'NumWorks', desc:'Simulateur de la calculatrice NumWorks', ico:'calc', cats:['math','outil'], ext:true },
+    { url:'https://www.geogebra.org/classic?lang=fr', nom:'GeoGebra', desc:'Géométrie dynamique, algèbre et tableur', ico:'geom', cats:['math','outil'], ext:true },
+    { url:'https://www.desmos.com/calculator?lang=fr', nom:'Desmos', desc:'Traceur de courbes en ligne', ico:'curve', cats:['math','outil'], ext:true },
+    { url:'https://framacalc.org/abc/fr/', nom:'Tableur en ligne', desc:'Tableur collaboratif, sans création de compte', ico:'grid', cats:['outil'], ext:true },
+    { url:'https://unitconvr.com/fr', nom:"Convertisseur d'unités", desc:'Longueurs, masses, volumes, énergies', ico:'convert', cats:['science','outil'], ext:true }
+  ]
+},
+{
+  titre: '🥷🏽 Le coin des profs',
+  note: 'Simulations, banques de ressources et utilitaires de préparation.',
+  items: [
+    { url:'https://phet.colorado.edu/fr/simulations/filter?type=html', nom:'Simulations PhET', desc:'Physique et chimie en HTML5, en français', ico:'play', cats:['prof','science'], ext:true },
+    { url:'https://javalab.org/en/', nom:'Simulations Javalab', desc:'Grande collection de simulations interactives', ico:'play', cats:['prof','science'], ext:true },
+    { url:'https://chemix.org/', nom:'Chemix', desc:'Dessine des montages de laboratoire', ico:'flask', cats:['prof','science'], ext:true },
+    { url:'https://console.basthon.fr/', nom:'Console Python', desc:'Python dans le navigateur, sans installation', ico:'python', cats:['prof','math'], ext:true },
+    { url:'profs/liensGMPCIE.html', nom:'Liens officiels GMPCIE', desc:'Ressources académiques — Yonne Sud', ico:'link', cats:['prof'] },
+    { url:'https://ladigitale.dev/', nom:'La Digitale', desc:'Boîte à outils numériques libres pour la classe', ico:'sparkle', cats:['prof'], ext:true },
+    { url:'https://portail.apps.education.fr/signin', nom:'Apps Education', desc:"Portail des services de l'Éducation nationale", ico:'rocket', cats:['prof'], ext:true },
+    { url:'https://s.42l.fr/', nom:'Raccourcisseur 42l', desc:'Transforme une adresse longue en lien court', ico:'link', cats:['prof'], ext:true }
+  ]
+},
+{
+  titre: '🎓 Exercices & évaluations',
+  note: "Plateformes de quiz et d'exercices auto-corrigés.",
+  items: [
+    { url:'https://wims.univ-cotedazur.fr', nom:'WIMS', desc:'Exerciseurs auto-corrigés, banque universitaire', ico:'dice', cats:['eval','math'], ext:true },
+    { url:'https://www.quiziniere.com/', nom:'Quizinière', desc:'Exercices en ligne, correction à distance', ico:'clip', cats:['eval'], ext:true },
+    { url:'https://wayground.com/', nom:'Wayground', desc:'Quiz interactifs projetés en classe', ico:'quiz', cats:['eval'], ext:true },
+    { url:'https://www.blooket.com/', nom:'Blooket', desc:'Quiz gamifiés, en équipe ou en solo', ico:'quiz', cats:['eval'], ext:true },
+    { url:'https://www.plickers.com/', nom:'Plickers', desc:'Sondage en classe avec des cartes à scanner', ico:'qr', cats:['eval'], ext:true }
+  ]
+}
+];
+
+const FILTRES = [
+  ['all',     'Tout'],
+  ['math',    'Maths'],
+  ['science', 'Sciences'],
+  ['outil',   'Outils'],
+  ['prof',    'Profs'],
+  ['eval',    'Évaluations']
+];
+
+/* =========================================================================
+   RENDU
+   ========================================================================= */
+function carte(it) {
+  const c = COULEURS[it.cats[0]] || 'blue';
+  const a = document.createElement('a');
+  a.className = 'card ' + it.cats.join(' ');
+  a.href = it.url;
+  a.style.setProperty('--c', 'var(--' + c + ')');
+  a.style.setProperty('--c-bg', 'var(--' + c + '-bg)');
+  if (it.ext) { a.target = '_blank'; a.rel = 'noopener'; }
+  a.innerHTML =
+    '<span class="card-ico"><svg viewBox="0 0 40 40" aria-hidden="true">' + ICONS[it.ico] + '</svg></span>' +
+    '<span class="card-txt">' +
+      '<span class="card-name">' + it.nom + '</span>' +
+      '<span class="card-desc">' + it.desc + '</span>' +
+    '</span>' +
+    (it.ext ? '<span class="card-ext" title="Site externe" aria-label="Ouvre un site externe">↗</span>' : '');
+  return a;
+}
+
+function construire() {
+  const host = document.getElementById('sections');
+  SECTIONS.forEach(function (sec) {
+    const d = document.createElement('section');
+    d.className = 'section';
+    d.innerHTML =
+      '<div class="section-head"><h2>' + sec.titre + '</h2>' +
+      '<span class="count">' + sec.items.length + '</span>' +
+      '<p>' + sec.note + '</p></div>';
+    const g = document.createElement('div');
+    g.className = 'grid';
+    sec.items.forEach(function (it) { g.appendChild(carte(it)); });
+    d.appendChild(g);
+    host.appendChild(d);
+  });
+
+  const maison = SECTIONS.find(function (s) { return s.maison; });
+  document.getElementById('n-maison').textContent = maison ? maison.items.length : 0;
+  document.getElementById('n-total').textContent =
+    SECTIONS.reduce(function (n, s) { return n + s.items.length; }, 0);
+
+  const fh = document.getElementById('filters');
+  FILTRES.forEach(function (f, i) {
+    const b = document.createElement('button');
+    b.className = 'shape-tab' + (i === 0 ? ' active' : '');
+    b.type = 'button';
+    b.dataset.color = COULEURS[f[0]] || 'blue';
+    b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
+    b.innerHTML = (i === 0 ? '' :
+      '<span class="dot" style="background:var(--' + COULEURS[f[0]] + ')"></span>') + f[1];
+    b.addEventListener('click', function () { filtrer(f[0], b); });
+    fh.appendChild(b);
+  });
+}
+
+function filtrer(cat, btn) {
+  document.querySelectorAll('#filters .shape-tab').forEach(function (b) {
+    b.classList.remove('active');
+    b.setAttribute('aria-pressed', 'false');
+  });
+  btn.classList.add('active');
+  btn.setAttribute('aria-pressed', 'true');
+
+  let visibles = 0;
+  document.querySelectorAll('.card').forEach(function (c) {
+    const ok = (cat === 'all') || c.classList.contains(cat);
+    c.classList.toggle('hidden', !ok);
+    if (ok) visibles++;
+  });
+  document.querySelectorAll('.section').forEach(function (s) {
+    const n = s.querySelectorAll('.card:not(.hidden)').length;
+    s.classList.toggle('hidden', n === 0);
+    const badge = s.querySelector('.count');
+    if (badge) badge.textContent = n;
+  });
+  document.getElementById('empty').classList.toggle('hidden', visibles > 0);
+}
+
+construire();
 </script>
 
 </body>
