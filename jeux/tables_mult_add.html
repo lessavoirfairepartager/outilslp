@@ -1,0 +1,754 @@
+<!--
+Tables de multiplication et d'addition — entraînement à la table vide
+Copyright (c) 2026 Moise Muller <moise.muller@ac-dijon.fr>
+Créé le 3 août 2026 pour outilslp.netlify.app
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tables de multiplication et d'addition</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--coral); --accent-bg: var(--coral-bg); }
+
+  /* ── Bandeau du haut ────────────────────────────────────────────────── */
+  .tb-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--pad-card);
+    margin-bottom: var(--gap);
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  .tb-ops { display: flex; gap: 8px; }
+  .tb-op {
+    width: 58px; height: 52px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text2);
+    font-family: inherit;
+    font-size: 26px; font-weight: 700;
+    cursor: pointer;
+    transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .tb-op:hover { border-color: var(--accent); color: var(--accent); }
+  .tb-op.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .tb-select {
+    padding: 9px 11px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: inherit; font-size: var(--fs-xs); font-weight: 600;
+  }
+
+  .tb-pie { display: flex; align-items: center; gap: 12px; }
+  .tb-pie svg { width: 78px; height: 78px; flex-shrink: 0; }
+  .tb-pct { font-size: var(--fs-xxl); font-weight: 700; color: var(--text); line-height: 1; }
+  .tb-pct span { font-size: var(--fs-sm); color: var(--text3); }
+  .tb-legend { font-size: var(--fs-xs); color: var(--text2); line-height: 1.6; }
+  .tb-dot { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .tb-dot.ok  { background: var(--green); }
+  .tb-dot.ko  { background: var(--amber); }
+  .tb-dot.rien{ background: var(--border2); }
+
+  .tb-btn {
+    padding: 10px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text2);
+    font-family: inherit; font-size: var(--fs-xs); font-weight: 700;
+    cursor: pointer;
+    transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .tb-btn:hover { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+
+  /* ── Table ──────────────────────────────────────────────────────────── */
+  .tb-wrap { overflow-x: auto; }
+  .tb-grid { display: grid; gap: 3px; min-width: 440px; }
+  .tb-cell {
+    aspect-ratio: 1 / 1;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    background: var(--surface2);
+    color: var(--text3);
+    font-family: inherit;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    padding: 0;
+    cursor: pointer;
+    transition: background-color .15s, color .15s, border-color .15s, transform .12s;
+  }
+  .tb-cell.tete { background: var(--surface); color: var(--text2); border-color: var(--border2); cursor: default; }
+  .tb-cell.coin { background: var(--accent); color: #fff; border-color: var(--accent); font-size: var(--fs-sm); cursor: default; }
+  .tb-cell.acquis  { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+  .tb-cell.revoir  { background: var(--amber-bg); border-color: var(--amber); color: transparent; }
+  .tb-cell.active  { background: var(--red-bg); border-color: var(--red); color: var(--red); border-width: 3px; transform: scale(1.1); z-index: 2; }
+  .tb-cell.surlig  { border-color: var(--accent); }
+  .tb-cell:not(.tete):not(.coin):hover { border-color: var(--accent); }
+
+  /* ── Question ───────────────────────────────────────────────────────── */
+  .tb-question {
+    text-align: center;
+    font-size: 40px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: .02em;
+    line-height: 1.3;
+  }
+  .tb-answer {
+    width: 100%;
+    max-width: 210px;
+    margin: 0 auto;
+    display: block;
+    font-size: 30px;
+    text-align: center;
+    font-weight: 700;
+  }
+  .tb-feedback {
+    display: none;
+    border-left: 4px solid var(--border2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 13px 15px;
+    font-size: var(--fs-sm);
+    line-height: 1.5;
+  }
+  .tb-feedback.show { display: block; }
+  .tb-feedback.bon  { border-left-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .tb-feedback.rate { border-left-color: var(--amber); background: var(--amber-bg); color: var(--amber2); }
+  .tb-feedback b { font-size: var(--fs-lg); }
+
+  .tb-note { font-size: var(--fs-xs); color: var(--text3); line-height: 1.5; }
+
+  .tb-fini {
+    display: none;
+    text-align: center;
+    padding: 16px;
+    border-radius: var(--radius);
+    background: var(--green-bg);
+    color: var(--green);
+    font-size: var(--fs-md);
+    font-weight: 700;
+  }
+  .tb-fini.show { display: block; }
+
+  /* ── Contre la montre ───────────────────────────────────────────────── */
+  .tb-chrono-num { font-size: var(--fs-xxl); font-weight: 700; color: var(--accent); text-align: center; line-height: 1; }
+  .tb-chrono-num.urgent { color: var(--red); }
+
+  .tb-fold {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px var(--pad-card);
+    margin-top: var(--gap);
+  }
+  .tb-fold > summary { cursor: pointer; font-size: var(--fs-sm); font-weight: 700; color: var(--text2); list-style: none; }
+  .tb-fold > summary::-webkit-details-marker { display: none; }
+  .tb-fold > summary::before { content: "▸ "; color: var(--accent); }
+  .tb-fold[open] > summary::before { content: "▾ "; }
+  .tb-fold[open] > summary { margin-bottom: 12px; }
+  .tb-fold p { font-size: var(--fs-xs); color: var(--text2); line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <rect x="7" y="7" width="26" height="26" rx="3" fill="none" stroke="var(--coral)" stroke-width="2.5"/>
+      <line x1="7" y1="15" x2="33" y2="15" stroke="var(--coral)" stroke-width="2"/>
+      <line x1="15" y1="7" x2="15" y2="33" stroke="var(--coral)" stroke-width="2"/>
+      <rect x="17" y="17" width="7" height="7" rx="1.5" fill="var(--coral)" class="lp-blink"/>
+      <rect x="26" y="26" width="7" height="7" rx="1.5" fill="var(--coral)" class="lp-blink" style="animation-delay:.7s"/>
+    </svg></div>
+  <div>
+    <h1>Tables de multiplication et d'addition</h1>
+    <p>Remplir la table case par case · Cycle 3 · CAP · Bac Pro</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('jeu',this)">Entraînement</button>
+    <button class="mode-tab" onclick="setMode('ref',this)">Table de référence</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('chrono',this)">Contre la montre</button>
+  </div>
+
+  <!-- ══ BANDEAU : opération, taille, camembert ═══════════════════════ -->
+  <div class="tb-bar" id="tb-bar">
+    <div class="tb-ops">
+      <button class="tb-op on" id="op-x" onclick="setOp('x')" title="Tables de multiplication">×</button>
+      <button class="tb-op" id="op-p" onclick="setOp('p')" title="Tables d'addition">+</button>
+    </div>
+
+    <select class="tb-select" id="tb-taille" onchange="setTaille()">
+      <option value="10" selected>Jusqu'à 10</option>
+      <option value="12">Jusqu'à 12</option>
+    </select>
+
+    <div class="tb-pie">
+      <svg id="tb-camembert" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div>
+        <div class="tb-pct" id="tb-pct">0 <span>%</span></div>
+        <div class="tb-note">de la table connue</div>
+      </div>
+    </div>
+
+    <div class="tb-legend" id="tb-legend"></div>
+
+    <button class="tb-btn" style="margin-left:auto" onclick="recommencer()">↺ Recommencer</button>
+  </div>
+
+  <!-- ══ ENTRAÎNEMENT ═════════════════════════════════════════════════ -->
+  <div id="mode-jeu">
+    <div class="panel active">
+
+      <div class="sketch-card">
+        <div class="tb-wrap"><div class="tb-grid" id="tb-table"></div></div>
+        <div class="context-label" id="tb-legende-table">Vert : case sue · Orange : case ratée, à revoir deux fois · Rouge : case en cours</div>
+      </div>
+
+      <div class="controls-card">
+        <div class="tb-question" id="tb-q">—</div>
+
+        <div class="field">
+          <label for="tb-rep" style="text-align:center;display:block">Ta réponse</label>
+          <input class="tb-answer" type="number" id="tb-rep" inputmode="numeric" placeholder="?" autocomplete="off">
+        </div>
+
+        <button class="btn-check" id="tb-valider" onclick="valider()">Valider</button>
+
+        <div class="tb-feedback" id="tb-fb"></div>
+        <div class="tb-fini" id="tb-fini">🎉 Table terminée, toutes les cases sont sues !</div>
+
+        <div class="tb-note">Une case ratée revient plus tard : il faut la réussir <strong>deux fois</strong> pour qu'elle passe au vert. Tu peux aussi cliquer sur une case de la table pour la travailler tout de suite.</div>
+
+        <div style="border-top:1px solid var(--border);padding-top:1rem">
+          <button class="btn-fiche" onclick="generateFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+          <div class="tb-note" style="margin-top:7px">La fiche reprend en priorité les cases pas encore sues.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TABLE DE RÉFÉRENCE ═══════════════════════════════════════════ -->
+  <div id="mode-ref" style="display:none">
+    <div class="pg-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--pad-card)">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+        <button class="tb-btn" id="tb-masque-btn" onclick="basculerMasque()">👁 Masquer les résultats</button>
+        <span class="tb-note">Survole ou touche une case pour éclairer sa ligne et sa colonne.</span>
+      </div>
+      <div class="tb-wrap"><div class="tb-grid" id="tb-ref"></div></div>
+    </div>
+
+    <details class="tb-fold">
+      <summary>Conseils pour apprendre une table</summary>
+      <p><strong>La table est symétrique :</strong> 7 × 8 et 8 × 7 donnent le même résultat. Apprendre une case, c'est en apprendre deux.</p>
+      <p style="margin-top:8px"><strong>Les cases faciles d'abord :</strong> les tables de 1, 2, 5 et 10 se retiennent vite. Cela fait déjà plus de la moitié du tableau.</p>
+      <p style="margin-top:8px"><strong>Le carré de 9 :</strong> pour la table de 9, la somme des chiffres du résultat vaut toujours 9 (18, 27, 36, 45…), et le chiffre des dizaines augmente de 1 pendant que celui des unités diminue de 1.</p>
+      <p style="margin-top:8px"><strong>Les vraies difficultés</strong> se concentrent sur une poignée de cases : 6×7, 6×8, 7×8, 7×9, 8×9. Le mode entraînement les ramène tant qu'elles ne sont pas sues.</p>
+    </details>
+  </div>
+
+  <!-- ══ CONTRE LA MONTRE ═════════════════════════════════════════════ -->
+  <div id="mode-chrono" style="display:none">
+    <div class="panel active">
+      <div class="sketch-card">
+        <div class="tb-wrap"><div class="tb-grid" id="tb-table2"></div></div>
+        <div class="context-label">Les cases réussies s'allument au fur et à mesure. Le score compte les bonnes réponses.</div>
+      </div>
+
+      <div class="controls-card">
+        <div class="tb-chrono-num" id="tb-temps">60</div>
+        <div class="tb-note" style="text-align:center">secondes restantes</div>
+        <div class="progress-bar"><div class="progress-fill" id="tb-progress" style="width:100%"></div></div>
+
+        <div class="result-block">
+          <div class="result-label">Bonnes réponses</div>
+          <div class="result-value" id="tb-score">0</div>
+          <div class="result-sub" id="tb-score-sub">Lance la manche pour commencer.</div>
+        </div>
+
+        <div class="tb-question" id="tb-q2">—</div>
+        <input class="tb-answer" type="number" id="tb-rep2" inputmode="numeric" placeholder="?" autocomplete="off" disabled>
+        <button class="btn-check" id="tb-go" onclick="lancerManche()">▶ Lancer une manche de 60 s</button>
+        <div class="tb-feedback" id="tb-fb2"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/assets/lp-fiche.js"></script>
+<script>
+/* ═══ ÉTAT ══════════════════════════════════════════════════════════════
+   statut : 0 = jamais vue, 1 = ratée (à revoir), 2 = sue
+   besoin : nombre de réussites encore nécessaires pour passer au vert     */
+
+var N = 10;
+var op = "x";                          /* "x" ou "p" */
+var etats = {};                        /* etats["x10"] = {statut:[], besoin:[]} */
+var courante = null, recentes = [], verrou = false;
+
+function cle(){ return op + N; }
+function signe(){ return op === "x" ? "×" : "+"; }
+function calcul(a, b){ return op === "x" ? a * b : a + b; }
+
+function etat(){
+  var k = cle();
+  if (!etats[k]) {
+    var st = [], be = [], i, j;
+    for (i = 0; i <= N; i++) {
+      st[i] = []; be[i] = [];
+      for (j = 0; j <= N; j++) { st[i][j] = 0; be[i][j] = 1; }
+    }
+    etats[k] = { statut: st, besoin: be };
+  }
+  return etats[k];
+}
+
+/* ═══ RÉGLAGES ══════════════════════════════════════════════════════════ */
+function setOp(o){
+  op = o;
+  document.getElementById("op-x").classList.toggle("on", o === "x");
+  document.getElementById("op-p").classList.toggle("on", o === "p");
+  courante = null; recentes = [];
+  construireTables();
+  majTout();
+  if (currentMode === "jeu") poser();
+  if (currentMode === "chrono") arreterManche();
+}
+function setTaille(){
+  N = parseInt(document.getElementById("tb-taille").value, 10);
+  courante = null; recentes = [];
+  construireTables();
+  majTout();
+  if (currentMode === "jeu") poser();
+  if (currentMode === "chrono") arreterManche();
+}
+function recommencer(){
+  delete etats[cle()];
+  courante = null; recentes = [];
+  document.getElementById("tb-fini").classList.remove("show");
+  cacher("tb-fb");
+  majTout();
+  if (currentMode === "jeu") poser();
+}
+
+/* ═══ CONSTRUCTION DES TABLES ═══════════════════════════════════════════ */
+function construireTables(){
+  ["tb-table", "tb-table2", "tb-ref"].forEach(function(id){
+    var g = document.getElementById(id);
+    g.style.gridTemplateColumns = "repeat(" + (N + 1) + ", minmax(0,1fr))";
+    g.innerHTML = "";
+    for (var i = 0; i <= N; i++) {
+      for (var j = 0; j <= N; j++) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.id = id + "-" + i + "-" + j;
+        if (i === 0 && j === 0)      { b.className = "tb-cell coin"; b.textContent = signe(); }
+        else if (i === 0 || j === 0) { b.className = "tb-cell tete"; b.textContent = (i === 0 ? j : i); }
+        else {
+          b.className = "tb-cell";
+          b.setAttribute("data-i", i);
+          b.setAttribute("data-j", j);
+          if (id === "tb-ref") b.textContent = calcul(i, j);
+        }
+        g.appendChild(b);
+      }
+    }
+  });
+  if (masque) appliquerMasque();
+}
+
+/* Clic sur une case : travailler cette opération tout de suite */
+document.addEventListener("click", function(e){
+  var b = e.target;
+  if (!b || !b.getAttribute) return;
+  var i = b.getAttribute("data-i"), j = b.getAttribute("data-j");
+  if (!i || !j) return;
+  if (b.id.indexOf("tb-table-") !== 0) return;
+  if (currentMode !== "jeu" || verrou) return;
+  courante = { i: parseInt(i, 10), j: parseInt(j, 10) };
+  afficherQuestion();
+});
+
+/* Survol dans la table de référence : éclaire la ligne et la colonne */
+document.addEventListener("mouseover", function(e){
+  var b = e.target;
+  if (!b || !b.id || b.id.indexOf("tb-ref-") !== 0) return;
+  var p = b.id.split("-"), li = parseInt(p[2], 10), co = parseInt(p[3], 10);
+  for (var i = 0; i <= N; i++) {
+    for (var j = 0; j <= N; j++) {
+      var c = document.getElementById("tb-ref-" + i + "-" + j);
+      if (c) c.classList.toggle("surlig", (i === li && j <= co) || (j === co && i <= li));
+    }
+  }
+});
+
+/* ═══ AFFICHAGE ═════════════════════════════════════════════════════════ */
+function majTout(){ majTable("tb-table"); majTable("tb-table2"); majStats(); }
+
+function majTable(id){
+  var e = etat(), i, j, c;
+  for (i = 1; i <= N; i++) {
+    for (j = 1; j <= N; j++) {
+      c = document.getElementById(id + "-" + i + "-" + j);
+      if (!c) continue;
+      c.className = "tb-cell";
+      if (e.statut[i][j] === 2) { c.className += " acquis"; c.textContent = calcul(i, j); }
+      else if (e.statut[i][j] === 1) { c.className += " revoir"; c.textContent = ""; }
+      else c.textContent = "";
+      if (courante && courante.i === i && courante.j === j && id === tableCourante()) {
+        c.className += " active";
+        c.textContent = "?";
+      }
+    }
+  }
+}
+function tableCourante(){ return currentMode === "chrono" ? "tb-table2" : "tb-table"; }
+
+function majStats(){
+  var e = etat(), tot = N * N, ok = 0, ko = 0, i, j;
+  for (i = 1; i <= N; i++) for (j = 1; j <= N; j++) {
+    if (e.statut[i][j] === 2) ok++;
+    else if (e.statut[i][j] === 1) ko++;
+  }
+  var pct = Math.round(ok / tot * 100);
+  document.getElementById("tb-pct").innerHTML = pct + ' <span>%</span>';
+  document.getElementById("tb-legend").innerHTML =
+    '<span class="tb-dot ok"></span>' + ok + " sues<br>" +
+    '<span class="tb-dot ko"></span>' + ko + " à revoir<br>" +
+    '<span class="tb-dot rien"></span>' + (tot - ok - ko) + " non vues";
+  dessinerCamembert(ok, ko, tot - ok - ko);
+}
+
+function dessinerCamembert(ok, ko, reste){
+  var tot = ok + ko + reste, svg = document.getElementById("tb-camembert");
+  var parts = [
+    { v: ok,    c: "var(--green)" },
+    { v: ko,    c: "var(--amber)" },
+    { v: reste, c: "var(--border2)" }
+  ];
+  var a = -90, s = "", i;
+  for (i = 0; i < parts.length; i++) {
+    if (parts[i].v === 0) continue;
+    var ang = parts[i].v / tot * 360;
+    s += secteur(50, 50, 44, a, a + ang, parts[i].c);
+    a += ang;
+  }
+  s += '<circle cx="50" cy="50" r="44" fill="none" stroke="var(--surface)" stroke-width="2"/>';
+  svg.innerHTML = s;
+}
+function secteur(cx, cy, r, a0, a1, fill){
+  if (a1 - a0 >= 359.9) {
+    return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + fill + '"/>';
+  }
+  var p0 = pt(cx, cy, r, a0), p1 = pt(cx, cy, r, a1);
+  var grand = (a1 - a0) > 180 ? 1 : 0;
+  return '<path d="M' + cx + " " + cy + " L" + p0.x + " " + p0.y +
+         " A" + r + " " + r + " 0 " + grand + " 1 " + p1.x + " " + p1.y +
+         ' Z" fill="' + fill + '"/>';
+}
+function pt(cx, cy, r, deg){
+  var a = deg * Math.PI / 180;
+  return { x: (cx + r * Math.cos(a)).toFixed(2), y: (cy + r * Math.sin(a)).toFixed(2) };
+}
+
+/* ═══ ENTRAÎNEMENT ══════════════════════════════════════════════════════ */
+function poser(){
+  var e = etat(), neuves = [], revoir = [], i, j;
+  for (i = 1; i <= N; i++) for (j = 1; j <= N; j++) {
+    if (e.statut[i][j] === 2) continue;
+    (e.statut[i][j] === 1 ? revoir : neuves).push({ i: i, j: j });
+  }
+  if (!neuves.length && !revoir.length) {
+    courante = null;
+    document.getElementById("tb-q").textContent = "Terminé !";
+    document.getElementById("tb-fini").classList.add("show");
+    document.getElementById("tb-rep").disabled = true;
+    document.getElementById("tb-valider").disabled = true;
+    majTout();
+    return;
+  }
+  document.getElementById("tb-rep").disabled = false;
+  document.getElementById("tb-valider").disabled = false;
+
+  var pool = choisirPool(neuves, revoir);
+  courante = pool[Math.floor(Math.random() * pool.length)];
+  afficherQuestion();
+}
+
+/* Sélection : on évite les 3 dernières cases posées tant que c'est possible,
+   pour qu'une case ratée revienne plus tard et non tout de suite. */
+function choisirPool(neuves, revoir){
+  var R = sansRecentes(revoir), V = sansRecentes(neuves);
+  if (R.length && (!V.length || Math.random() < 0.4)) return R;
+  if (V.length) return V;
+  if (R.length) return R;
+  return revoir.length ? revoir : neuves;
+}
+function sansRecentes(liste){
+  var out = liste.filter(function(c){
+    for (var k = 0; k < recentes.length; k++) {
+      if (recentes[k].i === c.i && recentes[k].j === c.j) return false;
+    }
+    return true;
+  });
+  return out;
+}
+function memoriser(c){
+  recentes.push({ i: c.i, j: c.j });
+  if (recentes.length > 3) recentes.shift();
+}
+
+function afficherQuestion(){
+  document.getElementById("tb-q").innerHTML =
+    courante.i + " " + signe() + " " + courante.j + " = <span style=\"color:var(--red)\">?</span>";
+  document.getElementById("tb-rep").value = "";
+  cacher("tb-fb");
+  majTout();
+  document.getElementById("tb-rep").focus();
+}
+
+function valider(){
+  if (verrou || !courante) return;
+  var champ = document.getElementById("tb-rep");
+  var v = parseInt(champ.value, 10);
+  if (isNaN(v)) { champ.focus(); return; }
+
+  var e = etat(), i = courante.i, j = courante.j, bon = calcul(i, j);
+  var fb = document.getElementById("tb-fb");
+  verrou = true;
+
+  if (v === bon) {
+    e.besoin[i][j]--;
+    if (e.besoin[i][j] <= 0) { e.statut[i][j] = 2; e.besoin[i][j] = 0; }
+    fb.className = "tb-feedback bon show";
+    fb.innerHTML = "✔ " + i + " " + signe() + " " + j + " = <b>" + bon + "</b>" +
+      (e.statut[i][j] === 2 ? "" : "<br>Encore une bonne réponse et la case passe au vert.");
+    memoriser(courante);
+    majTout();
+    setTimeout(function(){ verrou = false; poser(); }, 900);
+  } else {
+    e.statut[i][j] = 1;
+    e.besoin[i][j] = 2;
+    fb.className = "tb-feedback rate show";
+    fb.innerHTML = "✘ La réponse était <b>" + bon + "</b>. Tu as répondu " + v +
+      ".<br>Cette case revient plus tard : il faudra la réussir deux fois.";
+    memoriser(courante);
+    majTout();
+    setTimeout(function(){ verrou = false; poser(); }, 2600);
+  }
+}
+function cacher(id){ document.getElementById(id).className = "tb-feedback"; }
+
+/* ═══ TABLE DE RÉFÉRENCE ════════════════════════════════════════════════ */
+var masque = false;
+function basculerMasque(){
+  masque = !masque;
+  document.getElementById("tb-masque-btn").textContent =
+    masque ? "👁 Afficher les résultats" : "👁 Masquer les résultats";
+  appliquerMasque();
+}
+function appliquerMasque(){
+  for (var i = 1; i <= N; i++) for (var j = 1; j <= N; j++) {
+    var c = document.getElementById("tb-ref-" + i + "-" + j);
+    if (c) c.textContent = masque ? "" : calcul(i, j);
+  }
+}
+
+/* ═══ CONTRE LA MONTRE ══════════════════════════════════════════════════ */
+var manche = false, score = 0, tempsRestant = 60, chronoId = null;
+
+function lancerManche(){
+  arreterManche();
+  manche = true; score = 0; tempsRestant = 60;
+  document.getElementById("tb-score").textContent = "0";
+  document.getElementById("tb-score-sub").textContent = "En cours…";
+  document.getElementById("tb-rep2").disabled = false;
+  document.getElementById("tb-go").textContent = "⏹ Arrêter";
+  document.getElementById("tb-go").onclick = arreterManche;
+  poserChrono();
+  document.getElementById("tb-rep2").focus();
+  chronoId = setInterval(function(){
+    tempsRestant--;
+    majChrono();
+    if (tempsRestant <= 0) finirManche();
+  }, 1000);
+  majChrono();
+}
+function majChrono(){
+  var t = document.getElementById("tb-temps");
+  t.textContent = Math.max(0, tempsRestant);
+  t.classList.toggle("urgent", tempsRestant <= 10);
+  document.getElementById("tb-progress").style.width = Math.max(0, tempsRestant / 60 * 100) + "%";
+}
+function poserChrono(){
+  courante = { i: 1 + Math.floor(Math.random() * N), j: 1 + Math.floor(Math.random() * N) };
+  document.getElementById("tb-q2").innerHTML =
+    courante.i + " " + signe() + " " + courante.j + " = <span style=\"color:var(--red)\">?</span>";
+  document.getElementById("tb-rep2").value = "";
+  majTable("tb-table2");
+}
+function validerChrono(){
+  if (!manche || !courante) return;
+  var champ = document.getElementById("tb-rep2");
+  var v = parseInt(champ.value, 10);
+  if (isNaN(v)) return;
+  var fb = document.getElementById("tb-fb2");
+  var bon = calcul(courante.i, courante.j);
+  if (v === bon) {
+    score++;
+    etat().statut[courante.i][courante.j] = 2;
+    etat().besoin[courante.i][courante.j] = 0;
+    fb.className = "tb-feedback bon show";
+    fb.innerHTML = "✔ " + bon;
+    document.getElementById("tb-score").textContent = score;
+  } else {
+    if (etat().statut[courante.i][courante.j] !== 2) {
+      etat().statut[courante.i][courante.j] = 1;
+      etat().besoin[courante.i][courante.j] = 2;
+    }
+    fb.className = "tb-feedback rate show";
+    fb.innerHTML = "✘ " + courante.i + " " + signe() + " " + courante.j + " = <b>" + bon + "</b>";
+  }
+  majStats();
+  poserChrono();
+  champ.focus();
+}
+function finirManche(){
+  clearInterval(chronoId); chronoId = null;
+  manche = false;
+  document.getElementById("tb-rep2").disabled = true;
+  document.getElementById("tb-score-sub").textContent =
+    "Manche terminée : " + score + " bonne" + (score > 1 ? "s" : "") + " réponse" + (score > 1 ? "s" : "") + " en 60 secondes.";
+  document.getElementById("tb-q2").textContent = "Temps écoulé";
+  document.getElementById("tb-go").textContent = "▶ Nouvelle manche";
+  document.getElementById("tb-go").onclick = lancerManche;
+}
+function arreterManche(){
+  if (chronoId) { clearInterval(chronoId); chronoId = null; }
+  manche = false;
+  tempsRestant = 60;
+  var g = document.getElementById("tb-go");
+  g.textContent = "▶ Lancer une manche de 60 s";
+  g.onclick = lancerManche;
+  document.getElementById("tb-rep2").disabled = true;
+  document.getElementById("tb-q2").textContent = "—";
+  document.getElementById("tb-fb2").className = "tb-feedback";
+  majChrono();
+}
+
+/* ═══ NAVIGATION ════════════════════════════════════════════════════════ */
+var currentMode = "jeu";
+function setMode(m, btn){
+  currentMode = m;
+  var tabs = document.querySelectorAll(".mode-tab");
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
+  if (btn) btn.classList.add("active");
+  document.getElementById("mode-jeu").style.display    = (m === "jeu")    ? "block" : "none";
+  document.getElementById("mode-ref").style.display    = (m === "ref")    ? "block" : "none";
+  document.getElementById("mode-chrono").style.display = (m === "chrono") ? "block" : "none";
+  document.getElementById("tb-bar").style.display      = (m === "ref")    ? "none"  : "flex";
+  if (m !== "chrono") arreterManche();
+  if (m === "jeu") poser();
+  if (m === "ref") appliquerMasque();
+  majTout();
+}
+
+/* Entrée valide, dans les deux modes */
+document.addEventListener("keydown", function(e){
+  if (e.key !== "Enter") return;
+  if (currentMode === "jeu")    { e.preventDefault(); valider(); }
+  if (currentMode === "chrono" && manche) { e.preventDefault(); validerChrono(); }
+});
+
+/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
+function svgOp(a, b){
+  return '<rect x="18" y="34" width="164" height="66" rx="10" fill="#FAECE7" stroke="#993C1D" stroke-width="2.5"/>' +
+         '<text x="100" y="80" text-anchor="middle" font-size="34" font-weight="700" fill="#993C1D">' +
+         a + " " + signe() + " " + b + "</text>" +
+         '<text x="100" y="126" text-anchor="middle" font-size="13" fill="#55534e">Calcule de tête</text>';
+}
+function generateFiche(){
+  var e = etat(), aRevoir = [], autres = [], i, j;
+  for (i = 1; i <= N; i++) for (j = 1; j <= N; j++) {
+    (e.statut[i][j] === 2 ? autres : aRevoir).push({ i: i, j: j });
+  }
+  melange(aRevoir); melange(autres);
+  var choix = aRevoir.concat(autres).slice(0, 10);
+  var nomOp = (op === "x") ? "Multiplication" : "Addition";
+  LP.fiche({
+    icon: (op === "x") ? "\u2716\uFE0F" : "\u2795",
+    title: "Tables " + (op === "x" ? "de multiplication" : "d\u2019addition"),
+    subtitle: "Table de 1 \u00e0 " + N + " \u00b7 calcul mental",
+    modeLabel: "Entra\u00eenement",
+    isPlus: false,
+    tolerance: "r\u00e9ponse enti\u00e8re exacte",
+    accent: "#993C1D",
+    answerLabel: "R\u00e9ponse =",
+    unit: "",
+    aide: (op === "x")
+      ? "La table est sym\u00e9trique : 7 \u00d7 8 = 8 \u00d7 7 &nbsp;|&nbsp; Tables de 1, 2, 5 et 10 : les plus faciles &nbsp;|&nbsp; Table de 9 : la somme des chiffres du r\u00e9sultat vaut 9"
+      : "L\u2019addition est commutative : 7 + 8 = 8 + 7 &nbsp;|&nbsp; Passer par 10 : 8 + 5 = 8 + 2 + 3 = 13 &nbsp;|&nbsp; Les doubles se retiennent vite : 6 + 6, 7 + 7, 8 + 8",
+    questions: choix.map(function(c, k){
+      return {
+        num: k + 1,
+        nom: nomOp,
+        hint: "",
+        svg: svgOp(c.i, c.j),
+        cotes: "Calcule : " + c.i + " " + signe() + " " + c.j,
+        answer: calcul(c.i, c.j),
+        answerText: String(calcul(c.i, c.j))
+      };
+    })
+  });
+}
+function melange(t){
+  for (var i = t.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var x = t[i]; t[i] = t[j]; t[j] = x;
+  }
+  return t;
+}
+
+/* ═══ INITIALISATION ════════════════════════════════════════════════════ */
+construireTables();
+majTout();
+poser();
+</script>
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp; Licence MIT · © 2026 Moïse Muller &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
+</footer>
+</body>
+</html>

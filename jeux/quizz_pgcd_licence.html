@@ -115,6 +115,20 @@ SOFTWARE.
 
   .pg-note { font-size: var(--fs-xs); color: var(--text3); line-height: 1.5; }
 
+  .pg-casio {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text2);
+    font-size: var(--fs-xs); font-weight: 700;
+    text-decoration: none;
+    transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .pg-casio:hover { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+  @media print { .pg-casio { display: none; } }
+
   .pg-fold {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -160,8 +174,9 @@ SOFTWARE.
 
       <!-- Diagramme des facteurs communs -->
       <div class="sketch-card">
-        <svg id="pg-venn" viewBox="0 0 340 230" xmlns="http://www.w3.org/2000/svg"></svg>
+        <svg id="pg-venn" viewBox="0 0 340 280" xmlns="http://www.w3.org/2000/svg"></svg>
         <div class="context-label">Les facteurs premiers communs aux deux nombres se placent au centre. Leur produit est le PGCD.</div>
+        <div class="pg-note" id="pg-explique" style="margin-top:8px;text-align:left"></div>
       </div>
 
       <!-- Réglages -->
@@ -212,7 +227,10 @@ SOFTWARE.
           <div class="result-sub" id="pg-pgcd-sub">Tire deux nombres pour commencer.</div>
         </div>
 
-        <div class="pg-note" id="pg-calc">Calculatrice collège autorisée et fortement conseillée.</div>
+        <div>
+          <div class="pg-note" style="margin-bottom:8px">Calculatrice collège autorisée et fortement conseillée.</div>
+          <a class="pg-casio" href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio fx-92 collège</a>
+        </div>
       </div>
     </div>
 
@@ -265,6 +283,7 @@ SOFTWARE.
       <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
       <div class="feedback-box" id="defi-feedback"></div>
       <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Question suivante →</button>
+      <div style="margin-top:1rem"><a class="pg-casio" href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio fx-92 collège</a></div>
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
         <button class="btn-fiche" onclick="generateFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
       </div>
@@ -416,35 +435,86 @@ function majTableau(){
 
 function dessinerVenn(){
   var svg = document.getElementById("pg-venn");
+  var note = document.getElementById("pg-explique");
   if (!A) {
-    svg.innerHTML = cercles("A", "B") +
-      '<text x="170" y="215" text-anchor="middle" font-size="14" fill="var(--text3)">Tire deux nombres pour voir leurs facteurs</text>';
+    svg.innerHTML = cercles("A", "", "B", "") + legendes() +
+      '<text x="170" y="268" text-anchor="middle" font-size="14" fill="var(--text3)">Tire deux nombres pour voir leurs facteurs</text>';
+    note.innerHTML = "";
     return;
   }
   var fa = facteurs(A), fb = facteurs(B);
   var comm = communs(fa, fb);
   var seulA = difference(fa, comm), seulB = difference(fb, comm);
-  var s = cercles("A = " + A, "B = " + B);
+  var s = cercles("A = " + A, ecrireUni(fa), "B = " + B, ecrireUni(fb)) + legendes();
+
   if (!solutions) {
-    s += zone(80, [""], "?") + zone(170, [""], "?") + zone(260, [""], "?");
+    s += zone(80, [], "?") + zone(170, [], "?") + zone(260, [], "?");
+    note.innerHTML = "";
   } else {
-    s += zone(78,  seulA, seulA.length ? "" : "—");
-    s += zone(170, comm,  comm.length ? "" : "1");
-    s += zone(262, seulB, seulB.length ? "" : "—");
-    s += '<text x="170" y="215" text-anchor="middle" font-size="15" font-weight="700" fill="var(--blue)">' +
-         "PGCD = " + (comm.length ? comm.join(" × ") + " = " : "") + pgcd(A, B) + "</text>";
+    s += zone(80,  seulA, "\u2014");
+    s += zone(170, comm,  "1");
+    s += zone(260, seulB, "\u2014");
+    s += '<text x="170" y="268" text-anchor="middle" font-size="15" font-weight="700" fill="var(--blue)">' +
+         "PGCD = " + (comm.length ? comm.join(" \u00d7 ") + " = " : "") + pgcd(A, B) + "</text>";
+    note.innerHTML = expliquerDoublons(fa, fb);
   }
   svg.innerHTML = s;
 }
-function cercles(la, lb){
-  return '<circle cx="128" cy="110" r="86" fill="var(--blue-bg)" stroke="var(--blue)" stroke-width="2" opacity=".85"/>' +
-         '<circle cx="212" cy="110" r="86" fill="var(--teal-bg)" stroke="var(--teal)" stroke-width="2" opacity=".85"/>' +
-         '<text x="52" y="46" font-size="15" font-weight="700" fill="var(--blue)">' + la + "</text>" +
-         '<text x="230" y="46" font-size="15" font-weight="700" fill="var(--teal)">' + lb + "</text>";
+
+/* Un facteur peut figurer dans un croissant ET au centre : on l explique. */
+function expliquerDoublons(fa, fb){
+  var vus = [], msg = [], i, p, na, nb;
+  for (i = 0; i < fa.length; i++) {
+    p = fa[i];
+    if (vus.indexOf(p) > -1) continue;
+    vus.push(p);
+    na = compter(fa, p); nb = compter(fb, p);
+    if (nb === 0 || na === nb) continue;
+    var grand = (na > nb) ? "A" : "B";
+    msg.push("Le facteur <strong>" + p + "</strong> apparaît " + na + " fois dans A et " + nb +
+             " fois dans B : " + Math.min(na, nb) + " exemplaire" + (Math.min(na, nb) > 1 ? "s vont" : " va") +
+             " au centre, " + (Math.abs(na - nb) > 1 ? "les autres restent" : "l\u2019autre reste") +
+             " dans le cercle de " + grand + ".");
+  }
+  if (!msg.length) return "";
+  return msg.join("<br>") +
+    "<br>Le produit de tout ce qui se trouve dans un cercle redonne bien le nombre de départ.";
+}
+function compter(f, p){
+  var n = 0;
+  for (var i = 0; i < f.length; i++) if (f[i] === p) n++;
+  return n;
+}
+
+/* Décomposition avec exposants en caractères Unicode, pour le SVG */
+var EXPOSANTS = ["", "", "\u00b2", "\u00b3", "\u2074", "\u2075", "\u2076", "\u2077", "\u2078", "\u2079"];
+function ecrireUni(f){
+  var g = [], i;
+  for (i = 0; i < f.length; i++) {
+    if (g.length && g[g.length - 1][0] === f[i]) g[g.length - 1][1]++;
+    else g.push([f[i], 1]);
+  }
+  return g.map(function(p){
+    return p[0] + (p[1] > 1 ? (EXPOSANTS[p[1]] || "^" + p[1]) : "");
+  }).join(" \u00d7 ");
+}
+
+function cercles(la, sousA, lb, sousB){
+  return '<text x="6" y="20" font-size="15" font-weight="700" fill="var(--blue)">' + la + "</text>" +
+         '<text x="6" y="40" font-size="13" fill="var(--blue)">' + sousA + "</text>" +
+         '<text x="334" y="20" text-anchor="end" font-size="15" font-weight="700" fill="var(--teal)">' + lb + "</text>" +
+         '<text x="334" y="40" text-anchor="end" font-size="13" fill="var(--teal)">' + sousB + "</text>" +
+         '<circle cx="130" cy="155" r="82" fill="var(--blue-bg)" stroke="var(--blue)" stroke-width="2" opacity=".85"/>' +
+         '<circle cx="210" cy="155" r="82" fill="var(--teal-bg)" stroke="var(--teal)" stroke-width="2" opacity=".85"/>';
+}
+function legendes(){
+  return '<text x="80" y="104" text-anchor="middle" font-size="12" fill="var(--text3)">propres à A</text>' +
+         '<text x="170" y="104" text-anchor="middle" font-size="12" fill="var(--text3)">communs</text>' +
+         '<text x="260" y="104" text-anchor="middle" font-size="12" fill="var(--text3)">propres à B</text>';
 }
 function zone(x, liste, vide){
-  var items = (liste && liste.length && liste[0] !== "") ? liste : (vide ? [vide] : []);
-  var y = 110 - (items.length - 1) * 11;
+  var items = (liste && liste.length) ? liste : [vide];
+  var y = 162 - (items.length - 1) * 11;
   return items.map(function(v){
     var t = '<text x="' + x + '" y="' + y + '" text-anchor="middle" font-size="17" font-weight="700" fill="var(--text)">' + v + "</text>";
     y += 22;
@@ -754,7 +824,8 @@ function generateFiche(){
 dessinerVenn();
 </script>
 <footer class="lp-footer">
-  <a href="/">← Tous les outils</a> &nbsp;·&nbsp; Licence MIT · © 2025 Moïse Muller &nbsp;·&nbsp;
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio collège</a> &nbsp;·&nbsp; Licence MIT · © 2025 Moïse Muller &nbsp;·&nbsp;
   <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
 </footer>
 </body>
