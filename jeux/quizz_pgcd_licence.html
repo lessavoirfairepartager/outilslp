@@ -1,482 +1,761 @@
+<!--
+Diviseurs et PGCD — facteurs premiers, diviseurs communs, PGCD
+Copyright (c) 2025 Moise Muller <moise.muller@ac-dijon.fr>
+Version harmonisée du 3 août 2026 pour outilslp.netlify.app
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Quiz – Tableaux des Nombres & PGCD</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diviseurs et PGCD — facteurs premiers et diviseurs communs</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
 <style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 0 auto;
-    padding: 24px 10px 18px 10px;
-    background: #f0f8f0;
-    max-width: 900px;
-    box-sizing: border-box;
-}
-h1 {
-    color: #2d5a2d;
-    text-align: center;
-    margin-bottom: 16px;
-    font-size: 2.2em;
-}
-.quiz-container {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 3px 18px #aaa3,0 1px 2px #0074d90a;
-    padding: 24px 16px 24px 16px;
-    margin-bottom: 25px;
-}
-.btn-bar {
-    display: flex;
-    gap: 22px;
-    margin: 22px 0 18px 0;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-button, .btn-style, select {
-    background-color: #4a7c59;
-    color: white;
-    border: none;
-    padding: 14px 28px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 1.3em;
-    margin: 2px;
-    transition: background 0.19s, transform 0.14s;
-    font-weight: 500;
-}
-button:hover, .btn-style:hover, select:hover {
-    background-color: #FF7E70;
-    color: #fff;
-}
-@keyframes boutonPop {
-    0% { transform: scale(0.8); opacity: 0.5;}
-    70% { transform: scale(1.05);}
-    100% { transform: scale(1); opacity: 1;}
-}
-.animatePop {
-    animation: boutonPop 0.8s cubic-bezier(.23,1.23,.49,.89) both;
-}
-.result-box, .result-box2 {
-    background: #e8f5e8;
-    border-radius: 7px;
-    min-height: 36px;
-    padding: 14px 18px;
-    margin: 18px 0 12px 0;
-    font-size: 1.45em;
-    color: #222;
-    box-shadow: 0 2px 7px #0074d90a;
-    word-break: break-word;
-    text-align: center;
+  :root { --accent: var(--blue); --accent-bg: var(--blue-bg); }
+
+  .pg-select {
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--fs-sm);
     font-weight: 600;
-}
-.mode-bar {
-    text-align: center;
-    margin-bottom: 16px;
-    font-size: 1.4em;
-}
-#mainTable {
     width: 100%;
-    border-collapse: collapse;
-    margin: 18px auto 32px auto;
-    background: #f8faf8;
-    box-shadow: 0 1px 7px #0074d925;
-    border-radius: 13px;
-    overflow: auto;
-    font-size: 1.7em;
-}
-#mainTable th, #mainTable td {
-    border: 1px solid #b7dbf6;
-    padding: 12px 10px;
-    text-align: center;
-}
-#mainTable tr:nth-child(even) {background: #eef6f8;}
-#mainTable th {
-    background: #e8f5e8;
-    color: #2d5a2d;
+  }
+  .pg-select:focus { border-color: var(--accent); background: var(--surface); }
+
+  .pg-btn-row { display: flex; gap: 9px; flex-wrap: wrap; }
+  .pg-btn {
+    flex: 1; min-width: 150px;
+    padding: 11px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text2);
+    font-family: inherit;
+    font-size: var(--fs-xs);
     font-weight: 700;
-}
-#clockZone {
+    cursor: pointer;
+    transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .pg-btn:hover { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+
+  /* Chrono */
+  .pg-chrono { display: none; text-align: center; }
+  .pg-chrono.on { display: block; }
+  .pg-chrono svg { width: 148px; height: 148px; }
+  .pg-ring-bg { fill: none; stroke: var(--border2); stroke-width: 9; }
+  .pg-ring-fg {
+    fill: none; stroke: var(--accent); stroke-width: 9; stroke-linecap: round;
+    transform: rotate(-90deg); transform-origin: 50% 50%;
+    transition: stroke-dashoffset .4s linear;
+  }
+  .pg-chrono.fini .pg-ring-fg, .pg-chrono.fini .pg-time { stroke: var(--red); color: var(--red); }
+  .pg-time { font-size: 26px; font-weight: 700; fill: var(--text); }
+  .pg-fini-msg { display: none; margin-top: 8px; font-size: var(--fs-sm); font-weight: 700; color: var(--red); }
+  .pg-chrono.fini .pg-fini-msg { display: block; }
+
+  /* Tableau de correction */
+  .pg-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--pad-card);
+    margin-top: var(--gap);
+  }
+  .pg-table { border-collapse: collapse; width: 100%; font-size: var(--fs-xs); }
+  .pg-table th, .pg-table td {
+    border: 1px solid var(--border);
+    padding: 9px 10px;
+    text-align: left;
+    color: var(--text2);
+    vertical-align: top;
+  }
+  .pg-table thead th { background: var(--surface2); color: var(--text3); font-weight: 700; text-align: center; }
+  .pg-table tbody th { background: var(--surface2); color: var(--text3); font-weight: 700; width: 34%; }
+  .pg-table td b { color: var(--text); }
+  .pg-table .pg-ligne-pgcd td { background: var(--blue-bg); color: var(--blue); font-weight: 700; font-size: var(--fs-sm); text-align: center; }
+  .pg-table .pg-commun td { background: var(--teal-bg); color: var(--teal); font-weight: 700; }
+  .pg-masque { color: var(--text3); font-style: italic; }
+
+  .pg-nums { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .pg-num {
+    flex: 1; min-width: 120px;
     text-align: center;
-    margin-bottom: 14px;
-    position: relative;
-}
-#analogueClock {
-    margin: auto;
-    display: block;
-    background: #f5faf9;
-    box-shadow: 0 2px 14px #0074d950;
-    border-radius: 50%;
-    border: 4px solid #FF7E70 !important;
-    width: 180px;
-    height: 180px;
-}
-.clock-red {
-    border-color: #e74c3c !important;
-    background: #fee !important;
-}
-#tempsEcoule {
-    display: none;
-    color: #fff;
-    background: #e74c3c;
-    border-radius: 18px;
-    position: absolute;
-    left:50%; top:44%;
-    font-size: 2.8em;
-    padding: 20px 30px;
-    transform: translate(-50%,-50%);
-    box-shadow: 2px 7px 19px #e74c3c88;
-    z-index: 1001;
-    font-weight: 700;
-    user-select: none;
-}
-#mentionCalculatrice {
-    text-align: center;
-    font-size: 1.6em;
-    margin-top: 42px;
-    margin-bottom: 30px;
-    font-weight: 700;
-    color: #2d5a2d;
-    animation: clignoter 1.3s infinite;
-}
-@keyframes clignoter {
-    0%, 100% { opacity: 1;}
-    50% { opacity: 0.38;}
-}
-@media (max-width:900px){
-    body {max-width: 98vw;}
-    #mainTable td, #mainTable th {font-size:1.3em;}
-}
-@media (max-width:670px){
-    #mainTable td, #mainTable th {padding:8px;}
-}
-@media (max-width:530px){
-    #mainTable {width:99vw;}
-    .quiz-container {padding:8px 2vw;}
-}
-@media (max-width:430px){
-    #mainTable th, #mainTable td {font-size:1.1em;}
-}
+    padding: 12px;
+    border-radius: var(--radius);
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+  }
+  .pg-num-lab { font-size: var(--fs-xs); color: var(--text3); font-weight: 700; letter-spacing: .05em; }
+  .pg-num-val { font-size: 30px; font-weight: 700; color: var(--text); line-height: 1.2; }
+
+  .pg-note { font-size: var(--fs-xs); color: var(--text3); line-height: 1.5; }
+
+  .pg-fold {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px var(--pad-card);
+    margin-top: var(--gap);
+  }
+  .pg-fold > summary {
+    cursor: pointer; font-size: var(--fs-sm); font-weight: 700; color: var(--text2); list-style: none;
+  }
+  .pg-fold > summary::-webkit-details-marker { display: none; }
+  .pg-fold > summary::before { content: "▸ "; color: var(--accent); }
+  .pg-fold[open] > summary::before { content: "▾ "; }
+  .pg-fold[open] > summary { margin-bottom: 12px; }
+  .pg-fold p { font-size: var(--fs-xs); color: var(--text2); line-height: 1.6; }
 </style>
 </head>
 <body>
-<div class="quiz-container">
-    <h1>Quiz Interactif – Facteurs, Diviseurs et PGCD</h1>
-    <div class="mode-bar">
-        <label for="modeSelect" class="label-quiz">Mode :</label>
-        <select id="modeSelect" class="animatePop">
-            <option value="simple">Entraînement</option>
-            <option value="avance">Entraînement poussé</option>
-            <option value="eval">Évaluation</option>
-        </select>
-    </div>
-    <div class="btn-bar">
-        <button id="btnRandom" class="animatePop">🎲 Choisir 2 nombres</button>
-        <button id="btnSolutions" class="animatePop">👀 Afficher les solutions</button>
-        <div id="zoneChrono" style="display:none;">
-            <label for="tempsChrono" class="label-quiz" style="margin-right:10px;">Temps :</label>
-            <select id="tempsChrono" class="animatePop">
-                <option value="" selected disabled>Choisir</option>
-                <option value="5">5 minutes</option>
-                <option value="6">6 minutes</option>
-                <option value="7">7 minutes</option>
-                <option value="8">8 minutes</option>
-                <option value="9">9 minutes</option>
-                <option value="10">10 minutes</option>
-                <option value="11">11 minutes</option>
-                <option value="12">12 minutes</option>
-                <option value="13">13 minutes</option>
-                <option value="14">14 minutes</option>
-                <option value="15">15 minutes</option>
-            </select>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <circle cx="16" cy="20" r="10" fill="none" stroke="var(--blue)" stroke-width="2.4"/>
+      <circle cx="24" cy="20" r="10" fill="none" stroke="var(--blue)" stroke-width="2.4"/>
+      <path d="M20 11.5a10 10 0 0 0 0 17 10 10 0 0 0 0-17z" fill="var(--blue)" opacity=".28" class="lp-beat"/>
+    </svg></div>
+  <div>
+    <h1>Diviseurs et PGCD</h1>
+    <p>Facteurs premiers · Diviseurs communs · PGCD · CAP · Bac Pro</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('explo',this)">Explorateur</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi ⁺</button>
+  </div>
+
+  <!-- ══ EXPLORATEUR ══════════════════════════════════════════════════ -->
+  <div id="mode-explo">
+    <div class="panel active">
+
+      <!-- Diagramme des facteurs communs -->
+      <div class="sketch-card">
+        <svg id="pg-venn" viewBox="0 0 340 230" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">Les facteurs premiers communs aux deux nombres se placent au centre. Leur produit est le PGCD.</div>
+      </div>
+
+      <!-- Réglages -->
+      <div class="controls-card">
+        <div class="field">
+          <label for="pg-mode">Type de séance</label>
+          <select class="pg-select" id="pg-mode" onchange="changerModeSeance()">
+            <option value="simple" selected>Entraînement — nombres jusqu'à 600</option>
+            <option value="avance">Entraînement poussé — jusqu'à 1000, au moins 5 diviseurs</option>
+            <option value="eval">Évaluation chronométrée — PGCD supérieur à 10</option>
+          </select>
         </div>
+
+        <div class="field" id="pg-zone-temps" style="display:none">
+          <label for="pg-temps">Durée de l'évaluation</label>
+          <select class="pg-select" id="pg-temps">
+            <option value="5">5 minutes</option>
+            <option value="8">8 minutes</option>
+            <option value="10" selected>10 minutes</option>
+            <option value="12">12 minutes</option>
+            <option value="15">15 minutes</option>
+          </select>
+        </div>
+
+        <div class="pg-btn-row">
+          <button class="btn-check" style="flex:1" onclick="tirer()">🎲 Choisir 2 nombres</button>
+          <button class="pg-btn" onclick="afficherSolutions()">👀 Afficher les solutions</button>
+        </div>
+
+        <div class="pg-nums">
+          <div class="pg-num"><div class="pg-num-lab">A</div><div class="pg-num-val" id="pg-a">—</div></div>
+          <div class="pg-num"><div class="pg-num-lab">B</div><div class="pg-num-val" id="pg-b">—</div></div>
+        </div>
+
+        <div class="pg-chrono" id="pg-chrono">
+          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <circle class="pg-ring-bg" cx="60" cy="60" r="50"/>
+            <circle class="pg-ring-fg" id="pg-ring" cx="60" cy="60" r="50"
+                    stroke-dasharray="314" stroke-dashoffset="0"/>
+            <text class="pg-time" id="pg-time" x="60" y="69" text-anchor="middle">10:00</text>
+          </svg>
+          <div class="pg-fini-msg">⏰ Temps écoulé</div>
+        </div>
+
+        <div class="result-block">
+          <div class="result-label">PGCD (A ; B)</div>
+          <div class="result-value" id="pg-pgcd">—</div>
+          <div class="result-sub" id="pg-pgcd-sub">Tire deux nombres pour commencer.</div>
+        </div>
+
+        <div class="pg-note" id="pg-calc">Calculatrice collège autorisée et fortement conseillée.</div>
+      </div>
     </div>
-    <div id="clockZone" style="position: relative; margin-bottom:0;">
-        <canvas id="analogueClock" width="180" height="180" style="display:none;"></canvas>
-        <div id="tempsEcoule">⏰ Temps écoulé !</div>
+
+    <!-- Tableau de correction -->
+    <div class="pg-card">
+      <p class="section-label">Tableau à compléter</p>
+      <div style="overflow:auto;margin-top:10px">
+        <table class="pg-table">
+          <thead><tr><th></th><th>A</th><th>B</th></tr></thead>
+          <tbody>
+            <tr><th>Nombre</th><td id="c-a">—</td><td id="c-b">—</td></tr>
+            <tr><th>Facteurs premiers</th><td id="c-fa" class="pg-masque">à compléter</td><td id="c-fb" class="pg-masque">à compléter</td></tr>
+            <tr><th>Diviseurs</th><td id="c-da" class="pg-masque">à compléter</td><td id="c-db" class="pg-masque">à compléter</td></tr>
+            <tr class="pg-commun"><th>Diviseurs communs</th><td colspan="2" id="c-dc" class="pg-masque">à compléter</td></tr>
+            <tr class="pg-ligne-pgcd"><th>PGCD</th><td colspan="2" id="c-pgcd" class="pg-masque">à compléter</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pg-note" style="margin-top:10px">Les élèves complètent le tableau sur leur cahier, puis la correction s'affiche d'un clic.</div>
     </div>
-    <table id="mainTable" role="table" aria-label="Quiz nombres et PGCD">
-        <thead>
-            <tr>
-                <th>A</th>
-                <th>B</th>
-                <th>Facteurs premiers de A</th>
-                <th>Facteurs premiers de B</th>
-                <th>Diviseurs de A</th>
-                <th>Diviseurs de B</th>
-                <th>PGCD(A,B)</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-        </tbody>
-    </table>
-    <div id="mentionCalculatrice" style="display:none;">Calculatrice collège autorisée et <span style="color:#e74c3c;">FORTEMENT conseillée !</span></div>
+
+    <details class="pg-fold">
+      <summary>Rappels de cours</summary>
+      <p><strong>Diviseur commun :</strong> un nombre qui divise A et qui divise B. Il y en a toujours au moins un, le nombre 1.</p>
+      <p style="margin-top:8px"><strong>PGCD :</strong> le plus grand des diviseurs communs. Tous les autres diviseurs communs sont des diviseurs du PGCD, ce qui donne un moyen de vérifier son résultat.</p>
+      <p style="margin-top:8px"><strong>Par les facteurs premiers :</strong> on décompose A et B, on garde les facteurs présents dans les deux, et on les multiplie. Pour 84 = 2×2×3×7 et 60 = 2×2×3×5, les facteurs communs sont 2, 2 et 3, donc le PGCD vaut 12.</p>
+      <p style="margin-top:8px"><strong>Nombres premiers entre eux :</strong> quand le PGCD vaut 1, aucun facteur n'est commun. Une fraction est irréductible quand son numérateur et son dénominateur sont premiers entre eux.</p>
+      <p style="margin-top:8px"><strong>À quoi ça sert :</strong> simplifier une fraction, répartir des objets en paquets identiques les plus gros possible, découper une plaque en carrés les plus grands possible sans perte.</p>
+    </details>
+  </div>
+
+  <!-- ══ MODE DÉFI ════════════════════════════════════════════════════ -->
+  <div id="mode-defi">
+    <div class="defi-card">
+      <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI + — Aides masquées</div>
+      <div class="defi-header">
+        <div class="defi-title" id="defi-mode-title">Mode défi — Diviseurs et PGCD</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
+      <div class="defi-shape-display">
+        <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:200px;width:100%;"></svg>
+        <div class="defi-cotes" id="defi-cotes"></div>
+      </div>
+      <div class="defi-input-row">
+        <label>Réponse =</label>
+        <input type="number" id="defi-input" placeholder="?" step="1">
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:0.75rem;">La réponse est toujours un nombre entier.</div>
+      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+      <div class="feedback-box" id="defi-feedback"></div>
+      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Question suivante →</button>
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="generateFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
+<script src="/assets/lp-fiche.js"></script>
 <script>
-// ------------------------- Math tools
-function isInt(n) { return Number.isInteger(n) && n>0;}
-function isPrime(n) {
-  if(n<=1) return false;if(n===2) return true;if(n%2===0) return false;
-  for(let i=3;i*i<=n;i+=2){if(n%i===0)return false;}
-  return true;
-}
-function facteursPremiers(n) {
-  let f=[],d=2,tmp=n;
-  while(tmp>1){if(tmp%d===0){f.push(d);tmp/=d;}else{d++;}}
+/* ═══ ARITHMÉTIQUE ══════════════════════════════════════════════════════ */
+function rnd(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+function facteurs(n){
+  var f = [], d = 2;
+  while (d * d <= n) { while (n % d === 0) { f.push(d); n = n / d; } d += (d === 2) ? 1 : 2; }
+  if (n > 1) f.push(n);
   return f;
 }
-function diviseurs(n) {
-  let d = [];
-  for(let i=1;i<=Math.sqrt(n);i++)
-    if(n%i===0){d.push(i);if(i!==n/i)d.push(n/i);}
-  return d.sort((a,b)=>a-b);
+function diviseurs(n){
+  var d = [];
+  for (var i = 1; i * i <= n; i++) if (n % i === 0) { d.push(i); if (i !== n / i) d.push(n / i); }
+  return d.sort(function(a, b){ return a - b; });
 }
-function pgcd(a,b){
-  while(b!==0){let t=b;b=a%b;a=t;}
-  return a;
-}
-
-// ----------- Génération aléatoire
-function randomInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
-function hasEnoughDiv(n, minDiv){
-  return diviseurs(n).length >= minDiv;
-}
-function hasCommonDivs(a,b){let da=diviseurs(a),db=diviseurs(b);
-  return da.filter(x=>db.includes(x)&&x!==1).length>0;
-}
-
-// Pour réduire la probabilité que pgcd=1
-function pgcdIsOneRare(a,b){
-  // on tire une probabilité (ex: seulement 15% que pgcd=1 soit accepté)
-  if(pgcd(a,b) !== 1) return true;
-  return Math.random() < 0.15;
-}
-
-// ----------- Gestion du tableau
-const mainTable = document.getElementById('mainTable');
-const tbody = mainTable.querySelector('tbody');
-let quizRows = [ {} ];
-let solutionsShown = false;
-
-// ------ Gestion des boutons/modes
-const btnRandom = document.getElementById('btnRandom');
-const btnSolutions = document.getElementById('btnSolutions');
-const modeSelect = document.getElementById('modeSelect');
-const zoneChrono = document.getElementById('zoneChrono');
-const mentionCalculatrice = document.getElementById('mentionCalculatrice');
-// Chrono
-let timerSet = false;
-let timerVal = 0;
-let timerRunning = false;
-let timerInterval;
-let timerEnd;
-const clockCanvas = document.getElementById('analogueClock');
-const tempsEcoule = document.getElementById('tempsEcoule');
-
-// --- Mode, affichage chrono
-modeSelect.onchange = ()=>{
-  if(modeSelect.value==="eval"){
-    zoneChrono.style.display="inline-block";
-    clockCanvas.style.display="block";
-  } else {
-    zoneChrono.style.display="none";
-    clockCanvas.style.display="none";
-    tempsEcoule.style.display="none";
-    clearInterval(timerInterval); timerRunning=false; timerSet=false;
-    clockCanvas.classList.remove("clock-red");
+function pgcd(a, b){ while (b) { var t = b; b = a % b; a = t; } return a; }
+function ppcm(a, b){ return a * b / pgcd(a, b); }
+function melange(t){
+  for (var i = t.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var x = t[i]; t[i] = t[j]; t[j] = x;
   }
-};
+  return t;
+}
+/* Intersection de deux multi-ensembles de facteurs */
+function communs(fa, fb){
+  var reste = fb.slice(), out = [], j;
+  for (var i = 0; i < fa.length; i++) {
+    j = reste.indexOf(fa[i]);
+    if (j > -1) { out.push(fa[i]); reste.splice(j, 1); }
+  }
+  return out;
+}
+function difference(fa, comm){
+  var reste = comm.slice(), out = [], j;
+  for (var i = 0; i < fa.length; i++) {
+    j = reste.indexOf(fa[i]);
+    if (j > -1) reste.splice(j, 1); else out.push(fa[i]);
+  }
+  return out;
+}
+function ecrire(f){
+  var g = [], i;
+  for (i = 0; i < f.length; i++) {
+    if (g.length && g[g.length - 1][0] === f[i]) g[g.length - 1][1]++;
+    else g.push([f[i], 1]);
+  }
+  return g.map(function(p){ return p[1] === 1 ? String(p[0]) : p[0] + "<sup>" + p[1] + "</sup>"; }).join(" × ");
+}
 
-document.getElementById("tempsChrono").onchange = function(){
-  timerVal = parseInt(this.value,10);
-  timerSet = !!timerVal;
-};
+/* ═══ EXPLORATEUR ═══════════════════════════════════════════════════════ */
+var A = 0, B = 0, solutions = false;
+var chronoId = null, chronoFin = 0, chronoTotal = 0;
 
-// ----------- Animation boutons
-document.querySelectorAll('.animatePop').forEach(btn=>{
-  btn.classList.remove('animatePop');
-  setTimeout(()=>btn.classList.add('animatePop'),Math.random()*250+80);
-});
+function changerModeSeance(){
+  var eval1 = document.getElementById("pg-mode").value === "eval";
+  document.getElementById("pg-zone-temps").style.display = eval1 ? "block" : "none";
+  if (!eval1) arreterChrono();
+}
 
-// ----------------------------- Génération quiz
-btnRandom.onclick = ()=>{
-  if(modeSelect.value==="eval" && !timerSet){
-    alert("Définissez le temps d'évaluation avant de lancer !");
+function tirer(){
+  var mode = document.getElementById("pg-mode").value;
+  var bornes = { simple: [12, 600], avance: [24, 1000], eval: [24, 400] };
+  var divMin = (mode === "simple") ? 3 : (mode === "avance" ? 5 : 6);
+  var a, b, essais = 0;
+  do {
+    a = rnd(bornes[mode][0], bornes[mode][1]);
+    b = rnd(bornes[mode][0], bornes[mode][1]);
+    essais++;
+  } while (essais < 4000 && !convient(a, b, mode, divMin));
+
+  A = a; B = b; solutions = false;
+  document.getElementById("pg-a").textContent = A;
+  document.getElementById("pg-b").textContent = B;
+  document.getElementById("pg-pgcd").textContent = "?";
+  document.getElementById("pg-pgcd-sub").textContent = "Cherche, puis affiche la correction.";
+  majTableau();
+  dessinerVenn();
+  if (mode === "eval") lancerChrono();
+}
+
+function convient(a, b, mode, divMin){
+  if (a === b) return false;
+  if (diviseurs(a).length < divMin || diviseurs(b).length < divMin) return false;
+  var p = pgcd(a, b);
+  if (mode === "eval") return p >= 10;
+  if (p === 1) return Math.random() < 0.15;   /* on garde quelques cas premiers entre eux */
+  return true;
+}
+
+function afficherSolutions(){
+  if (!A) return;
+  solutions = true;
+  var p = pgcd(A, B);
+  document.getElementById("pg-pgcd").textContent = p;
+  document.getElementById("pg-pgcd-sub").innerHTML =
+    "Produit des facteurs communs : " + (communs(facteurs(A), facteurs(B)).join(" × ") || "1") + " = " + p;
+  majTableau();
+  dessinerVenn();
+}
+
+function majTableau(){
+  var cases = ["c-a", "c-b", "c-fa", "c-fb", "c-da", "c-db", "c-dc", "c-pgcd"];
+  var i, el;
+  if (!A) {
+    for (i = 0; i < cases.length; i++) {
+      el = document.getElementById(cases[i]);
+      el.className = i < 2 ? "" : "pg-masque";
+      el.innerHTML = i < 2 ? "—" : "à compléter";
+    }
     return;
   }
-  solutionsShown = false;
-  quizRows=[ {} ];
-  // Mode
-  let mode = modeSelect.value;
-  let ranges = {simple:[1,600],avance:[1,1000],eval:[1,400]};
-  // Div min selon mode et temps pour éval
-  let divMin;
-  if(mode==="simple"){
-    divMin=1;
-  } else if(mode==="avance"){
-    divMin=5;
-  } else { // mode eval - adapte divMin selon timer (ex: 5min -> 5 div, 15min -> 12 div)
-    divMin = 5 + Math.floor((timerVal-5)*0.5);
-    if(divMin>12) divMin=12;
-  }
-  let tries = 0, maxTries=5000;
-  let a,b;
-
-  do {
-    a=randomInt(ranges[mode][0],ranges[mode][1]);
-    b=randomInt(ranges[mode][0],ranges[mode][1]);
-    tries++;
-    if(tries>maxTries){
-      // Fallback relax conditions
-      break;
+  document.getElementById("c-a").innerHTML = "<b>" + A + "</b>";
+  document.getElementById("c-b").innerHTML = "<b>" + B + "</b>";
+  var suite = ["c-fa", "c-fb", "c-da", "c-db", "c-dc", "c-pgcd"];
+  if (!solutions) {
+    for (i = 0; i < suite.length; i++) {
+      el = document.getElementById(suite[i]);
+      el.className = "pg-masque";
+      el.innerHTML = "à compléter";
     }
-  } while(
-    !hasEnoughDiv(a,divMin)
-    || !hasEnoughDiv(b,divMin)
-    || (mode==="eval" && (!hasCommonDivs(a,b) || pgcd(a,b) < 10))
-    || !pgcdIsOneRare(a,b)
-  );
-  quizRows[0]={a,b};
-  majTable();
-  mentionCalculatrice.style.display="block";
-
-  // Chrono Reset
-  if(mode==="eval"){
-    clearInterval(timerInterval);timerRunning=false;
-    clockCanvas.classList.remove("clock-red");
-    tempsEcoule.style.display="none";
-    startChrono();
+    document.getElementById("c-dc").parentNode.className = "pg-commun";
+    document.getElementById("c-pgcd").parentNode.className = "pg-ligne-pgcd";
+    return;
   }
-};
-
-btnSolutions.onclick = ()=>{
-  solutionsShown = true;
-  majTable();
-};
-
-// ------------ Maj du tableau
-function majTable(){
-  for(let i=0;i<1;i++){
-    let row = quizRows[i]||{};
-    let tr = tbody.children[i];
-    tr.cells[0].textContent=row.a||"";
-    tr.cells[1].textContent=row.b||"";
-    tr.cells[2].innerHTML = (solutionsShown && row.a)? facteursPremiers(row.a).join(' × '):"";
-    tr.cells[3].innerHTML = (solutionsShown && row.b)? facteursPremiers(row.b).join(' × '):"";
-    tr.cells[4].innerHTML = (solutionsShown && row.a)? diviseurs(row.a).join(', '):"";
-    tr.cells[5].innerHTML = (solutionsShown && row.b)? diviseurs(row.b).join(', '):"";
-    tr.cells[6].textContent = (solutionsShown && row.a && row.b)? pgcd(row.a,row.b):"";
-  }
+  var da = diviseurs(A), db = diviseurs(B);
+  var dc = da.filter(function(x){ return db.indexOf(x) > -1; });
+  document.getElementById("c-fa").className = "";
+  document.getElementById("c-fb").className = "";
+  document.getElementById("c-da").className = "";
+  document.getElementById("c-db").className = "";
+  document.getElementById("c-dc").className = "";
+  document.getElementById("c-pgcd").className = "";
+  document.getElementById("c-fa").innerHTML = ecrire(facteurs(A));
+  document.getElementById("c-fb").innerHTML = ecrire(facteurs(B));
+  document.getElementById("c-da").innerHTML = da.join(", ");
+  document.getElementById("c-db").innerHTML = db.join(", ");
+  document.getElementById("c-dc").innerHTML = dc.join(", ") + " — soit " + dc.length + " diviseurs communs";
+  document.getElementById("c-pgcd").innerHTML = "PGCD (" + A + " ; " + B + ") = " + pgcd(A, B);
 }
 
-// -------------------------------------- Horloge analogique (mode éval)
-function startChrono(){
-  if(!timerSet||timerRunning){return;}
-  let minutes = timerVal, seconds = 0;
-  let totalSec = minutes*60;
-  let startTime = Date.now();
-  timerEnd = startTime+(totalSec*1000);
-  timerRunning = true;
-
-  function drawClock(){
-    let ctx = clockCanvas.getContext('2d');
-    let now = Date.now();
-    let elapsed = Math.max(0,(timerEnd-now)/1000);
-    let remaining = Math.max(0,elapsed/totalSec);
-    ctx.clearRect(0,0,180,180);
-    // Cadran
-    ctx.save();
-    ctx.translate(90,90);
-    ctx.beginPath();
-    ctx.arc(0,0,85,0,2*Math.PI);
-    ctx.fillStyle="#f8faf8";
-    ctx.fill();
-    ctx.lineWidth=8;
-    ctx.strokeStyle= clockCanvas.classList.contains("clock-red") ? "#e74c3c" : "#FF7E70";
-    ctx.stroke();
-
-    // Secteur restant
-    ctx.rotate(-Math.PI/2);
-    ctx.beginPath();
-    ctx.arc(0,0,80,0,2*Math.PI*remaining,false);
-    ctx.lineWidth=10;
-    ctx.strokeStyle= clockCanvas.classList.contains("clock-red") ? "#e74c3c" : "#FF7E70";
-    ctx.stroke();
-
-    // Aiguilles style minute
-    ctx.rotate(Math.PI/2);
-    ctx.beginPath();
-    ctx.moveTo(0,0);
-    let angle = 2*Math.PI*((totalSec-elapsed)/totalSec)-Math.PI/2;
-    ctx.lineTo(70*Math.cos(angle),70*Math.sin(angle));
-    ctx.lineWidth=8;
-    ctx.strokeStyle="#FF7E70";
-    ctx.stroke();
-
-    // Point central
-    ctx.beginPath();
-    ctx.arc(0,0,8,0,2*Math.PI);
-    ctx.fillStyle="#4a7c59";
-    ctx.fill();
-    ctx.restore();
-
-    // Affichage temps restant
-    ctx.save();
-    ctx.translate(90,140);
-    ctx.font="bold 1.8em Arial";
-    ctx.textAlign="center";
-    ctx.fillStyle=(clockCanvas.classList.contains("clock-red"))?"#e74c3c":"#2d5a2d";
-    let mm = Math.floor(elapsed/60), ss = Math.floor(elapsed%60);
-    ctx.fillText(`${mm}:${ss<10?"0":""}${ss}`,0,0);
-    ctx.restore();
+function dessinerVenn(){
+  var svg = document.getElementById("pg-venn");
+  if (!A) {
+    svg.innerHTML = cercles("A", "B") +
+      '<text x="170" y="215" text-anchor="middle" font-size="14" fill="var(--text3)">Tire deux nombres pour voir leurs facteurs</text>';
+    return;
   }
+  var fa = facteurs(A), fb = facteurs(B);
+  var comm = communs(fa, fb);
+  var seulA = difference(fa, comm), seulB = difference(fb, comm);
+  var s = cercles("A = " + A, "B = " + B);
+  if (!solutions) {
+    s += zone(80, [""], "?") + zone(170, [""], "?") + zone(260, [""], "?");
+  } else {
+    s += zone(78,  seulA, seulA.length ? "" : "—");
+    s += zone(170, comm,  comm.length ? "" : "1");
+    s += zone(262, seulB, seulB.length ? "" : "—");
+    s += '<text x="170" y="215" text-anchor="middle" font-size="15" font-weight="700" fill="var(--blue)">' +
+         "PGCD = " + (comm.length ? comm.join(" × ") + " = " : "") + pgcd(A, B) + "</text>";
+  }
+  svg.innerHTML = s;
+}
+function cercles(la, lb){
+  return '<circle cx="128" cy="110" r="86" fill="var(--blue-bg)" stroke="var(--blue)" stroke-width="2" opacity=".85"/>' +
+         '<circle cx="212" cy="110" r="86" fill="var(--teal-bg)" stroke="var(--teal)" stroke-width="2" opacity=".85"/>' +
+         '<text x="52" y="46" font-size="15" font-weight="700" fill="var(--blue)">' + la + "</text>" +
+         '<text x="230" y="46" font-size="15" font-weight="700" fill="var(--teal)">' + lb + "</text>";
+}
+function zone(x, liste, vide){
+  var items = (liste && liste.length && liste[0] !== "") ? liste : (vide ? [vide] : []);
+  var y = 110 - (items.length - 1) * 11;
+  return items.map(function(v){
+    var t = '<text x="' + x + '" y="' + y + '" text-anchor="middle" font-size="17" font-weight="700" fill="var(--text)">' + v + "</text>";
+    y += 22;
+    return t;
+  }).join("");
+}
 
-  drawClock();
+/* Chrono */
+function lancerChrono(){
+  arreterChrono();
+  var min = parseInt(document.getElementById("pg-temps").value, 10);
+  chronoTotal = min * 60;
+  chronoFin = Date.now() + chronoTotal * 1000;
+  var box = document.getElementById("pg-chrono");
+  box.classList.add("on");
+  box.classList.remove("fini");
+  majChrono();
+  chronoId = setInterval(majChrono, 500);
+}
+function arreterChrono(){
+  if (chronoId) { clearInterval(chronoId); chronoId = null; }
+  var box = document.getElementById("pg-chrono");
+  box.classList.remove("on", "fini");
+}
+function majChrono(){
+  var reste = Math.max(0, (chronoFin - Date.now()) / 1000);
+  var mm = Math.floor(reste / 60), ss = Math.floor(reste % 60);
+  document.getElementById("pg-time").textContent = mm + ":" + (ss < 10 ? "0" : "") + ss;
+  var circonf = 2 * Math.PI * 50;
+  document.getElementById("pg-ring").setAttribute("stroke-dashoffset",
+    String(circonf * (1 - reste / chronoTotal)));
+  if (reste <= 0) {
+    clearInterval(chronoId); chronoId = null;
+    document.getElementById("pg-chrono").classList.add("fini");
+    buzzer();
+  }
+}
+function buzzer(){
+  try {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    var ctx = new Ctx(), o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "square";
+    o.frequency.setValueAtTime(180, ctx.currentTime);
+    g.gain.setValueAtTime(0.12, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0, ctx.currentTime + 2.2);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + 2.2);
+    setTimeout(function(){ ctx.close(); }, 2400);
+  } catch (e) { /* audio indisponible : le cercle rouge suffit */ }
+}
 
-  timerInterval = setInterval(()=>{
-    let now = Date.now();
-    let elapsed = Math.max(0,(timerEnd-now)/1000);
-    drawClock();
-    if(elapsed <= 0){
-      clearInterval(timerInterval);
-      timerRunning = false;
-      clockCanvas.classList.add("clock-red");
-      tempsEcoule.style.display = "block";
-      playBuzzer();
+/* ═══ NAVIGATION ENTRE MODES ════════════════════════════════════════════ */
+var currentMode = "explo";
+function setMode(m, btn){
+  currentMode = m;
+  var tabs = document.querySelectorAll(".mode-tab");
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
+  if (btn) btn.classList.add("active");
+  document.getElementById("mode-explo").style.display = (m === "explo") ? "block" : "none";
+  var defi = document.getElementById("mode-defi");
+  var isDefi = (m === "defi" || m === "defiplus");
+  defi.classList.toggle("active", isDefi);
+  if (isDefi) {
+    arreterChrono();
+    var badge = document.getElementById("defi-plus-badge");
+    if (m === "defiplus") {
+      document.getElementById("defi-mode-title").textContent = "Défi + — Diviseurs et PGCD";
+      badge.classList.add("visible");
+    } else {
+      document.getElementById("defi-mode-title").textContent = "Mode défi — Diviseurs et PGCD";
+      badge.classList.remove("visible");
     }
-  }, 900);
+    correct = 0; total = 0; defiIndex = 0;
+    melange(ordre);
+    majScore();
+    nextDefi();
+  }
 }
 
-// ----------- buzzer plus grave et plus long (jeu télévisé)
-function playBuzzer(){
-  let ctx = new (window.AudioContext||window.webkitAudioContext)();
-  let o = ctx.createOscillator(), g = ctx.createGain();
-  o.type = "square";
-  o.frequency.setValueAtTime(180,ctx.currentTime); // fréquence plus grave
-  g.gain.setValueAtTime(0.15,ctx.currentTime);
-  o.connect(g); g.connect(ctx.destination);
-  o.start();
-  // Diminue progressivement le volume (fade out) sur 3 secondes
-  g.gain.linearRampToValueAtTime(0, ctx.currentTime + 3);
-  o.stop(ctx.currentTime + 3);
-  setTimeout(() => {ctx.close();}, 3100);
+/* ═══ MODE DÉFI ═════════════════════════════════════════════════════════ */
+var BLEU = "#185FA5", BLEU_BG = "#E6F1FB", VERT = "#0F6E56", VERT_BG = "#E3F2ED", GRIS = "#55534e";
+
+function svgDeux(a, b, sous, la, lb){
+  return '<text x="54" y="30" text-anchor="middle" font-size="12" fill="' + GRIS + '">' + (la || "A") + "</text>" +
+         '<rect x="18" y="38" width="72" height="58" rx="9" fill="' + BLEU_BG + '" stroke="' + BLEU + '" stroke-width="2.5"/>' +
+         '<text x="54" y="77" text-anchor="middle" font-size="26" font-weight="700" fill="' + BLEU + '">' + a + "</text>" +
+         '<text x="146" y="30" text-anchor="middle" font-size="12" fill="' + GRIS + '">' + (lb || "B") + "</text>" +
+         '<rect x="110" y="38" width="72" height="58" rx="9" fill="' + VERT_BG + '" stroke="' + VERT + '" stroke-width="2.5"/>' +
+         '<text x="146" y="77" text-anchor="middle" font-size="26" font-weight="700" fill="' + VERT + '">' + b + "</text>" +
+         '<text x="100" y="126" text-anchor="middle" font-size="13" fill="' + GRIS + '">' + sous + "</text>";
+}
+function svgFraction(a, b, sous){
+  return '<text x="100" y="62" text-anchor="middle" font-size="34" font-weight="700" fill="' + BLEU + '">' + a + "</text>" +
+         '<line x1="58" y1="74" x2="142" y2="74" stroke="' + BLEU + '" stroke-width="3.5" stroke-linecap="round"/>' +
+         '<text x="100" y="112" text-anchor="middle" font-size="34" font-weight="700" fill="' + BLEU + '">' + b + "</text>" +
+         '<text x="100" y="142" text-anchor="middle" font-size="13" fill="' + GRIS + '">' + sous + "</text>";
+}
+function svgPlaque(L, l, sous){
+  var w = 130, h = Math.max(46, Math.round(130 * l / L));
+  if (h > 78) { h = 78; }
+  var x = (200 - w) / 2, y = 46;
+  return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="' + BLEU_BG +
+         '" stroke="' + BLEU + '" stroke-width="2.5"/>' +
+         '<text x="100" y="' + (y - 10) + '" text-anchor="middle" font-size="14" font-weight="700" fill="' + BLEU + '">' + L + " cm</text>" +
+         '<text x="' + (x - 8) + '" y="' + (y + h / 2 + 5) + '" text-anchor="end" font-size="14" font-weight="700" fill="' + BLEU + '">' + l + "</text>" +
+         '<text x="100" y="' + (y + h + 30) + '" text-anchor="middle" font-size="13" fill="' + GRIS + '">' + sous + "</text>";
 }
 
-// --- RWD correction sur resize
-window.onresize = function() { mainTable.style.width = "100%"; }
+/* Deux nombres avec un PGCD intéressant */
+function paire(minG, maxG, minM, maxM){
+  var g = rnd(minG, maxG), x = rnd(minM, maxM), y = rnd(minM, maxM);
+  var essais = 0;
+  while ((x === y || pgcd(x, y) !== 1) && essais < 200) { x = rnd(minM, maxM); y = rnd(minM, maxM); essais++; }
+  return { g: g, a: g * x, b: g * y, x: x, y: y };
+}
+
+var defiDefs = [
+  {
+    nom: "PGCD de deux nombres",
+    hint: "Décomposer les deux nombres, garder les facteurs communs, les multiplier.",
+    generate: function(){
+      var p = paire(3, 15, 2, 9);
+      return {
+        svg: svgDeux(p.a, p.b, "PGCD des deux nombres ?"),
+        cotes: "Nombres étudiés : " + p.a + " et " + p.b + " · Question : quel est leur PGCD ?",
+        answer: p.g
+      };
+    }
+  },
+  {
+    nom: "Nombre de diviseurs communs",
+    hint: "Les diviseurs communs de deux nombres sont exactement les diviseurs de leur PGCD.",
+    generate: function(){
+      var p = paire(4, 24, 2, 7);
+      return {
+        svg: svgDeux(p.a, p.b, "Combien de diviseurs communs ?"),
+        cotes: "Nombres étudiés : " + p.a + " et " + p.b + " · Question : combien ont-ils de diviseurs communs ?",
+        answer: diviseurs(pgcd(p.a, p.b)).length
+      };
+    }
+  },
+  {
+    nom: "PPCM de deux nombres",
+    hint: "PPCM = produit des deux nombres divisé par leur PGCD.",
+    generate: function(){
+      var p = paire(2, 8, 2, 7);
+      return {
+        svg: svgDeux(p.a, p.b, "PPCM des deux nombres ?"),
+        cotes: "Nombres étudiés : " + p.a + " et " + p.b + " · Question : quel est leur PPCM ?",
+        answer: ppcm(p.a, p.b)
+      };
+    }
+  },
+  {
+    nom: "Simplifier une fraction",
+    hint: "Diviser le numérateur et le dénominateur par leur PGCD.",
+    generate: function(){
+      var p = paire(3, 14, 2, 11);
+      return {
+        svg: svgFraction(p.a, p.b, "Fraction irréductible : numérateur ?"),
+        cotes: "Fraction à simplifier : " + p.a + " / " + p.b +
+               " · Question : quel est le numérateur de la fraction irréductible ?",
+        answer: p.x
+      };
+    }
+  },
+  {
+    nom: "Nombre de paquets",
+    hint: "Le nombre de paquets identiques le plus grand possible, c\u2019est le PGCD.",
+    generate: function(){
+      var p = paire(4, 18, 3, 12);
+      return {
+        svg: svgDeux(p.a, p.b, "Combien de paquets au maximum ?", "vis", "écrous"),
+        cotes: "Un magasinier range " + p.a + " vis et " + p.b + " écrous dans des sachets tous identiques, " +
+               "sans qu\u2019il reste rien · Question : combien de sachets peut-il faire au maximum ?",
+        answer: p.g
+      };
+    }
+  },
+  {
+    nom: "Contenu d\u2019un paquet",
+    hint: "Diviser la quantité totale par le nombre de paquets, qui vaut le PGCD.",
+    generate: function(){
+      var p = paire(4, 15, 3, 12);
+      return {
+        svg: svgDeux(p.a, p.b, "Combien de vis par sachet ?", "vis", "écrous"),
+        cotes: "Un magasinier répartit " + p.a + " vis et " + p.b + " écrous en sachets identiques, " +
+               "en faisant le plus de sachets possible · Question : combien de vis dans chaque sachet ?",
+        answer: p.x
+      };
+    }
+  },
+  {
+    nom: "Découpe sans perte",
+    hint: "Le côté du plus grand carré possible est le PGCD des deux dimensions.",
+    generate: function(){
+      var p = paire(4, 16, 3, 9);
+      var L = Math.max(p.a, p.b), l = Math.min(p.a, p.b);
+      return {
+        svg: svgPlaque(L, l, "Côté du plus grand carré ?"),
+        cotes: "Une plaque mesure " + L + " cm sur " + l + " cm · On la découpe en carrés identiques, " +
+               "les plus grands possible, sans perte · Question : quel est le côté de ces carrés, en cm ?",
+        answer: p.g
+      };
+    }
+  },
+  {
+    nom: "Retour au même moment",
+    hint: "Deux événements qui se répètent retombent ensemble au bout du PPCM de leurs périodes.",
+    generate: function(){
+      var a = rnd(4, 15), b = rnd(4, 15);
+      while (b === a || ppcm(a, b) > 200) { a = rnd(4, 15); b = rnd(4, 15); }
+      return {
+        svg: svgDeux(a, b, "Dans combien de minutes ?", "bus 1", "bus 2"),
+        cotes: "Deux bus partent ensemble du dépôt · Le premier revient toutes les " + a +
+               " minutes, le second toutes les " + b +
+               " minutes · Question : dans combien de minutes repartiront-ils ensemble ?",
+        answer: ppcm(a, b)
+      };
+    }
+  }
+];
+
+var defiIndex = 0, correct = 0, total = 0, repondu = false;
+var reponseAttendue = 0, aideCourante = "";
+var ordre = [];
+for (var z = 0; z < defiDefs.length; z++) ordre.push(z);
+melange(ordre);
+
+function nextDefi(){
+  if (defiIndex >= ordre.length) { defiIndex = 0; melange(ordre); }
+  var def = defiDefs[ordre[defiIndex]];
+  var gen = def.generate();
+  reponseAttendue = gen.answer;
+  aideCourante = def.hint;
+
+  document.getElementById("defi-svg").innerHTML = gen.svg;
+  var txt = gen.cotes;
+  if (currentMode !== "defiplus") txt += '<br><span class="lp-hint">Aide : ' + def.hint + "</span>";
+  document.getElementById("defi-cotes").innerHTML = txt;
+
+  document.getElementById("defi-input").value = "";
+  document.getElementById("defi-feedback").className = "feedback-box";
+  document.getElementById("defi-feedback").textContent = "";
+  document.getElementById("btn-next").style.display = "none";
+  document.getElementById("defi-input").focus();
+  repondu = false;
+  defiIndex++;
+  majScore();
+}
+
+function checkDefi(){
+  if (repondu) return;
+  var v = parseInt(document.getElementById("defi-input").value, 10);
+  if (isNaN(v)) { alert("Entre un nombre entier."); return; }
+  var ok = (v === reponseAttendue);
+  repondu = true; total++;
+  if (ok) correct++;
+  var fb = document.getElementById("defi-feedback");
+  fb.className = "feedback-box " + (ok ? "correct" : "wrong") + " show";
+  fb.innerHTML = ok
+    ? "<strong>Correct !</strong> La réponse est bien " + reponseAttendue + "."
+    : "<strong>Pas tout à fait.</strong> La bonne réponse est <strong>" + reponseAttendue +
+      "</strong>.<br>Rappel : " + aideCourante;
+  document.getElementById("btn-next").style.display = "block";
+  majScore();
+}
+
+function majScore(){
+  document.getElementById("defi-score").textContent =
+    correct + " / " + total + " correct" + (total > 1 ? "s" : "");
+  document.getElementById("defi-progress").style.width = (total > 0 ? correct / total * 100 : 0) + "%";
+}
+
+document.addEventListener("keydown", function(e){
+  if (currentMode === "explo") return;
+  if (e.key === "Enter") {
+    if (!repondu) checkDefi();
+    else if (document.getElementById("btn-next").style.display !== "none") nextDefi();
+  }
+});
+
+/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
+function generateFiche(){
+  var isPlus = (currentMode === "defiplus");
+  LP.fiche({
+    icon: "\u{1F517}",
+    title: "Diviseurs et PGCD",
+    subtitle: "Diviseurs communs \u00b7 PGCD \u00b7 PPCM \u00b7 CAP \u00b7 Bac Pro",
+    modeLabel: isPlus ? "D\u00e9fi +" : "Mode d\u00e9fi",
+    isPlus: isPlus,
+    tolerance: "r\u00e9ponse enti\u00e8re exacte",
+    accent: "#185FA5",
+    answerLabel: "R\u00e9ponse =",
+    unit: "",
+    aide: "PGCD : produit des facteurs premiers communs &nbsp;|&nbsp; "
+        + "Les diviseurs communs sont les diviseurs du PGCD &nbsp;|&nbsp; "
+        + "PPCM = produit des deux nombres \u00f7 PGCD &nbsp;|&nbsp; "
+        + "Paquets identiques, d\u00e9coupe sans perte, fraction irr\u00e9ductible : on cherche le PGCD",
+    questions: LP.pickQuestions(defiDefs, 10).map(function(q){
+      q.answerText = String(q.answer); return q;
+    })
+  });
+}
+
+/* ═══ INITIALISATION ════════════════════════════════════════════════════ */
+dessinerVenn();
 </script>
-<footer style="margin-top:40px; font-size:0.9em; color:#444; text-align:center; font-family:Arial, sans-serif;">
-  <hr style="border-color:#b7dbf6; margin-bottom:12px; max-width:480px;" />
-  <div>
-    <b>Licence MIT</b> – <span style="color:#2d5a2d;">© 2025 Moise Muller</span><br/>
-    <a href="mailto:moise.muller@ac-dijon.fr" style="color:#0074D9; text-decoration:underline;">moise.muller@ac-dijon.fr</a>
-  </div>
-  <div style="font-size:0.83em; color:#888; margin-top:6px;">
-    Libre pour usage, modification et diffusion.<br/>
-    Voir détails dans le code source.
-  </div>
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp; Licence MIT · © 2025 Moïse Muller &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
 </footer>
 </body>
 </html>
