@@ -1,16 +1,27 @@
 <!--
 Diviseurs et facteurs — nombres premiers, décomposition, diviseurs
-Auteur : Moïse Muller <moise.muller@ac-dijon.fr>
-Créé en 2025 · version harmonisée du 3 août 2026 pour outilslp.netlify.app
+Copyright (c) 2025 Moise Muller <moise.muller@ac-dijon.fr>
+Version harmonisée du 3 août 2026 pour outilslp.netlify.app
 
-Licence OutilsLP v1.0 (3 août 2026) — voir /LICENCE-OUTILSLP.txt
-  · Usage gratuit pour l'enseignement, les élèves, les établissements et les
-    associations, en conservant cette mention.
-  · Toute diffusion d'une version modifiée doit être signalée à l'auteur
-    AVANT diffusion (courriel ci-dessus, délai d'observation de 15 jours).
-  · Tout usage par une entreprise ou à but lucratif, y compris l'entraînement
-    d'un système d'IA commercial, requiert l'accord écrit préalable de l'auteur.
-  · Fourni « en l'état », sans garantie. Droit moral de l'auteur réservé.
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 -->
 <!DOCTYPE html>
 <html lang="fr">
@@ -87,6 +98,40 @@ Licence OutilsLP v1.0 (3 août 2026) — voir /LICENCE-OUTILSLP.txt
     line-height: 1.9;
   }
   .df-paires b { color: var(--text); }
+
+  .df-crits { display: flex; flex-direction: column; gap: 5px; }
+  .df-crit {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px;
+    border: 1.5px solid var(--border);
+    border-left-width: 4px;
+    border-radius: var(--radius);
+    background: var(--surface2);
+    font-size: var(--fs-xs);
+    color: var(--text2);
+    line-height: 1.4;
+  }
+  .df-crit.oui { border-left-color: var(--teal); background: var(--teal-bg); }
+  .df-crit.non { border-left-color: var(--border2); opacity: .72; }
+  .df-crit-d {
+    flex-shrink: 0;
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: var(--fs-xs);
+    background: var(--surface);
+    border: 1.5px solid var(--border2);
+    color: var(--text2);
+  }
+  .df-crit.oui .df-crit-d { background: var(--teal); border-color: var(--teal); color: #fff; }
+  .df-crit-txt { flex: 1; min-width: 0; }
+  .df-crit-txt b { color: var(--text); }
+  .df-crit-calc { font-family: var(--font-mono); color: var(--text3); }
+  .df-crit.oui .df-crit-calc { color: var(--teal); }
+  .df-crit-v { flex-shrink: 0; font-size: var(--fs-sm); font-weight: 700; }
+  .df-crit.oui .df-crit-v { color: var(--teal); }
+  .df-crit.non .df-crit-v { color: var(--text3); }
 
   .df-fold {
     background: var(--surface);
@@ -190,6 +235,12 @@ Licence OutilsLP v1.0 (3 août 2026) — voir /LICENCE-OUTILSLP.txt
         </div>
 
         <div>
+          <p class="section-label">Astuces : reconnaître un diviseur sans calculer</p>
+          <div class="df-crits" id="df-crits" style="margin-top:8px"></div>
+          <div class="df-note" style="margin-top:8px">Il n'existe pas de critère simple pour 7 : on divise, tout bêtement. Pour 6, il suffit que 2 et 3 marchent tous les deux.</div>
+        </div>
+
+        <div>
           <p class="section-label">Diviseurs par paires</p>
           <div class="df-paires" id="df-paires" style="margin-top:6px"></div>
         </div>
@@ -216,6 +267,8 @@ Licence OutilsLP v1.0 (3 août 2026) — voir /LICENCE-OUTILSLP.txt
       <p class="df-note" style="margin-top:8px"><strong>Décomposition :</strong> tout entier supérieur à 1 s'écrit d'une seule façon comme produit de facteurs premiers. Exemple : 180 = 2² × 3² × 5.</p>
       <p class="df-note" style="margin-top:8px"><strong>Compter les diviseurs :</strong> à partir de la décomposition, on ajoute 1 à chaque exposant puis on multiplie. Pour 180 = 2²×3²×5¹ : (2+1)×(2+1)×(1+1) = 18 diviseurs.</p>
       <p class="df-note" style="margin-top:8px"><strong>Carré parfait :</strong> tous les exposants de sa décomposition sont pairs. Sa racine carrée est un entier, et c'est le seul diviseur qui se retrouve seul dans sa paire.</p>
+      <p class="df-note" style="margin-top:8px"><strong>Critères de divisibilité :</strong> ils évitent de poser la division. Pour 2, 5 et 10 on regarde le dernier chiffre ; pour 4, les deux derniers ; pour 3 et 9, la somme des chiffres ; pour 11, la somme alternée en partant des unités. Aucun critère simple pour 7.</p>
+      <p class="df-note" style="margin-top:8px">Le critère de 11 expliqué en vidéo : <a href="https://www.instagram.com/reel/DAWwWujiL-5/" target="_blank" rel="noopener">reel Instagram de Moïse Muller</a>. Attention, Instagram est souvent filtré sur les réseaux d'établissement.</p>
     </details>
   </div>
 
@@ -303,6 +356,59 @@ function ecrirePuissances(f, sup){
   }).join(" × ");
 }
 
+/* ═══ CRITÈRES DE DIVISIBILITÉ ══════════════════════════════════════════ */
+function chiffres(n){
+  return String(n).split("").map(function(c){ return parseInt(c, 10); });
+}
+function sommeChiffres(n){
+  return chiffres(n).reduce(function(a, b){ return a + b; }, 0);
+}
+/* Somme alternée, en partant des unités : 3 − 5 + 4 − 2 */
+function alternee(n){
+  var c = chiffres(n), s = 0, signe = 1, morceaux = [], i;
+  for (i = c.length - 1; i >= 0; i--) {
+    s += signe * c[i];
+    morceaux.push((morceaux.length === 0 ? "" : (signe > 0 ? " + " : " \u2212 ")) + c[i]);
+    signe = -signe;
+  }
+  return { valeur: s, texte: morceaux.join("") };
+}
+function deuxDerniers(n){ return n % 100; }
+
+function criteres(n){
+  var c = chiffres(n), u = c[c.length - 1];
+  var s = sommeChiffres(n), a = alternee(n), dd = deuxDerniers(n);
+  var listeS = c.join(" + ");
+  return [
+    { d: 2, regle: "Le chiffre des unités est pair",
+      calcul: "unités : " + u, ok: n % 2 === 0 },
+    { d: 3, regle: "La somme des chiffres est dans la table de 3",
+      calcul: listeS + " = " + s, ok: n % 3 === 0 },
+    { d: 4, regle: "Le nombre formé par les deux derniers chiffres est dans la table de 4",
+      calcul: "deux derniers chiffres : " + dd, ok: n % 4 === 0 },
+    { d: 5, regle: "Le nombre se termine par 0 ou par 5",
+      calcul: "unités : " + u, ok: n % 5 === 0 },
+    { d: 9, regle: "La somme des chiffres est dans la table de 9",
+      calcul: listeS + " = " + s, ok: n % 9 === 0 },
+    { d: 10, regle: "Le nombre se termine par 0",
+      calcul: "unités : " + u, ok: n % 10 === 0 },
+    { d: 11, regle: "En partant des unités, on additionne et soustrait les chiffres en alternance : le résultat est 0 ou dans la table de 11",
+      calcul: a.texte + " = " + a.valeur, ok: n % 11 === 0 }
+  ];
+}
+
+function afficherCriteres(n){
+  var box = document.getElementById("df-crits");
+  box.innerHTML = criteres(n).map(function(c){
+    return '<div class="df-crit ' + (c.ok ? "oui" : "non") + '">' +
+             '<span class="df-crit-d">' + c.d + "</span>" +
+             '<span class="df-crit-txt"><b>' + c.regle + "</b><br>" +
+               '<span class="df-crit-calc">' + c.calcul + "</span></span>" +
+             '<span class="df-crit-v">' + (c.ok ? "✓" : "✗") + "</span>" +
+           "</div>";
+  }).join("");
+}
+
 /* ═══ EXPLORATEUR ═══════════════════════════════════════════════════════ */
 var histo = [], minuteur = null;
 
@@ -330,6 +436,7 @@ function analyser(){
     dec.textContent = "—"; nbf.textContent = "";
     nbd.textContent = "—"; form.textContent = "";
     lst.innerHTML = ""; par.innerHTML = "";
+    document.getElementById("df-crits").innerHTML = "";
     document.getElementById("df-arbre").innerHTML =
       '<text x="170" y="110" text-anchor="middle" font-size="15" fill="var(--text3)">Entre un entier de 2 à 100 000</text>';
     return;
@@ -363,6 +470,9 @@ function analyser(){
     else if (estPremier(v)) c += " prem";
     return '<span class="' + c + '">' + v + "</span>";
   }).join("");
+
+  /* Critères de divisibilité */
+  afficherCriteres(n);
 
   /* Paires */
   var paires = [], i;
@@ -748,7 +858,7 @@ analyser();
 </script>
 <footer class="lp-footer">
   <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
-  <a href="/LICENCE-OUTILSLP.txt">Licence OutilsLP</a> · © 2025 Moïse Muller &nbsp;·&nbsp;
+  Licence MIT · © 2025 Moïse Muller &nbsp;·&nbsp;
   <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
 </footer>
 </body>
