@@ -21,866 +21,890 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
--->
 
+Version harmonisée pour outilslp.netlify.app (design system lp-ui).
+-->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Juniper Green - Jeu des Diviseurs et Multiples</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f0f8f0;
-        }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #2d5a2d;
-            text-align: center;
-        }
-        .rules {
-            background-color: #e8f5e8;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid #4a7c59;
-        }
-        .player-setup {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-        .player-config {
-            display: flex;
-            align-items: center;
-            margin: 10px 0;
-            gap: 15px;
-        }
-        .player-config input[type="text"] {
-            padding: 8px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-            min-width: 150px;
-        }
-        .color-picker {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .color-option {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            border: 3px solid transparent;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .color-option:hover {
-            transform: scale(1.1);
-        }
-        .color-option.selected {
-            border-color: #333;
-            transform: scale(1.2);
-        }
-        .game-controls {
-            text-align: center;
-            margin: 20px 0;
-        }
-        button {
-            background-color: #4a7c59;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #5a8c69;
-        }
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 10px;
-            max-width: 600px;
-            margin: 20px auto;
-        }
-        .cell {
-            width: 50px;
-            height: 50px;
-            border: 2px solid #4a7c59;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            background-color: #f9f9f9;
-            font-weight: bold;
-            font-size: 14px;
-            border-radius: 5px;
-            transition: all 0.2s;
-        }
-        .cell:hover {
-            background-color: #e8f5e8;
-            transform: scale(1.05);
-        }
-        .cell.selected {
-            color: white;
-            font-weight: bold;
-        }
-        .cell.last-selected {
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-            border-width: 3px;
-        }
-        .cell.disabled {
-            background-color: #ddd;
-            color: #888;
-            cursor: not-allowed;
-            border-color: #bbb;
-        }
-        .cell.invalid {
-            background-color: #ff6b6b;
-            color: white;
-            animation: shake 0.5s;
-        }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-        .info-panel {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-        .sequence {
-            font-weight: bold;
-            color: #2d5a2d;
-        }
-        .sequence-number {
-            border-radius:4px; 
-            margin:0 2px;
-            padding:2px 6px;
-        }
-        .player-turn {
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        .score {
-            text-align: center;
-            margin: 10px 0;
-        }
-        .game-over {
-            text-align: center;
-            font-size: 20px;
-            font-weight: bold;
-            color: #d9534f;
-            margin: 20px 0;
-            padding: 15px;
-            background-color: #f8d7da;
-            border-radius: 8px;
-        }
-        .history-section {
-            margin-top: 30px;
-            border-top: 2px solid #4a7c59;
-            padding-top: 20px;
-        }
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            padding: 10px;
-            background-color: #e8f5e8;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-        .history-content {
-            display: none;
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-        }
-        .history-content.show {
-            display: block;
-        }
-        .history-entry {
-            margin: 10px 0;
-            padding: 10px;
-            background-color: white;
-            border-radius: 5px;
-            border-left: 4px solid #4a7c59;
-        }
-        .toggle-arrow {
-            transition: transform 0.3s;
-        }
-        .toggle-arrow.rotated {
-            transform: rotate(180deg);
-        }
-        .mode-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin: 20px 0;
-        }
-        .mode-buttons button {
-            min-width: 120px;
-        }
-        .hidden {display: none;}
-        #bandeau-multiplication {
-            position: fixed;
-            top: 0; right: 0;
-            height: 100vh;
-            width: 420px;
-            max-width: 99vw;
-            background: #fff;
-            border-left: 2px solid #0074D9;
-            box-shadow: -2px 0 8px #0074d988;
-            transition: transform 0.3s;
-            z-index: 1001;
-            padding: 15px 5px 15px 15px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-        #bandeau-multiplication.replie { transform: translateX(100%);}
-        #bouton-bandeau-mult {
-            position: fixed;
-            top: 40%;
-            right: 0;
-            transform: translateY(-50%);
-            background: #0074D9;
-            color: #fff;
-            border: none;
-            padding: 12px 7px 12px 15px;
-            border-radius: 20px 0 0 20px;
-            cursor: pointer;
-            font-size: 18px;
-            z-index: 1100;
-            transition: right 0.3s;
-        }
-        #bandeau-multiplication.replie + #bouton-bandeau-mult {
-            right: 0;
-        }
-        #table-mult {
-            border-collapse: collapse;
-            width: 100%;
-            min-width: 340px;
-            background: #fff;
-            margin-top: 10px;
-        }
-        #table-mult th, #table-mult td {
-            border: 1px solid #AAA;
-            padding: 6px 8px;
-            text-align: center;
-            font-size: 17px;
-        }
-        #table-mult th {
-            background: #dedffa;
-            font-weight: bold;
-        }
-        #bandeau-decomp {
-            position: fixed;
-            top: 0; left: 0;
-            height: 100vh;
-            width: 270px;
-            max-width: 97vw;
-            background: #fff;
-            border-right: 2px solid #0074D9;
-            box-shadow: 2px 0 8px #0074d988;
-            transition: transform 0.3s;
-            z-index: 1001;
-            padding: 15px 5px 15px 15px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-        #bandeau-decomp.replie { transform: translateX(-100%);}
-        #bouton-bandeau-decomp {
-            position: fixed;
-            top: 40%;
-            left: 0;
-            transform: translateY(-50%);
-            background: #0074D9;
-            color: #fff;
-            border: none;
-            padding: 12px 15px 12px 7px;
-            border-radius: 0 20px 20px 0;
-            cursor: pointer;
-            font-size: 18px;
-            z-index: 1100;
-            transition: left 0.3s;
-        }
-        #bandeau-decomp.replie + #bouton-bandeau-decomp {
-            left: 0;
-        }
-        @media (max-width: 700px) {
-            #bandeau-multiplication, #bandeau-decomp {
-                width: 96vw !important;
-                min-width: 140px;
-                padding: 10px 0 10px 5px;
-            }
-            #table-mult th, #table-mult td {
-                font-size: 13px;
-                padding: 4px 3.5px;
-            }
-        }
-        .select-nb-joueurs-container {
-            text-align: center;
-            margin-bottom: 18px;
-            font-size: 1.12em;
-        }
-        .select-nb-joueurs {
-            font-size: 1em;
-            padding: 6px 8px;
-            border-radius: 6px;
-            border: 2px solid #4a7c59;
-            background: #e8f5e8;
-            outline: none;
-            margin-left: 5px;
-        }
-        #help-bubble-btn {
-            position: fixed;
-            top: 19px;
-            right: 19px;
-            width: 46px;
-            height: 46px;
-            background: #0074D9;
-            color: #fff;
-            border: none;
-            border-radius: 50%;
-            font-size: 30px;
-            font-weight: bold;
-            z-index: 2001;
-            box-shadow: 1px 2px 16px #0074d980;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: background 0.18s;
-        }
-        #help-bubble-btn:active { background:#005ea6;}
-        #help-bubble {
-            position: fixed;
-            top: 75px;
-            right: 23px;
-            width: 420px;
-            max-width: 95vw;
-            background: #ffffff;
-            color: #222;
-            border-radius: 18px;
-            border: 2px solid #0074D9;
-            box-shadow: 2px 4px 22px #0074d9cc;
-            z-index: 2002;
-            padding: 28px 22px 24px 22px;
-            font-size: 1.15em;
-            line-height: 1.6;
-            text-align:left;
-            max-height: calc(98vh - 80px);
-            overflow: auto;
-        }
-        #help-bubble h2 {
-            margin-top: 0; margin-bottom: 8px;
-            font-size: 1.18em;
-            color: #0074D9;
-            text-align: center;
-        }
-        #help-bubble ul {
-            margin-top: 0.5em;
-            padding-left: 1.2em;
-        }
-        #help-bubble strong { color:#2d5a2d;}
-        @media (max-width:500px){
-            #help-bubble{width:95vw; right:2vw; left:auto;}
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Juniper Green — Diviseurs et multiples</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--green); --accent-bg: var(--green-bg); }
+
+  /* ── Plateau + réglages ─────────────────────────────────────────────── */
+  .jg-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: var(--gap);
+    align-items: start;
+  }
+  @media (max-width: 900px) { .jg-layout { grid-template-columns: 1fr; } }
+
+  .jg-board {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--pad-card);
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+
+  .jg-turn {
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    text-align: center;
+    font-size: var(--fs-md);
+    font-weight: 700;
+    color: #fff;
+    background: var(--text3);
+  }
+
+  .jg-grid-wrap { overflow-x: auto; }
+  .jg-grid {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    min-width: 360px;
+  }
+  .jg-grid.cols5 { grid-template-columns: repeat(5, minmax(0, 1fr)); min-width: 240px; }
+
+  .jg-cell {
+    aspect-ratio: 1 / 1;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--border2);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    transition: transform .12s, background-color .15s, border-color .15s;
+  }
+  .jg-cell:hover:not(.taken):not(.off) { border-color: var(--accent); transform: scale(1.06); }
+  .jg-cell.taken  { color: #fff; border-color: transparent; cursor: default; }
+  .jg-cell.last   { outline: 3px solid var(--text); outline-offset: 1px; }
+  .jg-cell.off    { opacity: .32; cursor: not-allowed; }
+  .jg-cell.bad    { background: var(--red-bg); color: var(--red); border-color: var(--red); animation: jg-shake .4s; }
+  @keyframes jg-shake {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(-5px); }
+    75%      { transform: translateX(5px); }
+  }
+
+  .jg-seq {
+    font-size: var(--fs-xs);
+    color: var(--text2);
+    line-height: 2.1;
+    word-break: break-word;
+  }
+  .jg-chip {
+    display: inline-block;
+    padding: 2px 9px;
+    margin: 0 2px;
+    border-radius: 999px;
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .jg-over {
+    border-left: 4px solid var(--green);
+    background: var(--green-bg);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 14px 16px;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--green);
+    display: none;
+  }
+  .jg-over.show { display: block; }
+
+  /* ── Réglages ───────────────────────────────────────────────────────── */
+  .jg-select {
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+  }
+  .jg-text {
+    flex: 1; min-width: 110px;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--fs-sm);
+  }
+  .jg-text:focus, .jg-select:focus { border-color: var(--accent); background: var(--surface); }
+
+  .jg-player { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .jg-player + .jg-player { margin-top: 10px; }
+  .jg-colors { display: flex; gap: 6px; }
+  .jg-col {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: transform .15s;
+  }
+  .jg-col.on { border-color: var(--text); transform: scale(1.15); }
+
+  .jg-btn {
+    padding: 10px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    color: var(--text2);
+    font-family: inherit;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .jg-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+  .jg-btn.on { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+  .jg-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .jg-note { font-size: var(--fs-xs); color: var(--text3); line-height: 1.5; }
+
+  /* ── Panneaux dépliants ─────────────────────────────────────────────── */
+  .jg-fold {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px var(--pad-card);
+    margin-bottom: var(--gap);
+  }
+  .jg-fold > summary {
+    cursor: pointer;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--text2);
+    list-style: none;
+  }
+  .jg-fold > summary::-webkit-details-marker { display: none; }
+  .jg-fold > summary::before { content: "▸ "; color: var(--accent); }
+  .jg-fold[open] > summary::before { content: "▾ "; }
+  .jg-fold[open] > summary { margin-bottom: 12px; }
+  .jg-fold p, .jg-fold li { font-size: var(--fs-xs); color: var(--text2); line-height: 1.6; }
+  .jg-fold ul { padding-left: 1.3em; margin-top: 6px; }
+
+  .jg-mini { font-size: var(--fs-xs); color: var(--text2); line-height: 1.7; }
+  .jg-mini strong { color: var(--text); }
+
+  .jg-mult { border-collapse: collapse; width: 100%; font-size: var(--fs-xs); }
+  .jg-mult th, .jg-mult td {
+    border: 1px solid var(--border);
+    padding: 4px 2px;
+    text-align: center;
+  }
+  .jg-mult th { background: var(--surface2); font-weight: 700; color: var(--text2); }
+  .jg-mult td { color: var(--text2); }
+
+  .jg-histo-entry {
+    border-left: 3px solid var(--accent);
+    background: var(--surface2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 9px 12px;
+    margin-bottom: 8px;
+    font-size: var(--fs-xs);
+    color: var(--text2);
+  }
+</style>
 </head>
 <body>
-    <!-- Bouton Aide ("?") -->
-    <button id="help-bubble-btn" title="Afficher l'aide du jeu" aria-expanded="false">?</button>
-    <div id="help-bubble" style="display:none;">
-        <h2>Comment jouer à Juniper Green ?</h2>
-        <p>
-            <strong>But du jeu&nbsp;:</strong><br>
-            Le but est de sélectionner à tour de rôle des nombres sur la grille.<br>
-            À chaque tour, le nombre choisi doit être <strong>un multiple ou un diviseur</strong> du nombre sélectionné juste avant.<br>
-            <strong>Celui qui ne peut plus jouer a perdu.</strong>
-        </p>
-        <ul>
-            <li>Choisis le nombre de joueurs (2 à 4) et leur couleur.</li>
-            <li>Deux modes : <b>aidé</b> (seules les cases valides peuvent être cliquées) ou <b>libre</b> (erreurs signalées en rouge, tu peux corriger).</li>
-            <li>À chaque tour, le joueur suivant change automatiquement.</li>
-            <li><b>Bandeau droit</b> : affiche toujours la table de multiplication (aide visuelle rapide).</li>
-            <li><b>Bandeau gauche</b> : montre la décomposition (diviseurs, facteurs premiers) du nombre que tu viens de choisir.</li>
-            <li>Le joueur qui ne peut plus jouer perd, celui qui a joué juste avant gagne !</li>
-            <li>Le bouton “Nouvelle configuration” permet de repartir à zéro.</li>
-            <li>L’historique montre les séquences et gagnants précédents.</li>
-        </ul>
-        <div style="text-align:center; margin-top:10px;">
-            <span style="color:#e74c3c;font-weight:bold;font-size:1.09em;">Bonne partie !</span>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <rect x="7" y="7" width="26" height="26" rx="4" fill="var(--green)" opacity=".22" class="lp-beat"/>
+      <rect x="7" y="7" width="26" height="26" rx="4" fill="none" stroke="var(--green)" stroke-width="2.6"/>
+      <text x="20" y="26" text-anchor="middle" font-size="14" font-weight="700" fill="var(--green)">JG</text>
+    </svg></div>
+  <div>
+    <h1>Juniper Green</h1>
+    <p>Diviseurs et multiples · Jeu de stratégie · CAP · Bac Pro</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ONGLETS DE MODE -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('jeu',this)">Partie</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi ⁺</button>
+  </div>
+
+  <!-- ══ MODE PARTIE ══════════════════════════════════════════════════ -->
+  <div id="mode-jeu">
+
+    <details class="jg-fold" open>
+      <summary>Règle du jeu</summary>
+      <p><strong>But :</strong> chaque joueur choisit à tour de rôle un nombre de la grille.
+      Le nombre choisi doit être un <strong>diviseur</strong> ou un <strong>multiple</strong> du nombre précédent.
+      Un nombre déjà pris ne peut plus être rejoué. <strong>Le joueur qui ne peut plus jouer a perdu.</strong></p>
+      <ul>
+        <li><strong>Mode aidé :</strong> seules les cases jouables restent cliquables.</li>
+        <li><strong>Mode libre :</strong> tout est cliquable, une erreur clignote en rouge et peut être corrigée.</li>
+        <li>Le panneau de droite affiche la décomposition du dernier nombre joué et la table de multiplication.</li>
+      </ul>
+    </details>
+
+    <div class="jg-layout">
+
+      <!-- Plateau -->
+      <div class="jg-board">
+        <div class="jg-turn" id="jg-turn">Réglez la partie puis cliquez sur « Commencer »</div>
+        <div class="jg-grid-wrap"><div class="jg-grid" id="jg-grid"></div></div>
+        <div>
+          <p class="section-label">Suite des nombres joués</p>
+          <div class="jg-seq" id="jg-seq">—</div>
         </div>
-        <div style="border-top:1px solid #b7dbf6;margin-top:18px;padding-top:11px;font-size:0.98em;text-align:center;color:#444;">
-          <div style="font-size:0.98em;">
-            <b>Licence MIT</b> – <span style="color:#2d5a2d">© 2025 Moise Muller</span><br>
-            <a href="mailto:moise.muller@ac-dijon.fr" style="color:#0074D9;text-decoration:underline">moise.muller@ac-dijon.fr</a>
-          </div>
-          <div style="font-size:0.92em;color:#888;margin-top:3px;">
-            Libre pour usage, modification et diffusion.<br>
-            Voir détails dans le code source.
+        <div class="jg-note" id="jg-info">Coups possibles : —</div>
+        <div class="jg-over" id="jg-over"></div>
+      </div>
+
+      <!-- Réglages + aides -->
+      <div class="controls-card">
+        <div>
+          <p class="section-label">Réglages de la partie</p>
+          <div class="jg-btn-row" style="margin-top:10px">
+            <label class="jg-note" for="jg-nb">Joueurs</label>
+            <select class="jg-select" id="jg-nb" onchange="rendreJoueurs()">
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+            <label class="jg-note" for="jg-taille">Grille</label>
+            <select class="jg-select" id="jg-taille">
+              <option value="25">1 à 25</option>
+              <option value="50" selected>1 à 50</option>
+              <option value="100">1 à 100</option>
+            </select>
           </div>
         </div>
-    </div>
-    <!-- BANDEAU GAUCHE - Décomposition -->
-    <div id="bandeau-decomp" class="replie">
-      <h3>Décomposition du nombre</h3>
-      <div id="decomposition-details">
-        <em>Aucun nombre sélectionné</em>
+
+        <div id="jg-joueurs"></div>
+
+        <div>
+          <p class="section-label">Mode</p>
+          <div class="jg-btn-row" style="margin-top:10px">
+            <button class="jg-btn on" id="jg-mode-aide" onclick="setJeuMode('aide')">Jeu aidé</button>
+            <button class="jg-btn" id="jg-mode-libre" onclick="setJeuMode('libre')">Jeu libre</button>
+          </div>
+        </div>
+
+        <div class="jg-btn-row">
+          <button class="btn-check" style="flex:1" onclick="nouvellePartie()">Commencer</button>
+          <button class="jg-btn" onclick="reinit()">Réinitialiser</button>
+        </div>
+
+        <div>
+          <p class="section-label">Dernier nombre joué</p>
+          <div class="jg-mini" id="jg-decomp" style="margin-top:8px">Aucun nombre joué pour le moment.</div>
+        </div>
       </div>
     </div>
-    <button id="bouton-bandeau-decomp" aria-label="Afficher/Cacher la décomposition">⮞</button>
-    <div class="container">
-        <h1>Juniper Green</h1>
-        <div class="rules">
-            <h3>Règles du jeu</h3>
-            <p><strong>Objectif :</strong><br>
-            Cliquez sur les différentes cases une à une sachant que la case sur laquelle vous cliquez doit être un <strong>diviseur ou un multiple</strong> de la case précédente.</p>
-            <p><strong>Mode aidé :</strong> Seules les cases valides sont cliquables.<br>
-            <strong>Mode libre :</strong> Toutes les cases sont cliquables, les erreurs sont signalées en rouge et peuvent être corrigées.</p>
-        </div>
-        <div class="select-nb-joueurs-container">
-          <label for="nbJoueurs"><b>Nombre de joueurs : </b></label>
-          <select id="nbJoueurs" class="select-nb-joueurs">
-            <option value="2" selected>2 joueurs</option>
-            <option value="3">3 joueurs</option>
-            <option value="4">4 joueurs</option>
-          </select>
-        </div>
-        <div class="player-setup" id="playerSetup">
-            <h3>Configuration des joueurs</h3>
-            <div id="playerConfigs"></div>
-            <div class="player-config">
-                <label><strong>Nom de l'historique :</strong></label>
-                <input type="text" id="historyName" placeholder="Nom de la session" value="Session">
-            </div>
-        </div>
-        <div class="mode-buttons">
-            <button onclick="startGame('aided')">Jeu Aidé</button>
-            <button onclick="startGame('free')">Jeu Libre</button>
-            <button onclick="resetGame()">Nouvelle Configuration</button>
-        </div>
-        <div class="player-turn" id="playerTurn" style="display: none;"></div>
-        <div class="grid" id="gameGrid"></div>
-        <div class="info-panel">
-            <div class="score">
-                <span id="scoreDisplay">Configurez les joueurs et sélectionnez un mode de jeu</span>
-            </div>
-            <div class="sequence">
-                Séquence : <span id="sequenceDisplay">-</span>
-            </div>
-        </div>
-        <div class="game-over" id="gameOver" style="display: none;"></div>
-        <div class="history-section" id="historySection" style="display: none;">
-            <div class="history-header" onclick="toggleHistory()">
-                <h3 id="historyTitle">Historique</h3>
-                <span class="toggle-arrow" id="toggleArrow">▼</span>
-            </div>
-            <div class="history-content" id="historyContent"></div>
-        </div>
+
+    <details class="jg-fold" style="margin-top:var(--gap)">
+      <summary>Table de multiplication</summary>
+      <table class="jg-mult" id="jg-mult"><thead></thead><tbody></tbody></table>
+    </details>
+
+    <details class="jg-fold">
+      <summary>Historique des parties</summary>
+      <div class="jg-btn-row" style="margin-bottom:12px">
+        <label class="jg-note" for="jg-session">Nom de la session</label>
+        <input class="jg-text" type="text" id="jg-session" value="Session" placeholder="Nom de la session">
+      </div>
+      <div id="jg-histo"><p class="jg-note">Aucune partie terminée pour le moment.</p></div>
+    </details>
+  </div>
+
+  <!-- ══ MODE DÉFI (défi + défi⁺) ═════════════════════════════════════ -->
+  <div id="mode-defi">
+    <div class="defi-card">
+      <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI + — Aides masquées</div>
+      <div class="defi-header">
+        <div class="defi-title" id="defi-mode-title">Mode défi — Diviseurs et multiples</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
+      <div class="defi-shape-display">
+        <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:200px;width:100%;"></svg>
+        <div class="defi-cotes" id="defi-cotes"></div>
+      </div>
+      <div class="defi-input-row">
+        <label>Réponse =</label>
+        <input type="number" id="defi-input" placeholder="?" step="1">
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:0.75rem;">La réponse est toujours un nombre entier. Grille de référence : 1 à 50.</div>
+      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+      <div class="feedback-box" id="defi-feedback"></div>
+      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Question suivante →</button>
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="generateFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+      </div>
     </div>
-    <div id="bandeau-multiplication" class="replie">
-      <h3>Table des multiplications</h3>
-      <table id="table-mult">
-        <thead>
-          <tr>
-            <th>×</th>
-          </tr>
-        </thead>
-        <tbody>
-        </tbody>
-      </table>
-    </div>
-    <button id="bouton-bandeau-mult" aria-label="Afficher/Cacher la table">⮜</button>
+  </div>
 
-    <script>
-        // === FONCTIONNALITÉ BULLE AIDE ===
-        const helpBtn = document.getElementById('help-bubble-btn');
-        const helpBubble = document.getElementById('help-bubble');
-        helpBtn.addEventListener('click', function(){
-            const visible = helpBubble.style.display !== 'none';
-            helpBubble.style.display = visible ? 'none' : 'block';
-            helpBtn.setAttribute('aria-expanded', (!visible).toString());
-        });
+</div>
 
-        /*********** VARIABLES GLOBALES ***********/
-        let gameMode = '';
-        let nbJoueurs = 2;
-        let currentPlayer = 1;
-        let selectedCells = [];
-        let playedBy = [];
-        let gameActive = false;
-        let numbers = [];
-        let lastSelected = -1;
-        let playerColors = ["#2d5a2d", "#e74c3c", "#3498db", "#f39c12"];
-        let playerNames = ["Joueur 1", "Joueur 2", "Joueur 3", "Joueur 4"];
-        let gameHistory = [];
-        let invalidSelections = [];
-        function decompositionFacteursPremiers(n) {
-            if (n < 2) return [n];
-            let res = [];
-            let original = n;
-            for (let f = 2; f*f <= n; f++) {
-                while (n % f === 0) {
-                    res.push(f);
-                    n = n / f;
-                }
-            }
-            if (n > 1) res.push(n);
-            return res;
-        }
-        function tousDiviseurs(n) {
-            let div = [];
-            for (let i = 1; i <= n; i++) if (n % i === 0) div.push(i);
-            return div;
-        }
-        function setDecomposition(n) {
-          const dest = document.getElementById("decomposition-details");
-          if (!dest) return;
-          if (!n || n<1) {
-            dest.innerHTML = "<em>Aucun nombre sélectionné</em>";
-            return;
-          }
-          const facteurs = decompositionFacteursPremiers(n);
-          const divs = tousDiviseurs(n);
-          dest.innerHTML = `
-            <div><b>Nombre :</b> ${n}</div>
-            <div><b>Facteurs&nbsp;premiers :</b> ${facteurs.join(' × ')}</div>
-            <div><b>Diviseurs&nbsp;:</b> ${divs.join(', ')}</div>
-          `;
-        }
-        const couleurBdd = [
-            "#2d5a2d", "#e74c3c", "#3498db", "#f39c12", "#9b59b6", "#1abc9c"
-        ];
-        const couleurNoms = [
-            "Vert", "Rouge", "Bleu", "Orange", "Violet", "Turquoise"
-        ];
-        let couleursParDefaut = couleurBdd.slice(0,4);
-        function renderPlayerConfigs() {
-            const nb = parseInt(document.getElementById("nbJoueurs").value);
-            nbJoueurs = nb;
-            let html = "";
-            for (let i=1; i<=nb; i++) {
-                let colorRow = "";
-                couleurBdd.forEach((c, idx) => {
-                  const checked = playerColors[i-1] == c ? "selected" : "";
-                  colorRow += `<div class="color-option ${checked}" data-player="${i}" title="${couleurNoms[idx]}" data-color="${c}" style="background-color: ${c};"></div>`;
-                });
-                html += `
-                  <div class="player-config">
-                    <label><strong>Joueur ${i} :</strong></label>
-                    <input type="text" id="player${i}Name" placeholder="Nom du joueur ${i}" value="${playerNames[i-1]}">
-                    <div class="color-picker">
-                      ${colorRow}
-                    </div>
-                  </div>
-                `;
-            }
-            document.getElementById("playerConfigs").innerHTML = html;
-        }
-        document.addEventListener("DOMContentLoaded", function(){
-            renderPlayerConfigs();
-        });
-        document.getElementById("nbJoueurs").addEventListener("change", function(){
-            const n = parseInt(this.value);
-            for(let i=2;i<n;i++){ if(!playerNames[i]) playerNames[i]=`Joueur ${i+1}`; }
-            for(let i=0;i<n;i++){ if(!playerColors[i]) playerColors[i]=couleurBdd[i]; }
-            renderPlayerConfigs();
-        });
+<script src="/assets/lp-fiche.js"></script>
+<script>
+/* ═══ OUTILS ARITHMÉTIQUES ══════════════════════════════════════════════ */
+function rnd(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-        function generateNumbers() {
-            numbers = [];
-            for (let i = 1; i <= 50; i++) {
-                numbers.push(i);
-            }
-        }
-        function createGrid() {
-            const grid = document.getElementById('gameGrid');
-            grid.innerHTML = '';
-            for (let i = 0; i < 50; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.textContent = numbers[i];
-                cell.onclick = () => { selectCell(i); setDecomposition(numbers[i]); };
-                grid.appendChild(cell);
-            }
-        }
-        function getPlayerConfig(pn) {
-            const nameInput = document.getElementById(`player${pn}Name`);
-            return {
-                name: nameInput ? nameInput.value : `Joueur ${pn}`,
-                color: playerColors[pn-1] || couleurBdd[pn-1]
-            };
-        }
-        function refreshPlayerParams() {
-          for(let i=1;i<=nbJoueurs;i++) {
-            let nameInput = document.getElementById(`player${i}Name`);
-            if (nameInput) playerNames[i-1]=nameInput.value;
-          }
-        }
-        function startGame(mode) {
-            refreshPlayerParams();
-            gameMode = mode;
-            currentPlayer = 1;
-            selectedCells = [];
-            playedBy = [];
-            gameActive = true;
-            lastSelected = -1;
-            invalidSelections = [];
-            generateNumbers();
-            createGrid();
-            updateDisplay();
-            document.getElementById('playerTurn').style.display = 'block';
-            document.getElementById('gameOver').style.display = 'none';
-            document.getElementById('historySection').style.display = 'block';
-            updatePlayerTurn();
-            setDecomposition(null);
-            if (mode === 'aided') highlightValidMoves();
-        }
-        function resetGame() {
-            refreshPlayerParams();
-            gameMode = '';
-            gameActive = false;
-            selectedCells = [];
-            playedBy = [];
-            lastSelected = -1;
-            invalidSelections = [];
-            document.getElementById('gameGrid').innerHTML = '';
-            document.getElementById('playerTurn').style.display = 'none';
-            document.getElementById('gameOver').style.display = 'none';
-            updateDisplay();
-            setDecomposition(null);
-        }
-        function isDivisorOrMultiple(a, b) {
-            return a % b === 0 || b % a === 0;
-        }
-        function selectCell(index) {
-            if (!gameActive) return;
-            const cells = document.getElementsByClassName('cell');
-            const cell = cells[index];
-            if (cell.classList.contains('selected')) return;
-            const currentNumber = numbers[index];
-            if (selectedCells.length === 0) {
-                selectedCells.push(index);
-                playedBy.push(currentPlayer);
-                cell.classList.add('selected', 'last-selected');
-                cell.style.backgroundColor = playerColors[currentPlayer-1];
-                lastSelected = index;
-                updateDisplay();
-                currentPlayer = currentPlayer % nbJoueurs + 1;
-                updatePlayerTurn();
-                if (gameMode === 'aided') highlightValidMoves();
-                return;
-            }
-            const lastNumber = numbers[lastSelected];
-            if (!isDivisorOrMultiple(currentNumber, lastNumber)) {
-                if (gameMode === 'aided') return;
-                else {
-                    cell.classList.add('invalid');
-                    invalidSelections.push(index);
-                    setTimeout(() => { cell.classList.remove('invalid'); }, 1000);
-                    return;
-                }
-            }
-            invalidSelections.forEach(invalidIndex => {
-                cells[invalidIndex].classList.remove('invalid');
-            });
-            invalidSelections = [];
-            selectedCells.push(index);
-            playedBy.push(currentPlayer);
-            if (lastSelected !== -1) cells[lastSelected].classList.remove('last-selected');
-            cell.classList.add('selected', 'last-selected');
-            cell.style.backgroundColor = playerColors[currentPlayer-1];
-            lastSelected = index;
-            const validMoves = getValidMoves();
-            if (validMoves.length === 0) {
-                gameActive = false;
-                const winnerNum = playedBy[playedBy.length-1];
-                const loserNum = (winnerNum%nbJoueurs)+1;
-                const winnerName = playerNames[winnerNum-1];
-                const loserName = playerNames[loserNum-1];
-                document.getElementById('gameOver').innerHTML =
-                   `${winnerName} gagne ! (${loserName} n'a plus de mouvements possibles)`;
-                document.getElementById('gameOver').style.display = 'block';
-                addToHistory(false);
-            } else {
-                currentPlayer = currentPlayer % nbJoueurs + 1;
-                updatePlayerTurn();
-            }
-            updateDisplay();
-            if (gameMode === 'aided' && gameActive) highlightValidMoves();
-        }
-        function getValidMoves() {
-            if (lastSelected === -1) return [];
-            const lastNumber = numbers[lastSelected];
-            const validMoves = [];
-            const cells = document.getElementsByClassName('cell');
-            for (let i = 0; i < numbers.length; i++) {
-                if (cells[i].classList.contains('selected')) continue;
-                if (isDivisorOrMultiple(numbers[i], lastNumber)) validMoves.push(i);
-            }
-            return validMoves;
-        }
-        function highlightValidMoves() {
-            const cells = document.getElementsByClassName('cell');
-            const validMoves = getValidMoves();
-            for (let i = 0; i < cells.length; i++) {
-                cells[i].classList.remove('disabled');
-            }
-            for (let i = 0; i < cells.length; i++) {
-                if (!cells[i].classList.contains('selected') && !validMoves.includes(i)) {
-                    cells[i].classList.add('disabled');
-                }
-            }
-        }
-        function updateDisplay() {
-            const scoreElement = document.getElementById('scoreDisplay');
-            const sequenceElement = document.getElementById('sequenceDisplay');
-            if (gameMode === '') {
-                scoreElement.textContent = 'Configurez les joueurs et sélectionnez un mode de jeu';
-                sequenceElement.textContent = '-';
-            } else {
-                const currentPlayerName = playerNames[currentPlayer-1];
-                scoreElement.textContent = `Tour de ${currentPlayerName} - Nombres sélectionnés : ${selectedCells.length}`;
-                const sequence = selectedCells.map((index, i) => {
-                    const playerColor = playerColors[playedBy[i]-1];
-                    return `<span class="sequence-number" style="background-color: ${playerColor}; color:white;">${numbers[index]}</span>`;
-                }).join(' → ');
-                sequenceElement.innerHTML = sequence || '-';
-            }
-        }
-        function updatePlayerTurn() {
-            const playerTurnElement = document.getElementById('playerTurn');
-            const currentPlayerName = playerNames[currentPlayer-1];
-            const currentColor = playerColors[currentPlayer-1];
-            playerTurnElement.textContent = `Tour de ${currentPlayerName}`;
-            playerTurnElement.style.backgroundColor = currentColor;
-            playerTurnElement.style.color = 'white';
-        }
-        function addToHistory(isReset = false) {
-            if (selectedCells.length === 0 && !isReset) return;
-            const sequence = selectedCells.map(index => numbers[index]).join(' → ');
-            const timestamp = new Date().toLocaleString();
-            const playersObj = {};
-            for(let i=0;i<nbJoueurs;i++) playersObj['player'+(i+1)] = playerNames[i];
-            const entry = {
-                timestamp,
-                mode: gameMode,
-                sequence,
-                length: selectedCells.length,
-                players: playersObj
-            };
-            gameHistory.push(entry);
-            updateHistoryDisplay();
-        }
-        function updateHistoryDisplay() {
-            const historyContent = document.getElementById('historyContent');
-            const historyTitle = document.getElementById('historyTitle');
-            const historyName = document.getElementById('historyName').value;
-            historyTitle.textContent = `Historique - ${historyName}`;
-            historyContent.innerHTML = '';
-            gameHistory.slice(-10).reverse().forEach(entry => {
-                let joueurs = "";
-                Object.entries(entry.players).forEach(([k,v], idx) => {
-                  joueurs += v;
-                  if (idx<Object.keys(entry.players).length-1) joueurs += " vs ";
-                });
-                const div = document.createElement('div');
-                div.className = 'history-entry';
-                div.innerHTML = `
-                    <strong>${entry.timestamp}</strong> - Mode: ${entry.mode === 'aided' ? 'Aidé' : 'Libre'}<br>
-                    Joueurs: ${joueurs}<br>
-                    Séquence (${entry.length} nombres): ${entry.sequence}
-                `;
-                historyContent.appendChild(div);
-            });
-        }
-        function toggleHistory() {
-            const content = document.getElementById('historyContent');
-            const arrow = document.getElementById('toggleArrow');
-            content.classList.toggle('show');
-            arrow.classList.toggle('rotated');
-        }
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('color-option')) {
-                const player = parseInt(e.target.dataset.player);
-                const color = e.target.dataset.color;
-                playerColors[player-1] = color;
-                document.querySelectorAll(`[data-player="${player}"]`).forEach(el => {
-                    el.classList.remove('selected');
-                });
-                e.target.classList.add('selected');
-            }
-        });
-        renderPlayerConfigs();
-        resetGame();
+function diviseurs(n){
+  var d = [];
+  for (var i = 1; i <= n; i++) if (n % i === 0) d.push(i);
+  return d;
+}
+function facteursPremiers(n){
+  if (n < 2) return [n];
+  var res = [], f;
+  for (f = 2; f * f <= n; f++) while (n % f === 0) { res.push(f); n = n / f; }
+  if (n > 1) res.push(n);
+  return res;
+}
+function multiples(n, max){
+  var m = [];
+  for (var k = n; k <= max; k += n) m.push(k);
+  return m;
+}
+function pgcd(a, b){ while (b) { var t = b; b = a % b; a = t; } return a; }
+function ppcm(a, b){ return a * b / pgcd(a, b); }
+function estLie(a, b){ return a % b === 0 || b % a === 0; }
+function melange(t){
+  for (var i = t.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var x = t[i]; t[i] = t[j]; t[j] = x;
+  }
+  return t;
+}
 
-        function creerTableMultiplications() {
-            const thead = document.querySelector("#table-mult thead tr");
-            const tbody = document.querySelector("#table-mult tbody");
-            thead.innerHTML = "<th>×</th>";
-            for (let i = 1; i <= 10; i++) {
-                thead.innerHTML += `<th>${i}</th>`;
-            }
-            tbody.innerHTML = "";
-            for (let i = 1; i <= 10; i++) {
-                let tr = document.createElement("tr");
-                let th = document.createElement("th");
-                th.textContent = i;
-                tr.appendChild(th);
-                for (let j = 1; j <= 10; j++) {
-                    let td = document.createElement("td");
-                    td.textContent = i * j;
-                    tr.appendChild(td);
-                }
-                tbody.appendChild(tr);
-            }
-        }
-        creerTableMultiplications();
-        // replie/déplie bandeaux
-        const bandeauMultip = document.getElementById("bandeau-multiplication");
-        const boutonMult = document.getElementById("bouton-bandeau-mult");
-        boutonMult.onclick = () => {
-            bandeauMultip.classList.toggle("replie");
-            boutonMult.innerHTML = bandeauMultip.classList.contains("replie") ? "⮞" : "⮜";
-        };
-        bandeauMultip.classList.add("replie");
-        boutonMult.innerHTML = "⮞";
-        // Gauche - decomp
-        const bandeauDecomp = document.getElementById("bandeau-decomp");
-        const boutonDecomp = document.getElementById("bouton-bandeau-decomp");
-        boutonDecomp.onclick = () => {
-            bandeauDecomp.classList.toggle("replie");
-            boutonDecomp.innerHTML = bandeauDecomp.classList.contains("replie") ? "⮞" : "⮜";
-        };
-        bandeauDecomp.classList.add("replie");
-        boutonDecomp.innerHTML = "⮞";
-    </script>
+/* ═══ MODE PARTIE ═══════════════════════════════════════════════════════ */
+var PALETTE  = ["#3B6D11", "#A32D2D", "#185FA5", "#854F0B", "#534AB7", "#0F6E56"];
+var PAL_NOMS = ["Vert", "Rouge", "Bleu", "Ambre", "Violet", "Sarcelle"];
+
+var jeuMode  = "aide";
+var nbJ      = 2;
+var taille   = 50;
+var noms     = ["Joueur 1", "Joueur 2", "Joueur 3", "Joueur 4"];
+var couleurs = [PALETTE[0], PALETTE[1], PALETTE[2], PALETTE[3]];
+var pris     = [];   /* index -> numéro du joueur, 0 = libre */
+var suite    = [];   /* nombres joues, dans l ordre */
+var parQui   = [];
+var dernier  = 0;    /* dernier nombre joué, 0 = aucun */
+var joueur   = 1;
+var enCours  = false;
+var histo    = [];
+
+function setJeuMode(m){
+  jeuMode = m;
+  document.getElementById("jg-mode-aide").classList.toggle("on", m === "aide");
+  document.getElementById("jg-mode-libre").classList.toggle("on", m === "libre");
+  if (enCours) majGrille();
+}
+
+function rendreJoueurs(){
+  nbJ = parseInt(document.getElementById("jg-nb").value, 10);
+  var box = document.getElementById("jg-joueurs"), html = "", i, k;
+  for (i = 1; i <= nbJ; i++) {
+    var pastilles = "";
+    for (k = 0; k < PALETTE.length; k++) {
+      pastilles += '<button type="button" class="jg-col' + (couleurs[i-1] === PALETTE[k] ? " on" : "") +
+        '" style="background:' + PALETTE[k] + '" title="' + PAL_NOMS[k] +
+        '" data-joueur="' + i + '" data-couleur="' + PALETTE[k] + '"></button>';
+    }
+    html += '<div class="jg-player">' +
+              '<input class="jg-text" type="text" id="jg-nom' + i + '" value="' + noms[i-1] +
+              '" oninput="majNoms()" aria-label="Nom du joueur ' + i + '">' +
+              '<div class="jg-colors">' + pastilles + "</div>" +
+            "</div>";
+  }
+  box.innerHTML = html;
+}
+document.addEventListener("click", function(e){
+  var b = e.target;
+  if (b && b.className && String(b.className).indexOf("jg-col") !== -1) {
+    choisirCouleur(parseInt(b.getAttribute("data-joueur"), 10), b.getAttribute("data-couleur"));
+  }
+});
+function choisirCouleur(i, c){
+  couleurs[i-1] = c;
+  majNoms();
+  rendreJoueurs();
+  if (enCours) { majGrille(); majTour(); majSuite(); }
+}
+function majNoms(){
+  for (var i = 1; i <= nbJ; i++) {
+    var el = document.getElementById("jg-nom" + i);
+    if (el && el.value.trim()) noms[i-1] = el.value.trim();
+  }
+}
+
+function nouvellePartie(){
+  majNoms();
+  taille  = parseInt(document.getElementById("jg-taille").value, 10);
+  nbJ     = parseInt(document.getElementById("jg-nb").value, 10);
+  pris    = [];
+  suite   = [];
+  parQui  = [];
+  dernier = 0;
+  joueur  = 1;
+  enCours = true;
+  for (var i = 0; i <= taille; i++) pris[i] = 0;
+  construireGrille();
+  document.getElementById("jg-over").classList.remove("show");
+  setDecomp(0);
+  majTour(); majSuite(); majGrille();
+}
+
+function reinit(){
+  enCours = false;
+  dernier = 0; suite = []; parQui = []; pris = [];
+  document.getElementById("jg-grid").innerHTML = "";
+  document.getElementById("jg-over").classList.remove("show");
+  document.getElementById("jg-turn").textContent = "Réglez la partie puis cliquez sur « Commencer »";
+  document.getElementById("jg-turn").style.background = "";
+  document.getElementById("jg-seq").innerHTML = "—";
+  document.getElementById("jg-info").textContent = "Coups possibles : —";
+  setDecomp(0);
+}
+
+function construireGrille(){
+  var g = document.getElementById("jg-grid");
+  g.className = "jg-grid" + (taille === 25 ? " cols5" : "");
+  g.innerHTML = "";
+  for (var n = 1; n <= taille; n++) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "jg-cell";
+    b.id = "jg-c" + n;
+    b.textContent = n;
+    b.setAttribute("data-n", n);
+    b.onclick = (function(v){ return function(){ jouer(v); }; })(n);
+    g.appendChild(b);
+  }
+}
+
+function coupsPossibles(){
+  if (!dernier) return [];
+  var out = [];
+  for (var n = 1; n <= taille; n++) {
+    if (pris[n]) continue;
+    if (estLie(n, dernier)) out.push(n);
+  }
+  return out;
+}
+
+function majGrille(){
+  var valides = coupsPossibles();
+  for (var n = 1; n <= taille; n++) {
+    var c = document.getElementById("jg-c" + n);
+    if (!c) continue;
+    c.classList.remove("off", "last", "bad");
+    if (pris[n]) {
+      c.classList.add("taken");
+      c.style.background = couleurs[pris[n] - 1];
+      if (n === dernier) c.classList.add("last");
+    } else {
+      c.classList.remove("taken");
+      c.style.background = "";
+      if (enCours && jeuMode === "aide" && dernier && valides.indexOf(n) === -1) c.classList.add("off");
+    }
+  }
+  var info = document.getElementById("jg-info");
+  info.textContent = dernier
+    ? "Coups possibles après " + dernier + " : " + valides.length
+    : "Coups possibles : le premier joueur choisit librement.";
+}
+
+function jouer(n){
+  if (!enCours || pris[n]) return;
+  if (dernier && !estLie(n, dernier)) {
+    if (jeuMode === "aide") return;
+    var c = document.getElementById("jg-c" + n);
+    c.classList.add("bad");
+    setTimeout(function(){ c.classList.remove("bad"); }, 900);
+    return;
+  }
+  pris[n] = joueur;
+  suite.push(n);
+  parQui.push(joueur);
+  dernier = n;
+  setDecomp(n);
+
+  var reste = coupsPossibles();
+  if (reste.length === 0) {
+    enCours = false;
+    var gagnant = noms[joueur - 1];
+    var perdantNum = joueur % nbJ + 1;
+    var perdant = noms[perdantNum - 1];
+    var over = document.getElementById("jg-over");
+    over.innerHTML = "🏆 " + gagnant + " gagne ! " + perdant + " ne peut plus jouer après " + n + ".";
+    over.classList.add("show");
+    document.getElementById("jg-turn").textContent = "Partie terminée";
+    document.getElementById("jg-turn").style.background = "var(--text3)";
+    ajouterHisto(gagnant);
+    majGrille(); majSuite();
+    return;
+  }
+  joueur = joueur % nbJ + 1;
+  majTour(); majSuite(); majGrille();
+}
+
+function majTour(){
+  var t = document.getElementById("jg-turn");
+  t.textContent = "Au tour de " + noms[joueur - 1];
+  t.style.background = couleurs[joueur - 1];
+}
+
+function majSuite(){
+  var el = document.getElementById("jg-seq");
+  if (!suite.length) { el.innerHTML = "—"; return; }
+  el.innerHTML = suite.map(function(n, i){
+    return '<span class="jg-chip" style="background:' + couleurs[parQui[i] - 1] + '">' + n + "</span>";
+  }).join(" → ");
+}
+
+function setDecomp(n){
+  var d = document.getElementById("jg-decomp");
+  if (!n) { d.innerHTML = "Aucun nombre joué pour le moment."; return; }
+  var fp   = facteursPremiers(n);
+  var divs = diviseurs(n);
+  var mul  = multiples(n, taille).filter(function(m){ return m !== n; });
+  d.innerHTML =
+    "<strong>Nombre : " + n + "</strong><br>" +
+    "Facteurs premiers : " + (n === 1 ? "aucun" : fp.join(" × ")) + "<br>" +
+    "Diviseurs : " + divs.join(", ") + "<br>" +
+    "Multiples dans la grille : " + (mul.length ? mul.join(", ") : "aucun");
+}
+
+function ajouterHisto(gagnant){
+  histo.push({
+    date: new Date().toLocaleString("fr-FR"),
+    mode: jeuMode === "aide" ? "aidé" : "libre",
+    taille: taille,
+    joueurs: noms.slice(0, nbJ).join(" · "),
+    gagnant: gagnant,
+    suite: suite.join(" → "),
+    longueur: suite.length
+  });
+  majHisto();
+}
+function majHisto(){
+  var box = document.getElementById("jg-histo");
+  var nom = document.getElementById("jg-session").value || "Session";
+  if (!histo.length) { box.innerHTML = '<p class="jg-note">Aucune partie terminée pour le moment.</p>'; return; }
+  box.innerHTML = histo.slice(-10).reverse().map(function(e){
+    return '<div class="jg-histo-entry"><strong>' + nom + "</strong> · " + e.date +
+      " · grille 1 à " + e.taille + " · jeu " + e.mode + "<br>" +
+      "Joueurs : " + e.joueurs + " — <strong>" + e.gagnant + "</strong> gagne<br>" +
+      "Suite (" + e.longueur + " nombres) : " + e.suite + "</div>";
+  }).join("");
+}
+
+function construireTableMult(){
+  var thead = document.querySelector("#jg-mult thead");
+  var tbody = document.querySelector("#jg-mult tbody");
+  var i, j, ligne = "<tr><th>×</th>";
+  for (i = 1; i <= 10; i++) ligne += "<th>" + i + "</th>";
+  thead.innerHTML = ligne + "</tr>";
+  var html = "";
+  for (i = 1; i <= 10; i++) {
+    html += "<tr><th>" + i + "</th>";
+    for (j = 1; j <= 10; j++) html += "<td>" + (i * j) + "</td>";
+    html += "</tr>";
+  }
+  tbody.innerHTML = html;
+}
+
+/* ═══ NAVIGATION ENTRE MODES ════════════════════════════════════════════ */
+var currentMode = "jeu";
+function setMode(m, btn){
+  currentMode = m;
+  var tabs = document.querySelectorAll(".mode-tab");
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
+  if (btn) btn.classList.add("active");
+  document.getElementById("mode-jeu").style.display = (m === "jeu") ? "block" : "none";
+  var defi = document.getElementById("mode-defi");
+  var isDefi = (m === "defi" || m === "defiplus");
+  defi.classList.toggle("active", isDefi);
+  if (isDefi) {
+    var badge = document.getElementById("defi-plus-badge");
+    if (m === "defiplus") {
+      document.getElementById("defi-mode-title").textContent = "Défi + — Diviseurs et multiples";
+      badge.classList.add("visible");
+    } else {
+      document.getElementById("defi-mode-title").textContent = "Mode défi — Diviseurs et multiples";
+      badge.classList.remove("visible");
+    }
+    correct = 0; total = 0; defiIndex = 0;
+    melange(ordre);
+    majScore();
+    nextDefi();
+  }
+}
+
+/* ═══ MODE DÉFI ═════════════════════════════════════════════════════════ */
+var MAXG = 50;   /* grille de référence des défis */
+
+function svgUn(n, sous){
+  return '<rect x="55" y="24" width="90" height="74" rx="9" fill="#EAF3DE" stroke="#3B6D11" stroke-width="2.5"/>' +
+         '<text x="100" y="76" text-anchor="middle" font-size="42" font-weight="700" fill="#3B6D11">' + n + "</text>" +
+         '<text x="100" y="126" text-anchor="middle" font-size="13" fill="#55534e">' + sous + "</text>";
+}
+function svgDeux(a, b, sous){
+  return '<rect x="18" y="30" width="72" height="64" rx="9" fill="#EAF3DE" stroke="#3B6D11" stroke-width="2.5"/>' +
+         '<text x="54" y="74" text-anchor="middle" font-size="34" font-weight="700" fill="#3B6D11">' + a + "</text>" +
+         '<rect x="110" y="30" width="72" height="64" rx="9" fill="#E6F1FB" stroke="#185FA5" stroke-width="2.5"/>' +
+         '<text x="146" y="74" text-anchor="middle" font-size="34" font-weight="700" fill="#185FA5">' + b + "</text>" +
+         '<text x="100" y="126" text-anchor="middle" font-size="13" fill="#55534e">' + sous + "</text>";
+}
+function svgListe(n, liste, sous){
+  var s = '<rect x="70" y="10" width="60" height="46" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="2.5"/>' +
+          '<text x="100" y="42" text-anchor="middle" font-size="26" font-weight="700" fill="#3B6D11">' + n + "</text>" +
+          '<text x="100" y="74" text-anchor="middle" font-size="12" fill="#55534e">' + sous + "</text>";
+  var x = 8;
+  for (var i = 0; i < liste.length; i++) {
+    s += '<rect x="' + x + '" y="88" width="34" height="34" rx="6" fill="#f0efe9" stroke="#7d7a73" stroke-width="1.6"/>' +
+         '<text x="' + (x + 17) + '" y="111" text-anchor="middle" font-size="17" font-weight="700" fill="#1a1917">' + liste[i] + "</text>";
+    x += 38;
+  }
+  return s;
+}
+
+var defiDefs = [
+  {
+    nom: "Compter les diviseurs",
+    hint: "Chercher tous les nombres qui divisent n, y compris 1 et n.",
+    generate: function(){
+      var n = rnd(12, 48);
+      return {
+        svg: svgUn(n, "Combien de diviseurs ?"),
+        cotes: "Nombre étudié : " + n + " · Question : combien ce nombre a-t-il de diviseurs au total ?",
+        answer: diviseurs(n).length
+      };
+    }
+  },
+  {
+    nom: "Compter les multiples",
+    hint: "Multiples de n dans la grille : n, 2n, 3n... sans compter n lui-même.",
+    generate: function(){
+      var n = rnd(3, 16);
+      return {
+        svg: svgUn(n, "Multiples de 1 à 50"),
+        cotes: "Nombre étudié : " + n + " · Question : combien de multiples de ce nombre, autres que lui-même, dans la grille de 1 à 50 ?",
+        answer: multiples(n, MAXG).length - 1
+      };
+    }
+  },
+  {
+    nom: "Coups possibles",
+    hint: "Coups = diviseurs de n + multiples de n, sans compter n lui-même.",
+    generate: function(){
+      var n = rnd(6, 30);
+      while (diviseurs(n).length < 3) n = rnd(6, 30);
+      var nb = (diviseurs(n).length - 1) + (multiples(n, MAXG).length - 1);
+      return {
+        svg: svgUn(n, "Grille vide, 1 à 50"),
+        cotes: "La grille de 1 à 50 est vide et le premier joueur pose " + n + " · Question : combien de cases sont jouables juste après ?",
+        answer: nb
+      };
+    }
+  },
+  {
+    nom: "Plus grand diviseur",
+    hint: "Le plus grand diviseur d\u2019un nombre, autre que lui-même, vaut n divisé par son plus petit facteur premier.",
+    generate: function(){
+      var n = rnd(14, 49);
+      while (diviseurs(n).length < 3) n = rnd(14, 49);
+      var d = diviseurs(n);
+      return {
+        svg: svgUn(n, "Plus grand diviseur strict"),
+        cotes: "Nombre étudié : " + n + " · Question : quel est son plus grand diviseur, autre que lui-même ?",
+        answer: d[d.length - 2]
+      };
+    }
+  },
+  {
+    nom: "Plus petit multiple",
+    hint: "Le plus petit multiple de n plus grand que n, c\u2019est 2 × n.",
+    generate: function(){
+      var n = rnd(4, 24);
+      return {
+        svg: svgUn(n, "Multiple suivant"),
+        cotes: "Nombre étudié : " + n + " · Question : quel est le plus petit multiple de ce nombre strictement supérieur à lui ?",
+        answer: 2 * n
+      };
+    }
+  },
+  {
+    nom: "Coup forcé",
+    hint: "Un nombre premier plus grand que 25 n\u2019a que deux diviseurs et aucun multiple dans la grille.",
+    generate: function(){
+      var premiers = [29, 31, 37, 41, 43, 47];
+      var p = premiers[rnd(0, premiers.length - 1)];
+      return {
+        svg: svgUn(p, "Nombre premier"),
+        cotes: "Un joueur pose " + p + " dans une grille de 1 à 50 encore vide · Question : quelle est la seule case jouable ensuite ?",
+        answer: 1
+      };
+    }
+  },
+  {
+    nom: "Plus grand diviseur commun",
+    hint: "PGCD : le plus grand nombre qui divise les deux nombres à la fois.",
+    generate: function(){
+      var g = rnd(3, 9), a = g * rnd(2, 5), b = g * rnd(2, 5);
+      while (b === a) b = g * rnd(2, 5);
+      return {
+        svg: svgDeux(a, b, "PGCD des deux nombres ?"),
+        cotes: "Nombres étudiés : " + a + " et " + b + " · Question : quel est leur plus grand diviseur commun ?",
+        answer: pgcd(a, b)
+      };
+    }
+  },
+  {
+    nom: "Plus petit multiple commun",
+    hint: "PPCM : le plus petit nombre qui est multiple des deux à la fois.",
+    generate: function(){
+      var a, b;
+      do { a = rnd(2, 12); b = rnd(2, 12); } while (a === b || ppcm(a, b) > MAXG);
+      return {
+        svg: svgDeux(a, b, "PPCM des deux nombres ?"),
+        cotes: "Nombres étudiés : " + a + " et " + b + " · Question : quel est leur plus petit multiple commun ?",
+        answer: ppcm(a, b)
+      };
+    }
+  },
+  {
+    nom: "Coups valides",
+    hint: "Un coup est valide si le nombre est un diviseur ou un multiple du nombre posé.",
+    generate: function(){
+      var n = rnd(6, 30), liste = [], k, x, nb = 0;
+      var bons = diviseurs(n).concat(multiples(n, MAXG)).filter(function(v){ return v !== n; });
+      melange(bons);
+      var cible = Math.min(rnd(1, 3), bons.length);
+      for (k = 0; k < cible; k++) liste.push(bons[k]);
+      while (liste.length < 4) {
+        x = rnd(2, MAXG);
+        if (x !== n && liste.indexOf(x) === -1) liste.push(x);
+      }
+      melange(liste);
+      for (k = 0; k < liste.length; k++) if (estLie(liste[k], n)) nb++;
+      return {
+        svg: svgListe(n, liste, "Combien de coups valides ?"),
+        cotes: "Le nombre posé est " + n + " · Nombres proposés : " + liste.join(", ") +
+               " · Question : combien de ces nombres peut-on jouer juste après ?",
+        answer: nb
+      };
+    }
+  }
+];
+
+var defiIndex = 0, correct = 0, total = 0, repondu = false;
+var reponseAttendue = 0, aideCourante = "";
+var ordre = [];
+for (var z = 0; z < defiDefs.length; z++) ordre.push(z);
+melange(ordre);
+
+function nextDefi(){
+  if (defiIndex >= ordre.length) { defiIndex = 0; melange(ordre); }
+  var def = defiDefs[ordre[defiIndex]];
+  var gen = def.generate();
+  reponseAttendue = gen.answer;
+  aideCourante = def.hint;
+
+  document.getElementById("defi-svg").innerHTML = gen.svg;
+  var txt = gen.cotes;
+  if (currentMode !== "defiplus") {
+    txt += '<br><span class="lp-hint">Aide : ' + def.hint + "</span>";
+  }
+  document.getElementById("defi-cotes").innerHTML = txt;
+
+  document.getElementById("defi-input").value = "";
+  document.getElementById("defi-feedback").className = "feedback-box";
+  document.getElementById("defi-feedback").textContent = "";
+  document.getElementById("btn-next").style.display = "none";
+  document.getElementById("defi-input").focus();
+  repondu = false;
+  defiIndex++;
+  majScore();
+}
+
+function checkDefi(){
+  if (repondu) return;
+  var v = parseInt(document.getElementById("defi-input").value, 10);
+  if (isNaN(v)) { alert("Entre un nombre entier."); return; }
+  var ok = (v === reponseAttendue);
+  repondu = true; total++;
+  if (ok) correct++;
+  var fb = document.getElementById("defi-feedback");
+  fb.className = "feedback-box " + (ok ? "correct" : "wrong") + " show";
+  fb.innerHTML = ok
+    ? "<strong>Correct !</strong> La réponse est bien " + reponseAttendue + "."
+    : "<strong>Pas tout à fait.</strong> La bonne réponse est <strong>" + reponseAttendue + "</strong>.<br>Rappel : " + aideCourante;
+  document.getElementById("btn-next").style.display = "block";
+  majScore();
+}
+
+function majScore(){
+  document.getElementById("defi-score").textContent = correct + " / " + total + " correct" + (total > 1 ? "s" : "");
+  var pct = total > 0 ? (correct / total * 100) : 0;
+  document.getElementById("defi-progress").style.width = pct + "%";
+}
+
+document.addEventListener("keydown", function(e){
+  if (currentMode === "jeu") return;
+  if (e.key === "Enter") {
+    if (!repondu) checkDefi();
+    else if (document.getElementById("btn-next").style.display !== "none") nextDefi();
+  }
+});
+
+/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
+function generateFiche(){
+  var isPlus = (currentMode === "defiplus");
+  LP.fiche({
+    icon: "\u{1F522}",
+    title: "Juniper Green \u2014 diviseurs et multiples",
+    subtitle: "Grille de 1 \u00e0 50 \u00b7 CAP \u00b7 Bac Pro",
+    modeLabel: isPlus ? "D\u00e9fi +" : "Mode d\u00e9fi",
+    isPlus: isPlus,
+    tolerance: "r\u00e9ponse enti\u00e8re exacte",
+    accent: "#3B6D11",
+    answerLabel: "R\u00e9ponse =",
+    unit: "",
+    aide: "Diviseur de n : il divise n sans reste &nbsp;|&nbsp; Multiple de n : n, 2n, 3n\u2026 &nbsp;|&nbsp; "
+        + "Coup valide : diviseur OU multiple du nombre pos\u00e9 &nbsp;|&nbsp; "
+        + "PGCD : plus grand diviseur commun &nbsp;|&nbsp; PPCM : plus petit multiple commun",
+    questions: LP.pickQuestions(defiDefs, 10).map(function(q){
+      q.answerText = String(q.answer); return q;
+    })
+  });
+}
+
+/* ═══ INITIALISATION ════════════════════════════════════════════════════ */
+rendreJoueurs();
+construireTableMult();
+reinit();
+</script>
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp; Licence MIT · © 2025 Moïse Muller &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
+</footer>
 </body>
 </html>
