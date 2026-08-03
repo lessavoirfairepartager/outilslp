@@ -195,6 +195,15 @@
    et s'arrêtent si le système demande de réduire les animations.
    ========================================================================= */
 const ICONS = {
+/* Grille dont les cases s'allument une à une */
+tables:`<rect x="6" y="6" width="28" height="28" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/>
+<line x1="6" y1="14" x2="34" y2="14" stroke="currentColor" stroke-width="2"/>
+<line x1="14" y1="6" x2="14" y2="34" stroke="currentColor" stroke-width="2"/>
+<rect x="16.5" y="16.5" width="7" height="7" rx="1.2" fill="currentColor" class="lp-blink"/>
+<rect x="25.5" y="25.5" width="7" height="7" rx="1.2" fill="currentColor" class="lp-blink" style="animation-delay:.55s"/>
+<rect x="25.5" y="16.5" width="7" height="7" rx="1.2" fill="currentColor" class="lp-blink" style="animation-delay:1.1s"/>`,
+
+
 /* Clavier qui s'allume touche après touche */
 calc:`<rect x="10" y="4" width="20" height="32" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/>
 <rect x="14" y="8" width="12" height="6" rx="1" fill="currentColor" opacity=".22"/>
@@ -378,7 +387,8 @@ const SECTIONS = [
     { url:'outils/trigo_trainer.html', nom:'Entraînement trigonométrie', desc:'Cosinus, sinus et tangente dans le triangle rectangle', ico:'angle', cats:['math','outil'] },
     { url:'jeux/pythagore_trainer.html', nom:'Pythagore', desc:"Calcul d'un côté et réciproque", ico:'triangle', cats:['math','outil'] },
     { url:'outils/graph_stats.html', nom:'Statistiques & diagrammes', desc:'Bâtons, camemberts et histogrammes à construire', ico:'chart', cats:['math','outil'] },
-    { url:'outils/quiz_diviseurs.html', nom:'Diviseurs et facteurs', desc:'Quiz sur les nombres premiers', ico:'divide', cats:['math','outil'] },
+    { url:'jeux/tables_mult_add.html', nom:'Tables × et +', desc:'Remplir la table case par case, avec suivi des cases sues', ico:'tables', cats:['math','outil'] },
+	{ url:'outils/quiz_diviseurs.html', nom:'Diviseurs et facteurs', desc:'Quiz sur les nombres premiers', ico:'divide', cats:['math','outil'] },
     { url:'jeux/quizz_pgcd_licence.html', nom:'Diviseurs & PGCD', desc:'Quiz sur les facteurs et le plus grand diviseur commun', ico:'pgcd', cats:['math','outil'] },
     { url:'jeux/juniper_green_final_licence.html', nom:'Juniper Green', desc:'Jeu des diviseurs et des multiples, à deux', ico:'jg', cats:['math','outil'] },
     { url:'outils/atome_bohr2.html', nom:'Atomes — modèle de Bohr', desc:"Tableau périodique et structure de l'atome", ico:'atom', cats:['science','outil'] },
