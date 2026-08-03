@@ -1,291 +1,405 @@
+<!--
+Calcul littéral — traduire, calculer, développer, réduire
+Copyright (c) 2025 Moise Muller <moise.muller@ac-dijon.fr>
+Version harmonisée du 3 août 2026 pour outilslp.netlify.app
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Calcul littéral — entraînement aléatoire</title>
+<title>Calcul littéral — traduire, calculer, développer, réduire</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --primary:#0891b2;
-  --primary-dark:#0e7490;
-  --primary-light:#cffafe;
-  --primary-soft:#ecfeff;
-  --bg:#f8fafc;
-  --card:#ffffff;
-  --text:#0f172a;
-  --text-light:#64748b;
-  --border:#e2e8f0;
-  --success:#10b981;
-  --success-bg:#d1fae5;
-  --error:#ef4444;
-  --error-bg:#fee2e2;
-  --warn:#f59e0b;
-  --warn-bg:#fef3c7;
-  --pos:#1d4ed8;
-  --neg:#dc2626;
-  --const:#ea580c;
-}
-html,body{height:100%}
-body{
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-  background:var(--bg);color:var(--text);
-  line-height:1.5;padding:.75rem;min-height:100vh;
-}
-.container{max-width:920px;margin:0 auto}
-.math{font-family:"Cambria Math","Latin Modern Math","Times New Roman",serif}
+  :root { --accent: var(--purple); --accent-bg: var(--purple-bg); }
 
-/* Header */
-header{
-  text-align:center;padding:1.25rem 1rem;
-  background:linear-gradient(135deg,var(--primary),var(--primary-dark));
-  color:white;border-radius:1rem;margin-bottom:1rem;
-  box-shadow:0 4px 12px rgba(8,145,178,.15);
-}
-header .emoji{font-size:2.25rem;margin-bottom:.25rem}
-header h1{font-size:1.5rem;font-weight:700;margin-bottom:.25rem}
-header .subtitle{opacity:.9;font-size:.9rem}
+  .math { font-family: "Cambria Math", "Latin Modern Math", "Times New Roman", serif; }
 
-/* Mode bar */
-.mode-bar{
-  display:flex;gap:.5rem;justify-content:center;
-  margin-bottom:.75rem;flex-wrap:wrap;
-}
-.mode-btn{
-  padding:.6rem 1.1rem;border:2px solid var(--border);
-  background:var(--card);border-radius:.6rem;cursor:pointer;
-  font-weight:600;font-size:.9rem;transition:all .2s;
-}
-.mode-btn:hover{border-color:var(--primary)}
-.mode-btn.active{
-  background:var(--primary);color:white;border-color:var(--primary);
-  box-shadow:0 2px 6px rgba(8,145,178,.3);
-}
+  /* ── Champs de type liste ─────────────────────────────────────────────── */
+  .field select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    background: var(--surface2);
+    color: var(--text);
+  }
+  .field select:focus { border-color: var(--accent); background: var(--surface); }
 
-/* Tabs */
-.tabs{
-  display:flex;gap:.25rem;background:var(--card);
-  padding:.35rem;border-radius:.75rem;border:1px solid var(--border);
-  margin-bottom:1rem;overflow-x:auto;
-}
-.tab{
-  flex:1;padding:.7rem .5rem;border:none;background:transparent;
-  cursor:pointer;font-weight:600;font-size:.9rem;border-radius:.5rem;
-  white-space:nowrap;color:var(--text-light);transition:all .2s;
-  min-width:fit-content;
-}
-.tab:hover{background:var(--bg)}
-.tab.active{background:var(--primary-light);color:var(--primary-dark)}
+  .result-value.expr { font-size: var(--fs-xl); line-height: 1.25; }
 
-/* Card */
-.card{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:1rem;padding:1.25rem;margin-bottom:.85rem;
-}
+  /* ── Explorateur : traduire ───────────────────────────────────────────── */
+  .trad-flow { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+  .trad-phrase {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+    font-size: var(--fs-base); text-align: center; width: 100%;
+  }
+  .trad-arrow { font-size: var(--fs-xs); color: var(--text3); font-weight: 600; }
+  .trad-expr {
+    background: var(--accent-bg); color: var(--accent);
+    border: 1.5px dashed var(--accent); border-radius: var(--radius);
+    padding: 14px; font-size: var(--fs-lg); font-weight: 700;
+    text-align: center; width: 100%;
+  }
 
-.q-label{
-  font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;
-  color:var(--text-light);margin-bottom:.5rem;font-weight:700;
-}
+  /* ── Défi : question ──────────────────────────────────────────────────── */
+  .q-label {
+    font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text3); font-weight: 700; margin-bottom: 6px;
+  }
+  .question {
+    font-size: var(--fs-lg); font-weight: 600; padding: 18px;
+    background: var(--accent-bg); color: var(--accent);
+    border: 2px dashed var(--accent); border-radius: var(--radius);
+    text-align: center; margin-bottom: var(--gap);
+  }
+  .question.fr { font-family: var(--font); font-size: var(--fs-md); font-weight: 500; }
 
-.question{
-  font-size:1.6rem;font-weight:600;padding:1.1rem;
-  background:var(--primary-soft);border-radius:.75rem;
-  margin-bottom:1rem;text-align:center;color:var(--primary-dark);
-  border:2px dashed var(--primary-light);
-}
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 560px) { .choices { grid-template-columns: 1fr; } }
+  .choice {
+    padding: 14px; background: var(--surface);
+    border: 2px solid var(--border); border-radius: var(--radius);
+    cursor: pointer; font-size: var(--fs-md); text-align: center;
+    color: var(--text); line-height: 1.35;
+    transition: border-color .15s, background-color .15s;
+  }
+  .choice:hover:not(.locked) { border-color: var(--accent); background: var(--accent-bg); }
+  .choice.selected  { border-color: var(--accent); background: var(--accent-bg); }
+  .choice.correct   { border-color: var(--teal); background: var(--teal-bg); color: var(--teal); font-weight: 700; }
+  .choice.incorrect { border-color: var(--red);  background: var(--red-bg);  color: var(--red); }
+  .choice.locked    { cursor: default; }
 
-.question.fr{font-family:inherit;font-size:1.25rem;font-weight:500}
+  .calc-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 560px) { .calc-pair { grid-template-columns: 1fr; } }
+  .calc-box {
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+  }
+  .calc-box.ok { border-color: var(--teal); background: var(--teal-bg); }
+  .calc-box.ko { border-color: var(--red);  background: var(--red-bg); }
+  .calc-box .lbl { display: block; font-size: var(--fs-xs); color: var(--text2); margin-bottom: 8px; font-weight: 600; }
+  .calc-box input {
+    width: 100%; padding: 10px 12px; font-size: var(--fs-md); font-weight: 600;
+    border: 1.5px solid var(--border2); border-radius: var(--radius);
+    background: var(--surface); color: var(--text); font-family: inherit;
+  }
+  .calc-box input:focus { border-color: var(--accent); outline: none; }
 
-/* Choices */
-.choices{
-  display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.75rem;
-}
-@media(max-width:520px){.choices{grid-template-columns:1fr}}
-.choice{
-  padding:.95rem;background:var(--card);border:2px solid var(--border);
-  border-radius:.75rem;cursor:pointer;font-size:1.2rem;
-  text-align:center;transition:all .15s;line-height:1.3;
-}
-.choice:hover:not(.locked){border-color:var(--primary);background:var(--primary-soft)}
-.choice.selected{border-color:var(--primary);background:var(--primary-light)}
-.choice.correct{border-color:var(--success);background:var(--success-bg);color:#064e3b}
-.choice.incorrect{border-color:var(--error);background:var(--error-bg);color:#7f1d1d}
-.choice.locked{cursor:default}
+  .aide {
+    background: var(--amber-bg); border-left: 4px solid var(--amber);
+    border-radius: var(--radius); padding: 12px 14px;
+  }
+  .aide h3 {
+    font-size: var(--fs-xs); color: var(--amber); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;
+  }
+  .aide-content { font-size: var(--fs-sm); color: var(--text2); line-height: 1.7; }
+  .aide-content .step { margin-bottom: 4px; }
 
-/* Input mode (Calculer) */
-.calc-pair{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.75rem}
-@media(max-width:520px){.calc-pair{grid-template-columns:1fr}}
-.calc-card{
-  background:var(--bg);padding:.9rem;
-  border-radius:.75rem;border:1px solid var(--border);
-}
-.calc-card .label-line{font-weight:600;margin-bottom:.5rem;color:var(--text-light)}
-.calc-card .x-val{
-  display:inline-block;padding:.15rem .55rem;
-  background:var(--primary-light);color:var(--primary-dark);
-  border-radius:.4rem;font-weight:700;font-size:1.05rem;
-}
-.calc-card input{
-  width:100%;padding:.6rem;border:2px solid var(--border);
-  border-radius:.5rem;font-size:1.15rem;text-align:center;
-  font-family:inherit;
-}
-.calc-card input:focus{outline:none;border-color:var(--primary)}
-.calc-card.ok input{border-color:var(--success);background:var(--success-bg)}
-.calc-card.ko input{border-color:var(--error);background:var(--error-bg)}
+  .decomp .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 5px; }
+  .decomp .lbl { font-size: var(--fs-xs); color: var(--text3); font-weight: 700; min-width: 150px; }
+  .decomp .pos { color: var(--blue);  font-weight: 700; }
+  .decomp .neg { color: var(--red);   font-weight: 700; }
+  .decomp .cst { color: var(--amber); font-weight: 700; }
+  .decomp .eq-result {
+    margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border2);
+    font-weight: 700; color: var(--text);
+  }
 
-/* Actions */
-.actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.75rem}
-.btn{
-  padding:.75rem 1.15rem;border-radius:.55rem;font-weight:700;
-  cursor:pointer;border:none;font-size:.95rem;transition:all .2s;
-}
-.btn-primary{background:var(--primary);color:white}
-.btn-primary:hover{background:var(--primary-dark)}
-.btn-secondary{background:var(--card);border:2px solid var(--border);color:var(--text)}
-.btn-secondary:hover{background:var(--bg);border-color:var(--primary)}
-.btn:disabled{opacity:.5;cursor:not-allowed}
+  /* ── Modale de fiche ──────────────────────────────────────────────────── */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(20,19,15,.55);
+    display: none; align-items: center; justify-content: center;
+    padding: 1rem; z-index: 200;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.5rem;
+    max-width: 540px; width: 100%; box-shadow: 0 10px 34px rgba(0,0,0,.3);
+  }
+  .modal h2 { font-size: var(--fs-lg); margin-bottom: 8px; }
+  .modal p  { font-size: var(--fs-xs); color: var(--text2); margin-bottom: 14px; line-height: 1.6; }
+  .modal-checks { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .modal-checks label {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 13px; border: 1.5px solid var(--border);
+    border-radius: var(--radius); cursor: pointer; font-size: var(--fs-sm);
+    color: var(--text2);
+  }
+  .modal-checks label.on {
+    border-color: var(--accent); background: var(--accent-bg);
+    color: var(--accent); font-weight: 700;
+  }
+  .modal-checks input { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .dist-info {
+    padding: 10px 12px; border-radius: var(--radius);
+    font-size: var(--fs-xs); font-weight: 700; text-align: center; margin-bottom: 16px;
+  }
+  .dist-info.ok   { background: var(--teal-bg);  color: var(--teal); }
+  .dist-info.warn { background: var(--amber-bg); color: var(--amber); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  .modal-actions button {
+    padding: 11px 20px; border-radius: var(--radius); font-family: inherit;
+    font-size: var(--fs-sm); font-weight: 700; cursor: pointer;
+    border: 1px solid var(--border);
+  }
+  .btn-modal-ok { background: var(--accent); color: #fff; border-color: var(--accent); }
+  html[data-theme="dark"] .btn-modal-ok { color: #14130f; }
+  .btn-modal-no { background: var(--surface2); color: var(--text2); }
+  .btn-modal-ok:disabled { opacity: .45; cursor: not-allowed; }
 
-/* Feedback */
-.feedback{
-  padding:.85rem 1rem;border-radius:.75rem;margin-bottom:.75rem;
-  font-weight:600;display:none;
-}
-.feedback.show{display:block}
-.feedback.success{background:var(--success-bg);color:#064e3b;border:2px solid var(--success)}
-.feedback.error{background:var(--error-bg);color:#7f1d1d;border:2px solid var(--error)}
-
-/* Aide block */
-.aide{
-  background:var(--warn-bg);border:2px solid var(--warn);
-  border-radius:.75rem;padding:1rem;margin-bottom:.75rem;
-}
-.aide h3{
-  color:#92400e;font-size:.95rem;margin-bottom:.5rem;
-  display:flex;align-items:center;gap:.4rem;
-}
-.aide-content{font-size:1rem;line-height:1.7}
-.aide-content .step{
-  background:white;padding:.55rem .75rem;border-radius:.5rem;
-  margin:.4rem 0;font-size:1.1rem;
-}
-.aide-content .arrow{color:#92400e;font-weight:700;margin:0 .25rem}
-
-/* Decomposition (réduire) */
-.decomp{
-  background:white;padding:.75rem;border-radius:.5rem;
-  margin:.4rem 0;font-size:1.15rem;
-}
-.decomp .row{
-  display:flex;align-items:center;gap:.5rem;
-  flex-wrap:wrap;padding:.25rem 0;
-}
-.decomp .lbl{
-  font-size:.85rem;color:var(--text-light);
-  min-width:9rem;font-weight:600;
-}
-.pos{color:var(--pos);font-weight:700}
-.neg{color:var(--neg);font-weight:700}
-.cst{color:var(--const);font-weight:700}
-.eq-result{
-  margin-top:.5rem;padding:.6rem;background:var(--primary-soft);
-  border-radius:.4rem;text-align:center;font-size:1.2rem;font-weight:700;
-}
-
-/* Score */
-.score-bar{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:.7rem 1rem;background:var(--card);border:1px solid var(--border);
-  border-radius:.75rem;flex-wrap:wrap;gap:.5rem;
-}
-.score-stat{font-weight:600;color:var(--text-light);font-size:.95rem}
-.score-stat strong{color:var(--primary-dark);font-size:1.1rem}
-
-.tip{
-  font-size:.85rem;color:var(--text-light);
-  text-align:center;margin:.4rem 0 .75rem 0;font-style:italic;
-}
-
-sup{font-size:.7em;vertical-align:super}
-.var{font-style:italic;font-family:"Cambria Math",serif}
-
-/* Bouton fiche (visible uniquement en mode Défi+) */
-.btn-fiche{display:none;background:#7c3aed;color:white}
-.btn-fiche:hover{background:#6d28d9}
-body.defi-plus .btn-fiche{display:inline-block}
-
-/* Modale */
-.modal-bg{
-  display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);
-  z-index:100;align-items:center;justify-content:center;padding:1rem;
-}
-.modal-bg.show{display:flex}
-.modal{
-  background:white;border-radius:1rem;padding:1.5rem;
-  width:100%;max-width:26rem;
-  box-shadow:0 20px 60px rgba(0,0,0,.3);
-}
-.modal h2{font-size:1.15rem;margin-bottom:.5rem;color:var(--primary-dark)}
-.modal p{color:var(--text-light);margin-bottom:1rem;font-size:.9rem}
-.modal-checks{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem}
-.modal-checks label{
-  display:flex;align-items:center;gap:.65rem;
-  padding:.6rem .8rem;border:2px solid var(--border);
-  border-radius:.55rem;cursor:pointer;font-weight:600;
-  transition:all .15s;
-}
-.modal-checks label:hover{border-color:var(--primary)}
-.modal-checks label.on{border-color:var(--primary);background:var(--primary-soft)}
-.modal-checks input{width:1.1rem;height:1.1rem;cursor:pointer;accent-color:var(--primary)}
-.dist-info{
-  padding:.7rem;border-radius:.5rem;text-align:center;
-  font-weight:600;font-size:.9rem;margin-bottom:1rem;
-}
-.dist-info.ok{background:var(--success-bg);color:#064e3b}
-.dist-info.warn{background:var(--warn-bg);color:#92400e}
-.modal-actions{display:flex;gap:.5rem;justify-content:flex-end}
+  @media print { .modal-bg, .shape-tabs, .btn-check, .btn-next { display: none !important; } }
 </style>
 </head>
 <body>
-<div class="container">
 
-  <header>
-    <div class="emoji">🔢</div>
-    <h1>Calcul littéral — entraînement</h1>
-    <div class="subtitle">3<sup>e</sup> prépa-métiers · 2<sup>de</sup> Bac Pro · mode aléatoire</div>
-  </header>
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <line x1="8" y1="13" x2="24" y2="31" stroke="var(--purple)" stroke-width="3.4"
+            stroke-linecap="round" class="lp-draw" style="--dash:26"/>
+      <line x1="24" y1="13" x2="8" y2="31" stroke="var(--purple)" stroke-width="3.4"
+            stroke-linecap="round" class="lp-draw" style="--dash:26"/>
+      <text x="27" y="18" font-size="14" font-weight="700" fill="var(--purple)" class="lp-blink">2</text>
+    </svg></div>
+  <div>
+    <h1>Calcul littéral</h1>
+    <p>Traduire · Calculer · Développer · Réduire — 3<sup>e</sup> prépa-métiers · CAP · 2<sup>de</sup> Bac Pro</p>
+  </div>
+</header>
 
-  <div class="mode-bar">
-    <button class="mode-btn active" data-mode="defi">🎯 Défi (avec aide)</button>
-    <button class="mode-btn" data-mode="defi-plus">🔒 Défi ⁺ (sans aide)</button>
+<div class="main">
+
+  <!-- SÉLECTEUR DE MODE -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('explo',this)">Explorateur</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi ⁺</button>
   </div>
 
-  <div class="tabs">
-    <button class="tab active" data-tab="traduire">📝 Traduire</button>
-    <button class="tab" data-tab="calculer">🧮 Calculer</button>
-    <button class="tab" data-tab="developper">📂 Développer</button>
-    <button class="tab" data-tab="reduire">🗜️ Réduire</button>
+  <!-- ═══════════════ EXPLORATEUR ═══════════════ -->
+  <div id="mode-explo">
+
+    <div class="shape-tabs-row">
+      <div class="shape-tabs">
+        <button class="shape-tab active" data-color="blue"   onclick="setShape('trad',this)"><span class="dot" style="background:var(--blue)"></span>Traduire</button>
+        <button class="shape-tab"        data-color="teal"   onclick="setShape('calc',this)"><span class="dot" style="background:var(--teal)"></span>Calculer</button>
+        <button class="shape-tab"        data-color="amber"  onclick="setShape('dev',this)"><span class="dot" style="background:var(--amber)"></span>Développer</button>
+        <button class="shape-tab"        data-color="green"  onclick="setShape('red',this)"><span class="dot" style="background:var(--green)"></span>Réduire</button>
+      </div>
+      <button class="btn-rnd" onclick="randomizeCurrent()">🎲 Nouvelles valeurs</button>
+    </div>
+
+    <!-- TRADUIRE -->
+    <div id="panel-trad" class="panel active">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--blue-bg);color:var(--blue)">Des mots à l’expression</span>
+        <div class="trad-flow">
+          <div class="trad-phrase" id="tr-phrase">—</div>
+          <div class="trad-arrow">↓ se traduit par ↓</div>
+          <div class="trad-expr math" id="tr-expr">—</div>
+        </div>
+        <div class="context-label">La lettre x désigne un nombre inconnu : longueur d’une pièce, nombre de colis, durée…</div>
+      </div>
+      <div class="controls-card">
+        <div class="field">
+          <label for="tr-type">Structure de la phrase</label>
+          <select id="tr-type" onchange="calcTrad()"></select>
+        </div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="tr-a" id="tr-la">Nombre a</label>
+            <div class="field-row"><input type="number" id="tr-a" value="3" min="2" max="12" oninput="calcTrad()"></div>
+          </div>
+          <div class="field">
+            <label for="tr-b" id="tr-lb">Nombre b</label>
+            <div class="field-row"><input type="number" id="tr-b" value="5" min="2" max="20" oninput="calcTrad()"></div>
+          </div>
+        </div>
+        <div class="formula-box">
+          <code id="tr-code">—</code>
+          <div class="formula-detail" id="tr-detail"></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> <span id="tr-err">—</span></div>
+      </div>
+    </div>
+
+    <!-- CALCULER -->
+    <div id="panel-calc" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--teal-bg);color:var(--teal)">Remplacer x par sa valeur</span>
+        <svg id="ca-svg" viewBox="0 0 260 170" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">Calculer une expression, c’est remplacer la lettre par un nombre, puis effectuer.</div>
+      </div>
+      <div class="controls-card">
+        <div class="field">
+          <label for="ca-forme">Forme de l’expression</label>
+          <select id="ca-forme" onchange="calcCa()">
+            <option value="ax_b">a x + b</option>
+            <option value="b_ax">b − a x</option>
+            <option value="ax2_b">a x² + b</option>
+            <option value="a_xb">a (x + b)</option>
+          </select>
+        </div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="ca-a">Coefficient a</label>
+            <div class="field-row"><input type="number" id="ca-a" value="3" min="1" max="12" oninput="calcCa()"></div>
+          </div>
+          <div class="field">
+            <label for="ca-b">Nombre b</label>
+            <div class="field-row"><input type="number" id="ca-b" value="4" min="-12" max="12" oninput="calcCa()"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="ca-x">Valeur de x</label>
+          <div class="field-row"><input type="number" id="ca-x" value="-2" min="-10" max="10" oninput="calcCa()"></div>
+        </div>
+        <div class="formula-box">
+          <code id="ca-code">—</code>
+          <div class="formula-detail" id="ca-detail"></div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Valeur de l’expression</div>
+          <div class="result-value" id="ca-result">—</div>
+          <div class="result-sub" id="ca-sub"></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> oublier les parenthèses quand x est négatif. Pour x = −2, on écrit 3 × (−2) et non 3 × −2. Et −x² n’est pas (−x)².</div>
+      </div>
+    </div>
+
+    <!-- DÉVELOPPER -->
+    <div id="panel-dev" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--amber-bg);color:var(--amber)">La distributivité vue en aires</span>
+        <svg id="dv-svg" viewBox="0 0 260 180" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">L’aire totale du rectangle se calcule de deux façons : elles sont donc égales.</div>
+      </div>
+      <div class="controls-card">
+        <div class="field">
+          <label for="dv-forme">Produit à développer</label>
+          <select id="dv-forme" onchange="calcDv()">
+            <option value="simple">a (x + b)</option>
+            <option value="double">(x + a)(x + b)</option>
+          </select>
+        </div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="dv-a">Nombre a</label>
+            <div class="field-row"><input type="number" id="dv-a" value="4" min="1" max="9" oninput="calcDv()"></div>
+          </div>
+          <div class="field">
+            <label for="dv-b">Nombre b</label>
+            <div class="field-row"><input type="number" id="dv-b" value="5" min="1" max="9" oninput="calcDv()"></div>
+          </div>
+        </div>
+        <div class="formula-box">
+          <code id="dv-code">—</code>
+          <div class="formula-detail" id="dv-detail"></div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Forme développée et réduite</div>
+          <div class="result-value expr math" id="dv-result">—</div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> ne distribuer que sur le premier terme. 4(x + 5) ne fait pas 4x + 5 : le 4 multiplie aussi le 5.</div>
+      </div>
+    </div>
+
+    <!-- RÉDUIRE -->
+    <div id="panel-red" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--green-bg);color:var(--green)">Regrouper les termes semblables</span>
+        <svg id="red-svg" viewBox="0 0 260 230" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">On ne peut additionner que des grandeurs de même nature : les x avec les x, les nombres avec les nombres.</div>
+      </div>
+      <div class="controls-card">
+        <div class="section-label">Composition de l’expression</div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="rd-xp">Combien de « + x »</label>
+            <div class="field-row"><input type="number" id="rd-xp" value="7" min="0" max="8" oninput="calcRd()"></div>
+          </div>
+          <div class="field">
+            <label for="rd-xn">Combien de « − x »</label>
+            <div class="field-row"><input type="number" id="rd-xn" value="3" min="0" max="8" oninput="calcRd()"></div>
+          </div>
+          <div class="field">
+            <label for="rd-cp">Nombre ajouté</label>
+            <div class="field-row"><input type="number" id="rd-cp" value="8" min="0" max="10" oninput="calcRd()"></div>
+          </div>
+          <div class="field">
+            <label for="rd-cn">Nombre retiré</label>
+            <div class="field-row"><input type="number" id="rd-cn" value="5" min="0" max="10" oninput="calcRd()"></div>
+          </div>
+        </div>
+        <div class="formula-box">
+          <code id="rd-code">—</code>
+          <div class="formula-detail" id="rd-detail"></div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Expression réduite</div>
+          <div class="result-value expr math" id="rd-result">—</div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> additionner des termes qui ne sont pas semblables. 3x + 5 ne fait pas 8x, et x² + x ne fait pas x³ ni 2x².</div>
+      </div>
+    </div>
+
   </div>
 
-  <div class="tip" id="tip"></div>
+  <!-- ═══════════════ DÉFI ═══════════════ -->
+  <div id="mode-defi" style="display:none">
+    <div class="defi-card">
+      <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI ⁺ — aides masquées</div>
+      <div class="defi-header">
+        <div class="defi-title" id="defi-mode-title">Mode défi — avec aide</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
 
-  <div class="card" id="exercise">
-    <!-- généré dynamiquement -->
-  </div>
+      <div class="shape-tabs" style="margin-bottom:1.25rem">
+        <button class="shape-tab active" data-color="purple" onclick="setFam('mix',this)"><span class="dot" style="background:var(--purple)"></span>Mélange</button>
+        <button class="shape-tab" data-color="blue"  onclick="setFam('traduire',this)"><span class="dot" style="background:var(--blue)"></span>Traduire</button>
+        <button class="shape-tab" data-color="teal"  onclick="setFam('calculer',this)"><span class="dot" style="background:var(--teal)"></span>Calculer</button>
+        <button class="shape-tab" data-color="amber" onclick="setFam('developper',this)"><span class="dot" style="background:var(--amber)"></span>Développer</button>
+        <button class="shape-tab" data-color="green" onclick="setFam('reduire',this)"><span class="dot" style="background:var(--green)"></span>Réduire</button>
+      </div>
 
-  <div class="actions">
-    <button class="btn btn-primary" id="btn-check">✓ Vérifier</button>
-    <button class="btn btn-secondary" id="btn-next">🎲 Nouvelle question</button>
-    <button class="btn btn-fiche" id="btn-fiche">📄 Générer une fiche</button>
-  </div>
+      <div id="defi-zone"></div>
 
-  <div class="feedback" id="feedback"></div>
+      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+      <div class="feedback-box" id="defi-feedback"></div>
+      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Question suivante →</button>
 
-  <div class="score-bar">
-    <div class="score-stat">Score : <strong id="score">0 / 0</strong></div>
-    <div class="score-stat">Réussite : <strong id="rate">—</strong></div>
-    <button class="btn btn-secondary" onclick="resetScore()">↻ Reset</button>
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="openFiche()">📄 Générer une fiche d’exercices (10 questions)</button>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -293,1072 +407,1030 @@ body.defi-plus .btn-fiche{display:inline-block}
 <!-- Modale de génération de fiche -->
 <div class="modal-bg" id="modal-fiche">
   <div class="modal">
-    <h2>📄 Générer une fiche d'exercices</h2>
-    <p>Choisis les onglets à inclure. Les 10 exercices seront répartis sur les onglets sélectionnés.</p>
+    <h2>📄 Générer une fiche d’exercices</h2>
+    <p>Choisis les familles de questions à inclure. Les 10 exercices seront répartis entre les familles sélectionnées.</p>
     <div class="modal-checks" id="modal-checks">
-      <label class="on"><input type="checkbox" value="traduire" checked> 📝 Traduire en formule littérale</label>
-      <label class="on"><input type="checkbox" value="calculer" checked> 🧮 Calculer une expression</label>
-      <label class="on"><input type="checkbox" value="developper" checked> 📂 Développer une expression</label>
-      <label class="on"><input type="checkbox" value="reduire" checked> 🗜️ Réduire une expression</label>
+      <label class="on"><input type="checkbox" value="traduire" checked> Traduire en expression littérale</label>
+      <label class="on"><input type="checkbox" value="calculer" checked> Calculer une expression</label>
+      <label class="on"><input type="checkbox" value="developper" checked> Développer une expression</label>
+      <label class="on"><input type="checkbox" value="reduire" checked> Réduire une expression</label>
     </div>
     <div class="dist-info ok" id="dist-info">→ 3 + 3 + 2 + 2 = 10 exercices</div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" id="modal-cancel">Annuler</button>
-      <button class="btn btn-primary" id="modal-confirm">Générer la fiche</button>
+      <button class="btn-modal-no" onclick="closeFiche()">Annuler</button>
+      <button class="btn-modal-ok" id="modal-confirm" onclick="confirmFiche()">Générer la fiche</button>
     </div>
   </div>
 </div>
 
+<script src="/assets/lp-fiche.js"></script>
 <script>
-/* ======================================================================== */
-/* État global                                                                */
-/* ======================================================================== */
-const state = {
-  tab:'traduire',
-  mode:'defi',           // 'defi' avec aide, 'defi-plus' sans aide
-  current:null,          // question courante
-  answered:false,
-  good:0, total:0,
-};
+/* ═══ UTILITAIRES ═══════════════════════════════════════════════════════ */
+var M = '\u2212';   /* vrai signe moins */
 
-const tips = {
-  traduire:'Choisis l\'expression qui correspond à la phrase.',
-  calculer:'Calcule la valeur de l\'expression pour chaque valeur de x donnée.',
-  developper:'Distribue, puis simplifie. Choisis la forme développée et réduite.',
-  reduire:'Rassemble les termes en x ensemble, et les nombres entre eux.',
-};
-
-/* ======================================================================== */
-/* Helpers                                                                    */
-/* ======================================================================== */
-const M = '−';                                  // vrai signe moins
-function rand(min,max){return Math.floor(Math.random()*(max-min+1))+min}
-function pick(a){return a[Math.floor(Math.random()*a.length)]}
-function shuffle(a){const r=[...a];for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]]}return r}
-function unique(arr){return [...new Set(arr)]}
-
-// affichage joli d'un nombre signé en début d'expression
-function fmtN(n){return n<0 ? M+Math.abs(n) : ''+n}
-// avec signe + explicite (pour milieu d'expression)
-function fmtSig(n){return n<0 ? ' '+M+' '+Math.abs(n) : ' + '+n}
-
-// formate un terme ax (a peut être 1, -1, etc.)
-function fmtCoef(a, varStr='x'){
-  if(a===0) return '0';
-  if(a===1) return varStr;
-  if(a===-1) return M+varStr;
-  if(a<0) return M+Math.abs(a)+varStr;
-  return a+varStr;
-}
-// même chose mais comme premier terme avec signe explicite (+ ou −) sauf si positif
-function fmtCoefMid(a, varStr='x'){
-  if(a===0) return '';
-  if(a===1) return ' + '+varStr;
-  if(a===-1) return ' '+M+' '+varStr;
-  if(a<0) return ' '+M+' '+Math.abs(a)+varStr;
-  return ' + '+a+varStr;
-}
-// formate une constante en milieu d'expression
-function fmtCstMid(b){
-  if(b===0) return '';
-  return b<0 ? ' '+M+' '+Math.abs(b) : ' + '+b;
-}
-
-// Crée une expression complète ax+b ou ax^2+bx+c proprement
-function fmtPoly2(a,b,c){
-  // ax^2 + bx + c, première chose : terme principal
-  let s='';
-  if(a!==0){
-    if(a===1) s+='x²';
-    else if(a===-1) s+=M+'x²';
-    else s+=a+'x²';
+function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function shuffle(a){
+  var r = a.slice();
+  for (var i = r.length-1; i > 0; i--) {
+    var j = Math.floor(Math.random()*(i+1));
+    var t = r[i]; r[i] = r[j]; r[j] = t;
   }
-  if(b!==0){
-    if(s===''){
-      s += fmtCoef(b);
-    } else {
-      s += fmtCoefMid(b);
-    }
-  }
-  if(c!==0){
-    if(s===''){ s += fmtN(c); }
-    else { s += fmtCstMid(c); }
-  }
-  if(s==='') s='0';
-  return s;
+  return r;
 }
-
-/* ======================================================================== */
-/* GÉNÉRATEURS                                                                */
-/* ======================================================================== */
-
-/* ---- 1. TRADUIRE ---- */
-const traduireGens = [
-  // Le double / triple / ... de x
-  () => {
-    const mots = {2:'double',3:'triple',4:'quadruple',5:'quintuple'};
-    const n = rand(2,5);
-    const expoBad = n===2 ? 'x²' : `x^${n}`;
-    return {
-      q:`Le ${mots[n]} de x`,
-      ans:fmtCoef(n),
-      bad:[`x + ${n}`, `${n} + x`, expoBad, `x ÷ ${n}`],
-      hint:`« ${mots[n]} de x » signifie ${n} fois x, donc ${n}×x = ${n}x.`,
-    };
-  },
-  // Le produit de N par x
-  () => {
-    const n = rand(2,9);
-    return {
-      q:`Le produit de ${n} par x`,
-      ans:`${n}x`,
-      bad:[`x + ${n}`, `x ${M} ${n}`, `x${n}`],
-      hint:`« Produit » = multiplication. ${n} × x s'écrit ${n}x.`,
-    };
-  },
-  // x augmenté de N
-  () => {
-    const n = rand(2,15);
-    return {
-      q:`x augmenté de ${n}`,
-      ans:`x + ${n}`,
-      bad:[`${n}x`, `x ${M} ${n}`, `${n} ${M} x`],
-      hint:`« Augmenté de ${n} » signifie qu'on ajoute ${n}. On écrit donc x + ${n}.`,
-    };
-  },
-  // x diminué de N
-  () => {
-    const n = rand(2,15);
-    return {
-      q:`x diminué de ${n}`,
-      ans:`x ${M} ${n}`,
-      bad:[`${n} ${M} x`, `x + ${n}`, `${n}x`],
-      hint:`« Diminué de ${n} » signifie qu'on retire ${n}. On écrit donc x ${M} ${n}.`,
-    };
-  },
-  // N diminué de x
-  () => {
-    const n = rand(5,20);
-    return {
-      q:`${n} diminué de x`,
-      ans:`${n} ${M} x`,
-      bad:[`x ${M} ${n}`, `x + ${n}`, `${n}x`],
-      hint:`Ici c'est ${n} (le grand) auquel on enlève x. On écrit ${n} ${M} x.`,
-    };
-  },
-  // Le double de x augmenté de N
-  () => {
-    const a = rand(2,9), b = rand(2,12);
-    return {
-      q:`Le double de x, augmenté de ${b}`,
-      ans:`2x + ${b}`,
-      bad:[`2(x + ${b})`, `x + ${2+b}`, `2x ${M} ${b}`],
-      hint:`Double de x = 2x. Augmenté de ${b} : on ajoute ${b}. → 2x + ${b}.`,
-    };
-  },
-  // a fois x diminué de b
-  () => {
-    const a = rand(2,9), b = rand(2,12);
-    return {
-      q:`${a} fois x, diminué de ${b}`,
-      ans:`${a}x ${M} ${b}`,
-      bad:[`${a}(x ${M} ${b})`, `x ${M} ${a*b}`, `${a}x + ${b}`],
-      hint:`${a} fois x = ${a}x. Diminué de ${b} : on retire ${b}. → ${a}x ${M} ${b}.`,
-    };
-  },
-  // Le carré de x
-  () => ({
-    q:`Le carré de x`,
-    ans:`x²`,
-    bad:[`2x`, `x × 2`, `x + x`],
-    hint:`« Carré » = multiplier par soi-même. x × x = x².`,
-  }),
-  // Le carré de x augmenté de x
-  () => ({
-    q:`Le carré de x, augmenté de x`,
-    ans:`x² + x`,
-    bad:[`2x`, `x³`, `x²·x`],
-    hint:`Carré de x = x². On ajoute x → x² + x. (Attention : ce ne sont pas des termes semblables !)`,
-  }),
-  // a fois la somme de x et b
-  () => {
-    const a = rand(2,5), b = rand(2,9);
-    return {
-      q:`${a} fois la somme de x et de ${b}`,
-      ans:`${a}(x + ${b})`,
-      bad:[`${a}x + ${b}`, `x + ${a*b}`, `${a}x + ${a+b}`],
-      hint:`« La somme de x et de ${b} » = (x + ${b}). On la multiplie par ${a} → ${a}(x + ${b}).`,
-    };
-  },
-  // a fois la différence entre x et b
-  () => {
-    const a = rand(2,5), b = rand(2,9);
-    return {
-      q:`${a} fois la différence entre x et ${b}`,
-      ans:`${a}(x ${M} ${b})`,
-      bad:[`${a}x ${M} ${b}`, `x ${M} ${a*b}`, `${a}x ${M} ${a+b}`],
-      hint:`« Différence entre x et ${b} » = (x ${M} ${b}). Multipliée par ${a} → ${a}(x ${M} ${b}).`,
-    };
-  },
-  // La moitié de x
-  () => ({
-    q:`La moitié de x`,
-    ans:`x ÷ 2`,
-    bad:[`2x`, `x ${M} 2`, `x²`],
-    hint:`« Moitié » = divisé par 2. On écrit x ÷ 2 (ou x/2).`,
-  }),
-];
-
-function genTraduire(){
-  const g = pick(traduireGens)();
-  // dédoublonner les mauvais et garder 3
-  const bad = unique(g.bad).filter(x=>x!==g.ans).slice(0,3);
-  while(bad.length<3) bad.push('autre');
-  const choices = shuffle([g.ans, ...bad]);
-  return { type:'qcm', question:g.q, questionFr:true, choices, correct:g.ans, hint:g.hint };
+function unique(a){
+  var out = [], i;
+  for (i = 0; i < a.length; i++) if (out.indexOf(a[i]) === -1) out.push(a[i]);
+  return out;
 }
-
-/* ---- 2. CALCULER ---- */
-const calculerGens = [
-  // ax + b
-  () => {
-    const a = rand(2,8), b = rand(-9,9);
-    return {
-      coefStr:`${a}x${fmtCstMid(b)}`,
-      f:(x)=>a*x + b,
-      step:(x)=>{
-        const ax = a*x;
-        return `${a}×(${x})${fmtCstMid(b)} = ${fmtN(ax)}${fmtCstMid(b)} = ${fmtN(a*x+b)}`;
-      }
-    };
-  },
-  // -ax + b (ie b - ax)
-  () => {
-    const a = rand(2,7), b = rand(2,12);
-    return {
-      coefStr:`${b} ${M} ${a}x`,
-      f:(x)=>b - a*x,
-      step:(x)=>{
-        const ax = a*x;
-        return `${b} ${M} ${a}×(${x}) = ${b} ${M} (${fmtN(ax)}) = ${fmtN(b-a*x)}`;
-      }
-    };
-  },
-  // ax^2 + b
-  () => {
-    const a = rand(1,3), b = rand(-9,9);
-    const aStr = a===1?'':''+a;
-    return {
-      coefStr:`${aStr}x²${fmtCstMid(b)}`,
-      f:(x)=>a*x*x + b,
-      step:(x)=>{
-        const x2 = x*x;
-        return `${aStr}×(${x})²${fmtCstMid(b)} = ${aStr}×${x2}${fmtCstMid(b)} = ${fmtN(a*x2)}${fmtCstMid(b)} = ${fmtN(a*x2+b)}`;
-      }
-    };
-  },
-  // a(x+b)
-  () => {
-    const a = rand(2,5), b = rand(-5,5,);
-    return {
-      coefStr:`${a}(x${fmtCstMid(b)})`,
-      f:(x)=>a*(x+b),
-      step:(x)=>{
-        return `${a}×(${x}${fmtCstMid(b)}) = ${a}×(${fmtN(x+b)}) = ${fmtN(a*(x+b))}`;
-      }
-    };
-  },
-];
-
-function genCalculer(){
-  const g = pick(calculerGens)();
-  // 2 valeurs : une positive, une négative typiquement
-  const positives = [1,2,3,4];
-  const negatives = [-1,-2,-3,-4];
-  const x1 = pick(positives);
-  const x2 = pick(negatives);
-  return {
-    type:'calc',
-    expr:g.coefStr,
-    x1, x2,
-    a1:g.f(x1), a2:g.f(x2),
-    hint1:g.step(x1),
-    hint2:g.step(x2),
-  };
-}
-
-/* ---- 3. DÉVELOPPER ---- */
-const developperGens = [
-  // a(x + b)
-  () => {
-    const a = rand(2,9), b = rand(2,9);
-    const ans = `${a}x + ${a*b}`;
-    return {
-      q:`${a}(x + ${b})`,
-      ans,
-      bad:[
-        `${a}x + ${b}`,                // distri ratée
-        `x + ${a+b}`,                  // ne distribue pas
-        `${a}x ${M} ${a*b}`,           // signe faux
-      ],
-      hint:`On distribue : ${a}(x + ${b}) = ${a}×x + ${a}×${b} = ${a}x + ${a*b}.`
-    };
-  },
-  // a(x - b)
-  () => {
-    const a = rand(2,9), b = rand(2,9);
-    const ans = `${a}x ${M} ${a*b}`;
-    return {
-      q:`${a}(x ${M} ${b})`,
-      ans,
-      bad:[
-        `${a}x ${M} ${b}`,
-        `${a}x + ${a*b}`,
-        `x ${M} ${a+b}`,
-      ],
-      hint:`On distribue : ${a}(x ${M} ${b}) = ${a}×x ${M} ${a}×${b} = ${a}x ${M} ${a*b}.`
-    };
-  },
-  // (x + a)(x + b)
-  () => {
-    const a = rand(2,7), b = rand(2,7);
-    const sum = a+b, prod = a*b;
-    const ans = `x² + ${sum}x + ${prod}`;
-    return {
-      q:`(x + ${a})(x + ${b})`,
-      ans,
-      bad:[
-        `x² + ${prod}x + ${sum}`,
-        `x² + ${a*b}`,
-        `x² + ${sum}x ${M} ${prod}`,
-      ],
-      hint:`(x + ${a})(x + ${b}) = x×x + x×${b} + ${a}×x + ${a}×${b}<br>&nbsp;&nbsp;&nbsp;= x² + ${b}x + ${a}x + ${prod}<br>&nbsp;&nbsp;&nbsp;= x² + ${sum}x + ${prod}.`
-    };
-  },
-  // (x - a)(x + b)  attention signes
-  () => {
-    let a = rand(2,6), b = rand(2,6);
-    if(a===b) b = b===6 ? 5 : b+1;     // évite a=b (sinon mid=0 et collisions)
-    const mid = b - a;
-    const prod = a*b;
-    let midStr;
-    if(mid===0)        midStr = '';
-    else if(mid===1)   midStr = ` + x`;
-    else if(mid===-1)  midStr = ` ${M} x`;
-    else if(mid>0)     midStr = ` + ${mid}x`;
-    else               midStr = ` ${M} ${Math.abs(mid)}x`;
-    const ans = `x²${midStr} ${M} ${prod}`;
-    return {
-      q:`(x ${M} ${a})(x + ${b})`,
-      ans,
-      bad:[
-        `x² + ${a+b}x + ${prod}`,
-        `x²${midStr} + ${prod}`,
-        `x² + ${a+b}x ${M} ${prod}`,
-      ],
-      hint:`(x ${M} ${a})(x + ${b}) = x² + ${b}x ${M} ${a}x ${M} ${prod}<br>&nbsp;&nbsp;&nbsp;= x²${midStr} ${M} ${prod}.`
-    };
-  },
-];
-
-function genDevelopper(){
-  const g = pick(developperGens)();
-  const bad = unique(g.bad).filter(x=>x!==g.ans).slice(0,3);
-  while(bad.length<3) bad.push('autre');
-  const choices = shuffle([g.ans, ...bad]);
-  return { type:'qcm', question:g.q, choices, correct:g.ans, hint:g.hint };
-}
-
-/* ---- 4. RÉDUIRE ---- */
-function genReduire(){
-  // 4 sous-types
-  const t = pick(['simple','classic','complex','x2']);
-
-  if(t==='simple'){
-    // a*x + b*x
-    let a = rand(2,9), b = rand(2,9);
-    if(a+b === a*b) b = b===2 ? 3 : 2;   // évite a+b = a*b
-    const sum = a+b;
-    const ans = fmtCoef(sum);
-    const q = `${a}x + ${b}x`;
-    const bad = [
-      fmtCoef(a*b),                    // a multiplié b
-      `${sum}x²`,                      // ajouté les puissances
-      `${a}x² + ${b}x`,                // n'importe quoi
-    ];
-    return makeReduireQ(q, ans, bad,
-      reduireDecomp([{c:a,sgn:1},{c:b,sgn:1}], [], `${a}x + ${b}x`, ans)
-    );
-  }
-
-  if(t==='classic'){
-    // 8x − 5 − 12x + 8 type :  ax + b − cx + d
-    const a = rand(3,9);
-    const c = rand(a+2,15);
-    const b = rand(2,9);
-    const d = rand(2,9);
-    const xCoef = a - c;     // négatif
-    const cst = -b + d;
-    const ans = fmtPoly2(0, xCoef, cst);
-    const q = `${a}x ${M} ${b} ${M} ${c}x + ${d}`;
-    const bad = [
-      fmtPoly2(0, a+c, -b+d),
-      fmtPoly2(0, xCoef, -b-d),
-      fmtPoly2(0, a-c, b+d),
-    ];
-    return makeReduireQ(q, ans, bad,
-      reduireDecomp(
-        [{c:a,sgn:1}, {c:c,sgn:-1}],
-        [{val:-b},{val:d}],
-        q, ans
-      )
-    );
-  }
-
-  if(t==='complex'){
-    // 2x + 4 − x − 3
-    const a = rand(2,6);
-    const b = rand(2,9);
-    const c = 1;
-    const d = rand(2,9);
-    const xCoef = a - c;
-    const cst = b - d;
-    const ans = fmtPoly2(0, xCoef, cst);
-    const q = `${a}x + ${b} ${M} x ${M} ${d}`;
-    const bad = [
-      fmtPoly2(0, a+c, b-d),
-      fmtPoly2(0, xCoef, b+d),
-      fmtPoly2(0, a+c, b+d),
-    ];
-    return makeReduireQ(q, ans, bad,
-      reduireDecomp(
-        [{c:a,sgn:1}, {c:c,sgn:-1}],
-        [{val:b},{val:-d}],
-        q, ans
-      )
-    );
-  }
-
-  if(t==='x2'){
-    // 11x² + 5 + 3x − 6x² + x  ->  5x² + 4x + 5
-    const a = rand(6,12), c = rand(2,a-1);
-    const x2coef = a - c;
-    const xa = rand(2,5), xc = 1;
-    const xCoef = xa + xc;
-    const cst = rand(2,9);
-    const ans = fmtPoly2(x2coef, xCoef, cst);
-    const q = `${a}x² + ${cst} + ${xa}x ${M} ${c}x² + x`;
-    const bad = [
-      fmtPoly2(a+c, xCoef, cst),
-      fmtPoly2(x2coef, xa*xc, cst),
-      `${x2coef+xCoef}x² + ${cst}`,
-    ];
-    return makeReduireQ(q, ans, bad,
-      reduireDecomp_x2(
-        [{c:a,sgn:1},{c:c,sgn:-1}],
-        [{c:xa,sgn:1},{c:xc,sgn:1}],
-        [{val:cst}],
-        q, ans
-      )
-    );
-  }
-}
-
-function makeReduireQ(q, ans, badArr, hintHTML){
-  const bad = unique(badArr).filter(x=>x!==ans).slice(0,3);
-  while(bad.length<3) bad.push('autre');
-  const choices = shuffle([ans, ...bad]);
-  return { type:'qcm', question:q, choices, correct:ans, hint:hintHTML };
-}
-
-// Décomposition visuelle x+x+x... pour mode classique sans x²
-function reduireDecomp(xTerms, cstTerms, qStr, ansStr){
-  // xTerms : [{c, sgn}], cstTerms : [{val (signed)}]
-  let totalPos = 0, totalNeg = 0;
-  let posStr='', negStr='';
-  xTerms.forEach(({c,sgn}) => {
-    if(sgn>0){
-      totalPos += c;
-      for(let i=0;i<c;i++) posStr += '+x ';
-    } else {
-      totalNeg += c;
-      for(let i=0;i<c;i++) negStr += M+'x ';
-    }
-  });
-  const xCoef = totalPos - totalNeg;
-
-  let cstCalc = '';
-  let totalCst = 0;
-  cstTerms.forEach(({val},i)=>{
-    if(i===0) cstCalc += (val<0?M+Math.abs(val):val);
-    else cstCalc += (val<0?' '+M+' '+Math.abs(val):' + '+val);
-    totalCst += val;
-  });
-  cstCalc += ` = ${fmtN(totalCst)}`;
-
-  let html = `<div class="decomp">`;
-  if(posStr){
-    html += `<div class="row"><span class="lbl">x positifs (${totalPos}) :</span><span class="pos math">${posStr.trim()}</span></div>`;
-  }
-  if(negStr){
-    html += `<div class="row"><span class="lbl">x négatifs (${totalNeg}) :</span><span class="neg math">${negStr.trim()}</span></div>`;
-  }
-  html += `<div class="row"><span class="lbl">Bilan des x :</span>
-            <span class="math">${totalPos} ${M} ${totalNeg} = <b>${fmtN(xCoef)}</b></span>
-            <span>donc <b class="math">${fmtCoef(xCoef)}</b></span></div>`;
-  if(cstTerms.length){
-    html += `<div class="row"><span class="lbl">Nombres seuls :</span><span class="cst math">${cstCalc}</span></div>`;
-  }
-  html += `<div class="eq-result math">${qStr} &nbsp;=&nbsp; ${ansStr}</div>`;
-  html += `</div>`;
-  return html;
-}
-
-// version avec x²
-function reduireDecomp_x2(x2Terms, xTerms, cstTerms, qStr, ansStr){
-  let html = `<div class="decomp">`;
-
-  // x²
-  let p2=0,n2=0;
-  x2Terms.forEach(({c,sgn})=>sgn>0 ? p2+=c : n2+=c);
-  let pos2='', neg2='';
-  for(let i=0;i<p2;i++) pos2+='+x² ';
-  for(let i=0;i<n2;i++) neg2+=M+'x² ';
-  html += `<div class="row"><span class="lbl">x² positifs (${p2}) :</span><span class="pos math">${pos2.trim()}</span></div>`;
-  if(n2) html += `<div class="row"><span class="lbl">x² négatifs (${n2}) :</span><span class="neg math">${neg2.trim()}</span></div>`;
-  html += `<div class="row"><span class="lbl">Bilan x² :</span><span class="math">${p2} ${M} ${n2} = <b>${fmtN(p2-n2)}</b></span></div>`;
-
-  // x
-  let p1=0,n1=0;
-  xTerms.forEach(({c,sgn})=>sgn>0 ? p1+=c : n1+=c);
-  let pos1='';
-  for(let i=0;i<p1;i++) pos1+='+x ';
-  html += `<div class="row"><span class="lbl">x positifs (${p1}) :</span><span class="pos math">${pos1.trim()}</span></div>`;
-
-  // constantes
-  let totalCst = 0;
-  cstTerms.forEach(({val})=>totalCst+=val);
-  html += `<div class="row"><span class="lbl">Nombres seuls :</span><span class="cst math">${fmtN(totalCst)}</span></div>`;
-
-  html += `<div class="eq-result math">${qStr} &nbsp;=&nbsp; ${ansStr}</div>`;
-  html += `</div>`;
-  return html;
-}
-
-/* ======================================================================== */
-/* RENDU                                                                      */
-/* ======================================================================== */
-function render(){
-  state.answered = false;
-  document.getElementById('feedback').classList.remove('show');
-  const card = document.getElementById('exercise');
-
-  let q;
-  if(state.tab==='traduire')   q = genTraduire();
-  if(state.tab==='calculer')   q = genCalculer();
-  if(state.tab==='developper') q = genDevelopper();
-  if(state.tab==='reduire')    q = genReduire();
-  state.current = q;
-
-  document.getElementById('tip').textContent = tips[state.tab];
-
-  if(q.type==='qcm'){
-    card.innerHTML = `
-      <div class="q-label">Question</div>
-      <div class="question ${q.questionFr?'fr':'math'}">${q.question}</div>
-      <div class="q-label">Réponses possibles</div>
-      <div class="choices">
-        ${q.choices.map((c,i)=>`<button class="choice math" data-i="${i}">${c}</button>`).join('')}
-      </div>
-      ${ state.mode==='defi' ? `
-        <div class="aide">
-          <h3>💡 Aide</h3>
-          <div class="aide-content">${q.hint}</div>
-        </div>` : '' }
-    `;
-    card.querySelectorAll('.choice').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        if(state.answered) return;
-        card.querySelectorAll('.choice').forEach(b=>b.classList.remove('selected'));
-        btn.classList.add('selected');
-      });
-    });
-  }
-
-  if(q.type==='calc'){
-    card.innerHTML = `
-      <div class="q-label">Expression</div>
-      <div class="question math">${q.expr}</div>
-      <div class="q-label">Calcule pour les deux valeurs de x</div>
-      <div class="calc-pair">
-        <div class="calc-card" id="cp1">
-          <div class="label-line">Pour x = <span class="x-val math">${fmtN(q.x1)}</span></div>
-          <input type="text" inputmode="numeric" id="ans1" placeholder="Résultat">
-        </div>
-        <div class="calc-card" id="cp2">
-          <div class="label-line">Pour x = <span class="x-val math">${fmtN(q.x2)}</span></div>
-          <input type="text" inputmode="numeric" id="ans2" placeholder="Résultat">
-        </div>
-      </div>
-      ${ state.mode==='defi' ? `
-        <div class="aide">
-          <h3>💡 Aide : substituer x par sa valeur</h3>
-          <div class="aide-content">
-            <div class="step math">x = ${fmtN(q.x1)} → ${q.hint1}</div>
-            <div class="step math">x = ${fmtN(q.x2)} → ${q.hint2}</div>
-          </div>
-        </div>` : '' }
-    `;
-  }
-}
-
-/* ======================================================================== */
-/* VÉRIFICATION                                                               */
-/* ======================================================================== */
-function check(){
-  if(state.answered) return;
-  const q = state.current;
-  if(!q) return;
-
-  let isCorrect = false;
-  const card = document.getElementById('exercise');
-  const fb = document.getElementById('feedback');
-
-  if(q.type==='qcm'){
-    const sel = card.querySelector('.choice.selected');
-    if(!sel){
-      fb.className='feedback show error';
-      fb.textContent='⚠️ Choisis une réponse avant de vérifier.';
-      return;
-    }
-    const choiceText = sel.textContent;
-    isCorrect = (choiceText === q.correct);
-    // verrouille
-    card.querySelectorAll('.choice').forEach(b=>{
-      b.classList.add('locked');
-      if(b.textContent === q.correct) b.classList.add('correct');
-      else if(b.classList.contains('selected')) b.classList.add('incorrect');
-    });
-  }
-
-  if(q.type==='calc'){
-    const a1 = parseInputNum(document.getElementById('ans1').value);
-    const a2 = parseInputNum(document.getElementById('ans2').value);
-    const ok1 = (a1!==null && a1===q.a1);
-    const ok2 = (a2!==null && a2===q.a2);
-    document.getElementById('cp1').classList.add(ok1?'ok':'ko');
-    document.getElementById('cp2').classList.add(ok2?'ok':'ko');
-    isCorrect = ok1 && ok2;
-    if(!isCorrect){
-      fb.className='feedback show error';
-      fb.innerHTML = `❌ Pas tout à fait. Les bonnes réponses :<br>
-        Pour x = ${fmtN(q.x1)} → <b class="math">${fmtN(q.a1)}</b><br>
-        Pour x = ${fmtN(q.x2)} → <b class="math">${fmtN(q.a2)}</b>`;
-    }
-  }
-
-  state.answered = true;
-  state.total++;
-  if(isCorrect){
-    state.good++;
-    if(q.type==='qcm' || q.type==='calc'){
-      if(fb.className.indexOf('error')===-1){
-        fb.className='feedback show success';
-        fb.textContent = pickBravo();
-      }
-    }
-  } else {
-    if(q.type==='qcm'){
-      fb.className='feedback show error';
-      fb.innerHTML = `❌ La bonne réponse était : <b class="math">${q.correct}</b>`;
-    }
-  }
-  updateScore();
-}
-
-function parseInputNum(s){
-  if(!s) return null;
-  s = s.trim().replace(',','.').replace('−','-').replace(/\s+/g,'');
-  if(!/^-?\d+(\.\d+)?$/.test(s)) return null;
-  return Math.round(parseFloat(s)*1000)/1000;
-}
-
-function pickBravo(){
-  return pick([
-    '✅ Bravo, c\'est exact !',
-    '✅ Excellent !',
-    '✅ Parfait, tu maîtrises.',
-    '✅ Bonne réponse !',
-    '✅ Top, continue !',
-  ]);
-}
-
-function updateScore(){
-  document.getElementById('score').textContent = `${state.good} / ${state.total}`;
-  const r = state.total ? Math.round(100*state.good/state.total)+' %' : '—';
-  document.getElementById('rate').textContent = r;
-}
-
-function resetScore(){
-  state.good=0;state.total=0;
-  updateScore();
-}
-
-/* ======================================================================== */
-/* ÉVÉNEMENTS                                                                 */
-/* ======================================================================== */
-document.querySelectorAll('.tab').forEach(b=>{
-  b.addEventListener('click',()=>{
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    state.tab = b.dataset.tab;
-    render();
-  });
-});
-
-document.querySelectorAll('.mode-btn').forEach(b=>{
-  b.addEventListener('click',()=>{
-    document.querySelectorAll('.mode-btn').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    state.mode = b.dataset.mode;
-    document.body.classList.toggle('defi-plus', state.mode==='defi-plus');
-    render();
-  });
-});
-
-document.getElementById('btn-check').addEventListener('click', check);
-document.getElementById('btn-next').addEventListener('click', render);
-
-/* ======================================================================== */
-/* GÉNÉRATION DE FICHE PDF                                                    */
-/* ======================================================================== */
-const tabLabels = {
-  traduire:'Traduire en formule littérale',
-  calculer:'Calculer une expression numérique',
-  developper:'Développer une expression',
-  reduire:'Réduire une expression',
-};
-const tabPrompts = {
-  traduire:'Entoure l\'expression mathématique correspondant à la phrase :',
-  calculer:'Calcule la valeur de l\'expression pour chaque valeur de x :',
-  developper:'Entoure la forme développée et réduite de l\'expression :',
-  reduire:'Entoure la forme réduite de l\'expression :',
-};
-const generators = {
-  traduire:genTraduire, calculer:genCalculer,
-  developper:genDevelopper, reduire:genReduire,
-};
-
-function distribute10(tabs){
-  const k = tabs.length;
-  const base = Math.floor(10/k);
-  const rem = 10 % k;
-  return tabs.map((t,i) => ({tab:t, count: base + (i<rem?1:0)}));
-}
-
-function selectedTabs(){
-  return [...document.querySelectorAll('#modal-checks input:checked')].map(c=>c.value);
-}
-
-function refreshDistInfo(){
-  const sel = selectedTabs();
-  const el = document.getElementById('dist-info');
-  // Mise à jour visuelle des labels
-  document.querySelectorAll('#modal-checks label').forEach(l=>{
-    l.classList.toggle('on', l.querySelector('input').checked);
-  });
-  if(sel.length===0){
-    el.className='dist-info warn';
-    el.textContent='⚠️ Sélectionne au moins un onglet';
-    document.getElementById('modal-confirm').disabled = true;
-    return;
-  }
-  const d = distribute10(sel).map(x=>x.count);
-  el.className='dist-info ok';
-  el.textContent = `→ ${d.join(' + ')} = 10 exercices`;
-  document.getElementById('modal-confirm').disabled = false;
-}
-
-document.querySelectorAll('#modal-checks input').forEach(cb=>{
-  cb.addEventListener('change', refreshDistInfo);
-});
-
-document.getElementById('btn-fiche').addEventListener('click',()=>{
-  document.getElementById('modal-fiche').classList.add('show');
-  refreshDistInfo();
-});
-document.getElementById('modal-cancel').addEventListener('click',()=>{
-  document.getElementById('modal-fiche').classList.remove('show');
-});
-document.getElementById('modal-fiche').addEventListener('click',(e)=>{
-  if(e.target.id==='modal-fiche') document.getElementById('modal-fiche').classList.remove('show');
-});
-document.addEventListener('keydown',(e)=>{
-  if(e.key==='Escape') document.getElementById('modal-fiche').classList.remove('show');
-});
-
-document.getElementById('modal-confirm').addEventListener('click', ()=>{
-  const sel = selectedTabs();
-  if(!sel.length) return;
-  const sections = buildFiche(sel);
-  document.getElementById('modal-fiche').classList.remove('show');
-  openPrintWindow(sections);
-});
-
-function buildFiche(tabs){
-  const dist = distribute10(tabs);
-  const sections = [];
-  let n = 1;
-  for(const {tab, count} of dist){
-    const items = [];
-    const seen = new Set();
-    for(let i=0;i<count;i++){
-      let q, tries=0;
-      do {
-        q = generators[tab]();
-        tries++;
-      } while(seen.has(q.question || q.expr) && tries<25);
-      seen.add(q.question || q.expr);
-      items.push({...q, num:n++});
-    }
-    sections.push({tab, label:tabLabels[tab], prompt:tabPrompts[tab], items});
-  }
-  return sections;
-}
-
-function escapeHtml(s){
+function v(id){ var n = parseInt(document.getElementById(id).value,10); return isNaN(n) ? 0 : n; }
+function esc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function exerciseHtml(item){
-  if(item.type==='qcm'){
-    const letters = ['A','B','C','D'];
-    const choices = item.choices.map((c,i)=>
-      `<div class="ch"><span class="lt">${letters[i]}.</span> <span class="math">${escapeHtml(c)}</span></div>`
-    ).join('');
-    const prompt = item.questionFr
-      ? `<em>« ${escapeHtml(item.question)} »</em>`
-      : `<span class="math expr">${escapeHtml(item.question)}</span>`;
-    return `
-      <div class="ex">
-        <div class="ex-num">${item.num}.</div>
-        <div class="ex-body">
-          <div class="ex-q">${prompt}</div>
-          <div class="ex-choices">${choices}</div>
-        </div>
-      </div>`;
+/* ── Écriture soignée des expressions ─────────────────────────────────── */
+function fmtN(n){ return n < 0 ? M+Math.abs(n) : ''+n; }
+
+function fmtCoef(a, varStr){
+  varStr = varStr || 'x';
+  if (a === 0)  return '0';
+  if (a === 1)  return varStr;
+  if (a === -1) return M+varStr;
+  if (a < 0)    return M+Math.abs(a)+varStr;
+  return a+varStr;
+}
+function fmtCoefMid(a, varStr){
+  varStr = varStr || 'x';
+  if (a === 0)  return '';
+  if (a === 1)  return ' + '+varStr;
+  if (a === -1) return ' '+M+' '+varStr;
+  if (a < 0)    return ' '+M+' '+Math.abs(a)+varStr;
+  return ' + '+a+varStr;
+}
+function fmtCstMid(b){
+  if (b === 0) return '';
+  return b < 0 ? ' '+M+' '+Math.abs(b) : ' + '+b;
+}
+function fmtPoly2(a,b,c){
+  var s = '';
+  if (a !== 0) {
+    if (a === 1)       s += 'x²';
+    else if (a === -1) s += M+'x²';
+    else               s += a+'x²';
   }
-  if(item.type==='calc'){
-    return `
-      <div class="ex">
-        <div class="ex-num">${item.num}.</div>
-        <div class="ex-body">
-          <div class="ex-q"><span class="math expr">${escapeHtml(item.expr)}</span></div>
-          <div class="ex-calc">
-            <div class="cl"><span class="cl-x math">x = ${escapeHtml(fmtN(item.x1))}</span> :
-              <span class="dots"></span> = <span class="ans-box"></span></div>
-            <div class="cl"><span class="cl-x math">x = ${escapeHtml(fmtN(item.x2))}</span> :
-              <span class="dots"></span> = <span class="ans-box"></span></div>
-          </div>
-        </div>
-      </div>`;
-  }
-  return '';
+  if (b !== 0) s += (s === '' ? fmtCoef(b) : fmtCoefMid(b));
+  if (c !== 0) s += (s === '' ? fmtN(c)    : fmtCstMid(c));
+  if (s === '') s = '0';
+  return s;
 }
 
-function corrigeHtml(item){
-  if(item.type==='qcm'){
-    const idx = item.choices.indexOf(item.correct);
-    const letter = ['A','B','C','D'][idx] || '?';
-    return `<div class="cor-line"><b>${item.num}.</b> ${letter} &nbsp;—&nbsp; <span class="math">${escapeHtml(item.correct)}</span></div>`;
+/* ═══ GÉNÉRATEURS DE QUESTIONS ══════════════════════════════════════════ */
+
+/* ── 1. TRADUIRE ─────────────────────────────────────────────────────── */
+var traduireGens = [
+  function(){
+    var mots = {2:'double',3:'triple',4:'quadruple',5:'quintuple'};
+    var n = rand(2,5);
+    var expoBad = n === 2 ? 'x²' : 'x^'+n;
+    return {
+      q:'Le '+mots[n]+' de x',
+      ans:fmtCoef(n),
+      bad:['x + '+n, n+' + x', expoBad, 'x ÷ '+n],
+      hint:'« '+mots[n]+' de x » signifie '+n+' fois x, donc '+n+' × x = '+n+'x.'
+    };
+  },
+  function(){
+    var n = rand(2,9);
+    return {
+      q:'Le produit de '+n+' par x',
+      ans:n+'x',
+      bad:['x + '+n, 'x '+M+' '+n, 'x'+n],
+      hint:'« Produit » = multiplication. '+n+' × x s\u2019écrit '+n+'x.'
+    };
+  },
+  function(){
+    var n = rand(2,15);
+    return {
+      q:'x augmenté de '+n,
+      ans:'x + '+n,
+      bad:[n+'x', 'x '+M+' '+n, n+' '+M+' x'],
+      hint:'« Augmenté de '+n+' » signifie qu\u2019on ajoute '+n+'. On écrit donc x + '+n+'.'
+    };
+  },
+  function(){
+    var n = rand(2,15);
+    return {
+      q:'x diminué de '+n,
+      ans:'x '+M+' '+n,
+      bad:[n+' '+M+' x', 'x + '+n, n+'x'],
+      hint:'« Diminué de '+n+' » signifie qu\u2019on retire '+n+'. On écrit donc x '+M+' '+n+'.'
+    };
+  },
+  function(){
+    var n = rand(5,20);
+    return {
+      q:n+' diminué de x',
+      ans:n+' '+M+' x',
+      bad:['x '+M+' '+n, 'x + '+n, n+'x'],
+      hint:'Ici c\u2019est '+n+' auquel on enlève x. L\u2019ordre compte : on écrit '+n+' '+M+' x.'
+    };
+  },
+  function(){
+    var b = rand(2,12);
+    return {
+      q:'Le double de x, augmenté de '+b,
+      ans:'2x + '+b,
+      bad:['2(x + '+b+')', 'x + '+(2+b), '2x '+M+' '+b],
+      hint:'Double de x = 2x. Augmenté de '+b+' : on ajoute '+b+'. → 2x + '+b+'.'
+    };
+  },
+  function(){
+    var a = rand(2,9), b = rand(2,12);
+    return {
+      q:a+' fois x, diminué de '+b,
+      ans:a+'x '+M+' '+b,
+      bad:[a+'(x '+M+' '+b+')', 'x '+M+' '+(a*b), a+'x + '+b],
+      hint:a+' fois x = '+a+'x. Diminué de '+b+' : on retire '+b+'. → '+a+'x '+M+' '+b+'.'
+    };
+  },
+  function(){
+    return {
+      q:'Le carré de x',
+      ans:'x²',
+      bad:['2x', 'x × 2', 'x + x'],
+      hint:'« Carré » = multiplier par soi-même. x × x = x². Attention, ce n\u2019est pas 2x.'
+    };
+  },
+  function(){
+    return {
+      q:'Le carré de x, augmenté de x',
+      ans:'x² + x',
+      bad:['2x', 'x³', 'x²·x'],
+      hint:'Carré de x = x². On ajoute x → x² + x. Ce ne sont pas des termes semblables : ça ne se réduit pas.'
+    };
+  },
+  function(){
+    var a = rand(2,5), b = rand(2,9);
+    return {
+      q:a+' fois la somme de x et de '+b,
+      ans:a+'(x + '+b+')',
+      bad:[a+'x + '+b, 'x + '+(a*b), a+'x + '+(a+b)],
+      hint:'« La somme de x et de '+b+' » = (x + '+b+'). On la multiplie par '+a+' → '+a+'(x + '+b+').'
+    };
+  },
+  function(){
+    var a = rand(2,5), b = rand(2,9);
+    return {
+      q:a+' fois la différence entre x et '+b,
+      ans:a+'(x '+M+' '+b+')',
+      bad:[a+'x '+M+' '+b, 'x '+M+' '+(a*b), a+'x '+M+' '+(a+b)],
+      hint:'« Différence entre x et '+b+' » = (x '+M+' '+b+'). Multipliée par '+a+' → '+a+'(x '+M+' '+b+').'
+    };
+  },
+  function(){
+    return {
+      q:'La moitié de x',
+      ans:'x ÷ 2',
+      bad:['2x', 'x '+M+' 2', 'x²'],
+      hint:'« Moitié » = divisé par 2. On écrit x ÷ 2, ou x/2.'
+    };
   }
-  if(item.type==='calc'){
-    return `<div class="cor-line"><b>${item.num}.</b>
-      Pour x = <span class="math">${escapeHtml(fmtN(item.x1))}</span> → <b class="math">${escapeHtml(fmtN(item.a1))}</b>
-      &nbsp;·&nbsp;
-      Pour x = <span class="math">${escapeHtml(fmtN(item.x2))}</span> → <b class="math">${escapeHtml(fmtN(item.a2))}</b>
-    </div>`;
-  }
-  return '';
+];
+
+function genTraduire(){
+  var g = traduireGens[Math.floor(Math.random()*traduireGens.length)]();
+  var bad = unique(g.bad).filter(function(z){ return z !== g.ans; }).slice(0,3);
+  while (bad.length < 3) bad.push('autre');
+  return {
+    famille:'traduire', type:'qcm', question:g.q, questionFr:true,
+    choices:shuffle([g.ans].concat(bad)), correct:g.ans, hint:g.hint
+  };
 }
 
-function openPrintWindow(sections){
-  const date = new Date().toLocaleDateString('fr-FR');
-  const exHtml = sections.map(s => {
-    const allQcm = s.items.every(i => i.type === 'qcm');
-    const cols = allQcm ? s.items.length : 1;
-    const inner = allQcm
-      ? `<div class="ex-grid ex-grid-${Math.min(cols,3)}">${s.items.map(exerciseHtml).join('')}</div>`
-      : s.items.map(exerciseHtml).join('');
-    return `
-    <section class="sec">
-      <h2>${escapeHtml(s.label)}</h2>
-      <p class="instr">${escapeHtml(s.prompt)}</p>
-      ${inner}
-    </section>`;
-  }).join('');
-
-  const corrigeBlocks = sections.map(s => `
-    <div class="cor-sec">
-      <h3>${escapeHtml(s.label)}</h3>
-      ${s.items.map(corrigeHtml).join('')}
-    </div>
-  `).join('');
-
-  const css = `
-    @page { size: A4 portrait; margin: 1cm 1.3cm; }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{
-      font-family:-apple-system,"Segoe UI",system-ui,sans-serif;
-      color:#0f172a;font-size:12pt;line-height:1.4;
-    }
-    .math{font-family:"Cambria Math","Latin Modern Math","Times New Roman",serif}
-    header{
-      border-bottom:2px solid #0891b2;padding-bottom:.3cm;margin-bottom:.35cm;
-      display:flex;justify-content:space-between;align-items:flex-end;
-    }
-    header h1{font-size:15pt;color:#0e7490;margin-bottom:.05cm}
-    header .meta{font-size:10pt;color:#64748b;text-align:right}
-    .id-line{display:flex;gap:1cm;margin-bottom:.35cm;font-size:11pt}
-    .id-line .field{flex:1;border-bottom:1px solid #94a3b8;padding-bottom:1mm}
-    .toolbar{
-      position:fixed;top:1cm;right:1cm;display:flex;gap:.4cm;z-index:10;
-    }
-    .toolbar button{
-      padding:.4cm .7cm;border:none;background:#0891b2;color:white;
-      border-radius:.3cm;font-weight:700;cursor:pointer;font-size:10pt;
-    }
-    .toolbar button.alt{background:#475569}
-    .sec{margin-bottom:.35cm;page-break-inside:avoid;break-inside:avoid}
-    .sec h2{
-      font-size:13pt;color:#0e7490;border-left:3px solid #0891b2;
-      padding-left:.25cm;margin-bottom:.1cm;
-      page-break-after:avoid;break-after:avoid;
-    }
-    .sec .instr{font-size:10.5pt;color:#64748b;margin-bottom:.15cm;font-style:italic;
-      page-break-after:avoid;break-after:avoid;
-    }
-    /* Grilles multi-colonnes pour QCM */
-    .ex-grid{display:grid;gap:.3cm}
-    .ex-grid-2{grid-template-columns:1fr 1fr}
-    .ex-grid-3{grid-template-columns:1fr 1fr 1fr}
-    .ex-grid .ex{margin-bottom:0}
-    /* Questions individuelles */
-    .ex{
-      display:flex;gap:.25cm;margin-bottom:.25cm;
-      page-break-inside:avoid;break-inside:avoid;
-    }
-    .ex-num{font-weight:700;min-width:.7cm;color:#0e7490}
-    .ex-body{flex:1}
-    .ex-q{margin-bottom:.1cm}
-    .ex-q .expr{font-size:13pt;font-weight:600}
-    .ex-choices{
-      display:grid;grid-template-columns:1fr 1fr;
-      gap:.08cm .3cm;padding-left:.3cm;
-    }
-    .ch{font-size:11.5pt}
-    .ch .lt{font-weight:700;color:#0891b2}
-    .ex-calc{padding-left:.35cm}
-    .cl{margin-bottom:.15cm;font-size:12pt;display:flex;align-items:center;gap:.2cm}
-    .cl-x{font-weight:600;min-width:2.8cm}
-    .dots{flex:1;border-bottom:1px dotted #94a3b8;height:.85cm}
-    .ans-box{
-      display:inline-block;width:2.2cm;height:.85cm;
-      border:1px solid #0891b2;border-radius:.15cm;
-    }
-    .corrige-page{page-break-before:always}
-    .corrige-page header{border-color:#10b981}
-    .corrige-page header h1{color:#065f46}
-    .cor-sec{margin-bottom:.4cm}
-    .cor-sec h3{
-      font-size:12pt;color:#065f46;margin-bottom:.15cm;
-      border-left:3px solid #10b981;padding-left:.25cm;
-    }
-    .cor-line{font-size:11pt;padding:1mm 0;padding-left:.4cm}
-    @media print{
-      .toolbar{display:none}
-      body{padding:0}
-    }
-    @media screen{
-      body{
-        background:#f1f5f9;padding:1cm;
-        max-width:21cm;margin:0 auto;
+/* ── 2. CALCULER ─────────────────────────────────────────────────────── */
+var calculerGens = [
+  function(){
+    var a = rand(2,8), b = rand(-9,9);
+    return {
+      coefStr:a+'x'+fmtCstMid(b),
+      f:function(x){ return a*x + b; },
+      step:function(x){
+        return a+' × ('+fmtN(x)+')'+fmtCstMid(b)+' = '+fmtN(a*x)+fmtCstMid(b)+' = '+fmtN(a*x+b);
       }
-      header,.id-line,.sec,.corrige-page{
-        background:white;padding:.7cm;margin-bottom:.4cm;
-        box-shadow:0 1px 3px rgba(0,0,0,.06);border-radius:.2cm;
+    };
+  },
+  function(){
+    var a = rand(2,7), b = rand(2,12);
+    return {
+      coefStr:b+' '+M+' '+a+'x',
+      f:function(x){ return b - a*x; },
+      step:function(x){
+        return b+' '+M+' '+a+' × ('+fmtN(x)+') = '+b+' '+M+' ('+fmtN(a*x)+') = '+fmtN(b-a*x);
       }
-      .corrige-page{margin-top:1cm}
+    };
+  },
+  function(){
+    var a = rand(1,3), b = rand(-9,9);
+    var aStr = a === 1 ? '' : ''+a;
+    return {
+      coefStr:aStr+'x²'+fmtCstMid(b),
+      f:function(x){ return a*x*x + b; },
+      step:function(x){
+        return aStr+'('+fmtN(x)+')²'+fmtCstMid(b)+' = '+(aStr ? aStr+' × ' : '')+(x*x)+fmtCstMid(b)+' = '+fmtN(a*x*x+b);
+      }
+    };
+  },
+  function(){
+    var a = rand(2,5), b = rand(-5,5);
+    return {
+      coefStr:a+'(x'+fmtCstMid(b)+')',
+      f:function(x){ return a*(x+b); },
+      step:function(x){
+        return a+' × ('+fmtN(x)+fmtCstMid(b)+') = '+a+' × ('+fmtN(x+b)+') = '+fmtN(a*(x+b));
+      }
+    };
+  }
+];
+
+function genCalculer(){
+  var g = calculerGens[Math.floor(Math.random()*calculerGens.length)]();
+  var x1 = pick([1,2,3,4]);
+  var x2 = pick([-1,-2,-3,-4]);
+  return {
+    famille:'calculer', type:'calc',
+    expr:g.coefStr, x1:x1, x2:x2,
+    a1:g.f(x1), a2:g.f(x2),
+    hint1:g.step(x1), hint2:g.step(x2)
+  };
+}
+
+/* ── 3. DÉVELOPPER ───────────────────────────────────────────────────── */
+var developperGens = [
+  function(){
+    var a = rand(2,9), b = rand(2,9);
+    return {
+      q:a+'(x + '+b+')',
+      ans:a+'x + '+(a*b),
+      bad:[a+'x + '+b, 'x + '+(a+b), a+'x '+M+' '+(a*b)],
+      hint:'On distribue : '+a+'(x + '+b+') = '+a+' × x + '+a+' × '+b+' = '+a+'x + '+(a*b)+'.'
+    };
+  },
+  function(){
+    var a = rand(2,9), b = rand(2,9);
+    return {
+      q:a+'(x '+M+' '+b+')',
+      ans:a+'x '+M+' '+(a*b),
+      bad:[a+'x '+M+' '+b, a+'x + '+(a*b), 'x '+M+' '+(a+b)],
+      hint:'On distribue : '+a+'(x '+M+' '+b+') = '+a+' × x '+M+' '+a+' × '+b+' = '+a+'x '+M+' '+(a*b)+'.'
+    };
+  },
+  function(){
+    var a = rand(2,7), b = rand(2,7);
+    var somme = a+b, prod = a*b;
+    return {
+      q:'(x + '+a+')(x + '+b+')',
+      ans:'x² + '+somme+'x + '+prod,
+      bad:['x² + '+prod+'x + '+somme, 'x² + '+prod, 'x² + '+somme+'x '+M+' '+prod, 'x² + '+somme+'x'],
+      hint:'(x + '+a+')(x + '+b+') = x² + '+b+'x + '+a+'x + '+prod+' = x² + '+somme+'x + '+prod+'.'
+    };
+  },
+  function(){
+    var a = rand(2,6), b = rand(2,6);
+    if (a === b) b = (b === 6 ? 5 : b+1);
+    var mid = b - a, prod = a*b, midStr;
+    if (mid === 0)       midStr = '';
+    else if (mid === 1)  midStr = ' + x';
+    else if (mid === -1) midStr = ' '+M+' x';
+    else if (mid > 0)    midStr = ' + '+mid+'x';
+    else                 midStr = ' '+M+' '+Math.abs(mid)+'x';
+    return {
+      q:'(x '+M+' '+a+')(x + '+b+')',
+      ans:'x²'+midStr+' '+M+' '+prod,
+      bad:['x² + '+(a+b)+'x + '+prod, 'x²'+midStr+' + '+prod, 'x² + '+(a+b)+'x '+M+' '+prod, 'x²'+midStr],
+      hint:'(x '+M+' '+a+')(x + '+b+') = x² + '+b+'x '+M+' '+a+'x '+M+' '+prod+' = x²'+midStr+' '+M+' '+prod+'.'
+    };
+  }
+];
+
+function genDevelopper(){
+  var g = developperGens[Math.floor(Math.random()*developperGens.length)]();
+  var bad = unique(g.bad).filter(function(z){ return z !== g.ans; }).slice(0,3);
+  while (bad.length < 3) bad.push('autre');
+  return {
+    famille:'developper', type:'qcm', question:g.q,
+    choices:shuffle([g.ans].concat(bad)), correct:g.ans, hint:g.hint
+  };
+}
+
+/* ── 4. RÉDUIRE ──────────────────────────────────────────────────────── */
+function genReduire(){
+  var t = pick(['simple','classic','complex','x2']);
+  var a, b, c, d, q, ans, bad, xCoef, cst;
+
+  if (t === 'simple') {
+    a = rand(2,9); b = rand(2,9);
+    if (a+b === a*b) b = (b === 2 ? 3 : 2);
+    ans = fmtCoef(a+b);
+    q   = a+'x + '+b+'x';
+    bad = [fmtCoef(a*b), (a+b)+'x²', a+'x² + '+b+'x'];
+    return makeReduireQ(q, ans, bad,
+      reduireDecomp([{c:a,sgn:1},{c:b,sgn:1}], [], q, ans));
+  }
+
+  if (t === 'classic') {
+    a = rand(3,9); c = rand(a+2,15); b = rand(2,9); d = rand(2,9);
+    xCoef = a - c; cst = -b + d;
+    ans = fmtPoly2(0, xCoef, cst);
+    q   = a+'x '+M+' '+b+' '+M+' '+c+'x + '+d;
+    bad = [fmtPoly2(0,a+c,-b+d), fmtPoly2(0,xCoef,-b-d), fmtPoly2(0,a-c,b+d)];
+    return makeReduireQ(q, ans, bad,
+      reduireDecomp([{c:a,sgn:1},{c:c,sgn:-1}], [{val:-b},{val:d}], q, ans));
+  }
+
+  if (t === 'complex') {
+    a = rand(2,6); b = rand(2,9); c = 1; d = rand(2,9);
+    xCoef = a - c; cst = b - d;
+    ans = fmtPoly2(0, xCoef, cst);
+    q   = a+'x + '+b+' '+M+' x '+M+' '+d;
+    bad = [fmtPoly2(0,a+c,b-d), fmtPoly2(0,xCoef,b+d), fmtPoly2(0,a+c,b+d)];
+    return makeReduireQ(q, ans, bad,
+      reduireDecomp([{c:a,sgn:1},{c:c,sgn:-1}], [{val:b},{val:-d}], q, ans));
+  }
+
+  a = rand(6,12); c = rand(2,a-1);
+  var x2coef = a - c;
+  var xa = rand(2,5), xc = 1;
+  xCoef = xa + xc;
+  cst = rand(2,9);
+  ans = fmtPoly2(x2coef, xCoef, cst);
+  q   = a+'x² + '+cst+' + '+xa+'x '+M+' '+c+'x² + x';
+  bad = [fmtPoly2(a+c,xCoef,cst), fmtPoly2(x2coef,xa*xc,cst), (x2coef+xCoef)+'x² + '+cst];
+  return makeReduireQ(q, ans, bad,
+    reduireDecomp_x2([{c:a,sgn:1},{c:c,sgn:-1}], [{c:xa,sgn:1},{c:xc,sgn:1}], [{val:cst}], q, ans));
+}
+
+function makeReduireQ(q, ans, badArr, hintHTML){
+  var bad = unique(badArr).filter(function(z){ return z !== ans; }).slice(0,3);
+  while (bad.length < 3) bad.push('autre');
+  return {
+    famille:'reduire', type:'qcm', question:q,
+    choices:shuffle([ans].concat(bad)), correct:ans, hint:hintHTML
+  };
+}
+
+function reduireDecomp(xTerms, cstTerms, qStr, ansStr){
+  var totalPos = 0, totalNeg = 0, posStr = '', negStr = '', i;
+  xTerms.forEach(function(t){
+    if (t.sgn > 0) { totalPos += t.c; for (i = 0; i < t.c; i++) posStr += '+x '; }
+    else           { totalNeg += t.c; for (i = 0; i < t.c; i++) negStr += M+'x '; }
+  });
+  var xCoef = totalPos - totalNeg;
+
+  var cstCalc = '', totalCst = 0;
+  cstTerms.forEach(function(t,k){
+    if (k === 0) cstCalc += (t.val < 0 ? M+Math.abs(t.val) : t.val);
+    else         cstCalc += (t.val < 0 ? ' '+M+' '+Math.abs(t.val) : ' + '+t.val);
+    totalCst += t.val;
+  });
+  cstCalc += ' = '+fmtN(totalCst);
+
+  var html = '<div class="decomp">';
+  if (posStr) html += '<div class="row"><span class="lbl">x positifs ('+totalPos+') :</span><span class="pos math">'+posStr.trim()+'</span></div>';
+  if (negStr) html += '<div class="row"><span class="lbl">x négatifs ('+totalNeg+') :</span><span class="neg math">'+negStr.trim()+'</span></div>';
+  html += '<div class="row"><span class="lbl">Bilan des x :</span>'
+        + '<span class="math">'+totalPos+' '+M+' '+totalNeg+' = <b>'+fmtN(xCoef)+'</b></span>'
+        + '<span>donc <b class="math">'+fmtCoef(xCoef)+'</b></span></div>';
+  if (cstTerms.length) html += '<div class="row"><span class="lbl">Nombres seuls :</span><span class="cst math">'+cstCalc+'</span></div>';
+  html += '<div class="eq-result math">'+qStr+' &nbsp;=&nbsp; '+ansStr+'</div></div>';
+  return html;
+}
+
+function reduireDecomp_x2(x2Terms, xTerms, cstTerms, qStr, ansStr){
+  var html = '<div class="decomp">', i;
+  var p2 = 0, n2 = 0;
+  x2Terms.forEach(function(t){ if (t.sgn > 0) p2 += t.c; else n2 += t.c; });
+  var pos2 = '', neg2 = '';
+  for (i = 0; i < p2; i++) pos2 += '+x² ';
+  for (i = 0; i < n2; i++) neg2 += M+'x² ';
+  html += '<div class="row"><span class="lbl">x² positifs ('+p2+') :</span><span class="pos math">'+pos2.trim()+'</span></div>';
+  if (n2) html += '<div class="row"><span class="lbl">x² négatifs ('+n2+') :</span><span class="neg math">'+neg2.trim()+'</span></div>';
+  html += '<div class="row"><span class="lbl">Bilan des x² :</span><span class="math">'+p2+' '+M+' '+n2+' = <b>'+fmtN(p2-n2)+'</b></span></div>';
+
+  var p1 = 0;
+  xTerms.forEach(function(t){ if (t.sgn > 0) p1 += t.c; });
+  var pos1 = '';
+  for (i = 0; i < p1; i++) pos1 += '+x ';
+  html += '<div class="row"><span class="lbl">x positifs ('+p1+') :</span><span class="pos math">'+pos1.trim()+'</span></div>';
+
+  var totalCst = 0;
+  cstTerms.forEach(function(t){ totalCst += t.val; });
+  html += '<div class="row"><span class="lbl">Nombres seuls :</span><span class="cst math">'+fmtN(totalCst)+'</span></div>';
+  html += '<div class="eq-result math">'+qStr+' &nbsp;=&nbsp; '+ansStr+'</div></div>';
+  return html;
+}
+
+var generators = {
+  traduire:genTraduire, calculer:genCalculer,
+  developper:genDevelopper, reduire:genReduire
+};
+var famNoms = {
+  traduire:'Traduire', calculer:'Calculer',
+  developper:'Développer', reduire:'Réduire'
+};
+var famLibelles = {
+  traduire:'Traduire en expression littérale',
+  calculer:'Calculer une expression',
+  developper:'Développer une expression',
+  reduire:'Réduire une expression'
+};
+var famConsignes = {
+  traduire:'Entoure la bonne expression',
+  calculer:'Calcule la valeur',
+  developper:'Entoure la forme développée',
+  reduire:'Entoure la forme réduite'
+};
+var famAides = {
+  traduire:'produit, fois → × &nbsp;|&nbsp; augmenté de → + &nbsp;|&nbsp; diminué de → '+M+' &nbsp;|&nbsp; carré de x → x²',
+  calculer:'remplacer x par sa valeur, entre parenthèses si elle est négative : 3 × ('+M+'2) = '+M+'6',
+  developper:'a(x + b) = ax + ab &nbsp;|&nbsp; (x + a)(x + b) = x² + (a + b)x + ab',
+  reduire:'on n\u2019additionne que les termes semblables : 5x '+M+' 2x = 3x, mais x² + x ne se réduit pas'
+};
+
+/* ═══ MODES ═════════════════════════════════════════════════════════════ */
+var currentMode = 'explo';
+
+function setMode(m, btn){
+  currentMode = m;
+  var tabs = document.querySelectorAll('.mode-tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+
+  document.getElementById('mode-explo').style.display = (m === 'explo') ? '' : 'none';
+  document.getElementById('mode-defi').style.display  = (m === 'explo') ? 'none' : '';
+
+  document.getElementById('defi-plus-badge').classList.toggle('visible', m === 'defiplus');
+  document.getElementById('defi-mode-title').textContent =
+    (m === 'defiplus') ? 'Défi ⁺ — sans aide' : 'Mode défi — avec aide';
+
+  if (m !== 'explo') nextDefi();
+}
+
+/* ═══ EXPLORATEUR ═══════════════════════════════════════════════════════ */
+var currentShape = 'trad';
+
+function setShape(s, btn){
+  currentShape = s;
+  var tabs = document.querySelectorAll('#mode-explo .shape-tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+  var panels = document.querySelectorAll('#mode-explo .panel');
+  for (i = 0; i < panels.length; i++) panels[i].classList.remove('active');
+  document.getElementById('panel-'+s).classList.add('active');
+}
+
+function randomizeCurrent(){
+  if (currentShape === 'trad') {
+    var sel = document.getElementById('tr-type');
+    sel.selectedIndex = rand(0, sel.options.length-1);
+    document.getElementById('tr-a').value = rand(2,9);
+    document.getElementById('tr-b').value = rand(2,15);
+    calcTrad();
+  } else if (currentShape === 'calc') {
+    var f = document.getElementById('ca-forme');
+    f.selectedIndex = rand(0, f.options.length-1);
+    document.getElementById('ca-a').value = rand(2,9);
+    document.getElementById('ca-b').value = rand(-9,9);
+    document.getElementById('ca-x').value = pick([-4,-3,-2,-1,1,2,3,4,5]);
+    calcCa();
+  } else if (currentShape === 'dev') {
+    document.getElementById('dv-forme').selectedIndex = rand(0,1);
+    document.getElementById('dv-a').value = rand(2,9);
+    document.getElementById('dv-b').value = rand(2,9);
+    calcDv();
+  } else {
+    document.getElementById('rd-xp').value = rand(3,8);
+    document.getElementById('rd-xn').value = rand(1,5);
+    document.getElementById('rd-cp').value = rand(2,10);
+    document.getElementById('rd-cn').value = rand(1,8);
+    calcRd();
+  }
+}
+
+/* ── Explorateur : traduire ──────────────────────────────────────────── */
+var tradDefs = [
+  { id:'prod', lab:'a fois x', ua:true, ub:false,
+    ph:function(a){ return 'Le produit de '+a+' par x'; },
+    ex:function(a){ return fmtCoef(a); },
+    det:function(a){ return a+' × x s\u2019écrit '+fmtCoef(a)+', sans le signe ×.'; },
+    err:function(a){ return '« produit » veut dire multiplication. Ce n\u2019est pas x + '+a+'.'; } },
+
+  { id:'aug', lab:'x augmenté de b', ua:false, ub:true,
+    ph:function(a,b){ return 'x augmenté de '+b; },
+    ex:function(a,b){ return 'x + '+b; },
+    det:function(a,b){ return '« augmenté de » : on ajoute '+b+' au nombre x.'; },
+    err:function(a,b){ return 'écrire '+b+'x, qui voudrait dire '+b+' × x.'; } },
+
+  { id:'dim', lab:'x diminué de b', ua:false, ub:true,
+    ph:function(a,b){ return 'x diminué de '+b; },
+    ex:function(a,b){ return 'x '+M+' '+b; },
+    det:function(a,b){ return '« diminué de » : on retire '+b+' au nombre x.'; },
+    err:function(a,b){ return 'écrire '+b+' '+M+' x : la soustraction n\u2019est pas commutative.'; } },
+
+  { id:'dimx', lab:'a diminué de x', ua:true, ub:false,
+    ph:function(a){ return a+' diminué de x'; },
+    ex:function(a){ return a+' '+M+' x'; },
+    det:function(a){ return 'C\u2019est '+a+' auquel on enlève x : l\u2019ordre compte.'; },
+    err:function(a){ return 'écrire x '+M+' '+a+', ce qui n\u2019est pas la même chose.'; } },
+
+  { id:'affine', lab:'a fois x, augmenté de b', ua:true, ub:true,
+    ph:function(a,b){ return a+' fois x, augmenté de '+b; },
+    ex:function(a,b){ return fmtCoef(a)+' + '+b; },
+    det:function(a,b){ return 'D\u2019abord '+a+' × x = '+fmtCoef(a)+', puis on ajoute '+b+'.'; },
+    err:function(a,b){ return 'écrire '+a+'(x + '+b+') : ici la virgule sépare, il n\u2019y a pas de parenthèses.'; } },
+
+  { id:'somme', lab:'a fois la somme de x et b', ua:true, ub:true,
+    ph:function(a,b){ return a+' fois la somme de x et de '+b; },
+    ex:function(a,b){ return a+'(x + '+b+')'; },
+    det:function(a,b){ return 'La somme (x + '+b+') est calculée d\u2019abord : les parenthèses sont obligatoires.'; },
+    err:function(a,b){ return 'écrire '+a+'x + '+b+' : le '+a+' multiplierait alors seulement x.'; } },
+
+  { id:'carre', lab:'le carré de x', ua:false, ub:false,
+    ph:function(){ return 'Le carré de x'; },
+    ex:function(){ return 'x²'; },
+    det:function(){ return 'x² = x × x. Pour x = 5, cela donne 25.'; },
+    err:function(){ return 'écrire 2x, qui vaut x + x. Pour x = 5, 2x = 10 et non 25.'; } },
+
+  { id:'moitie', lab:'la moitié de x', ua:false, ub:false,
+    ph:function(){ return 'La moitié de x'; },
+    ex:function(){ return 'x ÷ 2'; },
+    det:function(){ return 'On divise x par 2. On écrit aussi x/2 ou 0,5x.'; },
+    err:function(){ return 'écrire x '+M+' 2 : diviser n\u2019est pas soustraire.'; } }
+];
+
+(function fillTradSelect(){
+  var sel = document.getElementById('tr-type'), i, o;
+  for (i = 0; i < tradDefs.length; i++) {
+    o = document.createElement('option');
+    o.value = tradDefs[i].id;
+    o.textContent = tradDefs[i].lab;
+    sel.appendChild(o);
+  }
+})();
+
+function calcTrad(){
+  var id = document.getElementById('tr-type').value;
+  var def = tradDefs[0], i;
+  for (i = 0; i < tradDefs.length; i++) if (tradDefs[i].id === id) def = tradDefs[i];
+
+  var a = v('tr-a'), b = v('tr-b');
+  document.getElementById('tr-a').parentNode.parentNode.style.opacity = def.ua ? '1' : '.35';
+  document.getElementById('tr-b').parentNode.parentNode.style.opacity = def.ub ? '1' : '.35';
+  document.getElementById('tr-la').textContent = def.ua ? 'Nombre a (utilisé)' : 'Nombre a (inutilisé ici)';
+  document.getElementById('tr-lb').textContent = def.ub ? 'Nombre b (utilisé)' : 'Nombre b (inutilisé ici)';
+
+  document.getElementById('tr-phrase').textContent = '« '+def.ph(a,b)+' »';
+  document.getElementById('tr-expr').textContent   = def.ex(a,b);
+  document.getElementById('tr-code').textContent   = def.ex(a,b);
+  document.getElementById('tr-detail').textContent = def.det(a,b);
+  document.getElementById('tr-err').textContent    = def.err(a,b);
+}
+
+/* ── Explorateur : calculer ──────────────────────────────────────────── */
+function calcCa(){
+  var forme = document.getElementById('ca-forme').value;
+  var a = v('ca-a'), b = v('ca-b'), x = v('ca-x');
+  var expr, subst, val;
+
+  if (forme === 'ax_b') {
+    expr  = fmtCoef(a)+fmtCstMid(b);
+    val   = a*x + b;
+    subst = a+' × ('+fmtN(x)+')'+fmtCstMid(b);
+  } else if (forme === 'b_ax') {
+    expr  = b+' '+M+' '+fmtCoef(a);
+    val   = b - a*x;
+    subst = b+' '+M+' '+a+' × ('+fmtN(x)+')';
+  } else if (forme === 'ax2_b') {
+    expr  = (a === 1 ? '' : a)+'x²'+fmtCstMid(b);
+    val   = a*x*x + b;
+    subst = (a === 1 ? '' : a+' × ')+'('+fmtN(x)+')²'+fmtCstMid(b);
+  } else {
+    expr  = a+'(x'+fmtCstMid(b)+')';
+    val   = a*(x + b);
+    subst = a+' × ('+fmtN(x)+fmtCstMid(b)+')';
+  }
+
+  document.getElementById('ca-code').textContent = 'pour x = '+fmtN(x);
+  document.getElementById('ca-detail').textContent = expr+'  →  '+subst+'  =  '+fmtN(val);
+  document.getElementById('ca-result').textContent = fmtN(val);
+  document.getElementById('ca-sub').textContent =
+    (x < 0 ? 'x est négatif : les parenthèses autour de '+fmtN(x)+' sont indispensables.' : 'Change la valeur de x : le résultat suit.');
+
+  document.getElementById('ca-svg').innerHTML =
+    '<rect x="10" y="10" width="240" height="46" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="2"/>' +
+    '<text x="130" y="41" text-anchor="middle" font-size="24" font-weight="700" fill="#0B4E3D">'+esc(expr)+'</text>' +
+    '<text x="130" y="76" text-anchor="middle" font-size="13" fill="#55534e">on remplace x par '+esc(fmtN(x))+'</text>' +
+    '<path d="M130 82 L130 96" stroke="#7d7a73" stroke-width="2"/>' +
+    '<path d="M125 91 L130 98 L135 91 Z" fill="#7d7a73"/>' +
+    '<text x="130" y="118" text-anchor="middle" font-size="16" fill="#1a1917">'+esc(subst)+'</text>' +
+    '<rect x="70" y="130" width="120" height="32" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="2"/>' +
+    '<text x="130" y="152" text-anchor="middle" font-size="20" font-weight="700" fill="#3A3390">= '+esc(fmtN(val))+'</text>';
+}
+
+/* ── Explorateur : développer ────────────────────────────────────────── */
+function calcDv(){
+  var forme = document.getElementById('dv-forme').value;
+  var a = v('dv-a'), b = v('dv-b');
+  if (a < 1) a = 1;
+  if (b < 1) b = 1;
+
+  if (forme === 'simple') {
+    document.getElementById('dv-code').textContent = a+'(x + '+b+') = '+a+' × x + '+a+' × '+b;
+    document.getElementById('dv-detail').textContent =
+      'Aire totale = '+a+' × (x + '+b+'). En deux morceaux : '+a+'x et '+a+' × '+b+' = '+(a*b)+'.';
+    document.getElementById('dv-result').textContent = a+'x + '+(a*b);
+
+    document.getElementById('dv-svg').innerHTML =
+      '<rect x="30" y="45" width="140" height="90" fill="#E6F1FB" stroke="#185FA5" stroke-width="2.5"/>' +
+      '<rect x="170" y="45" width="60" height="90" fill="#FAEEDA" stroke="#854F0B" stroke-width="2.5"/>' +
+      '<text x="100" y="38" text-anchor="middle" font-size="14" font-weight="700" fill="#185FA5">x</text>' +
+      '<text x="200" y="38" text-anchor="middle" font-size="14" font-weight="700" fill="#854F0B">'+b+'</text>' +
+      '<text x="20" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#55534e">'+a+'</text>' +
+      '<text x="100" y="97" text-anchor="middle" font-size="19" font-weight="700" fill="#123F6E">'+a+'x</text>' +
+      '<text x="200" y="97" text-anchor="middle" font-size="19" font-weight="700" fill="#6A3E08">'+(a*b)+'</text>' +
+      '<text x="130" y="163" text-anchor="middle" font-size="14" fill="#55534e">aire = '+a+'(x + '+b+') = '+a+'x + '+(a*b)+'</text>';
+  } else {
+    var somme = a + b, prod = a * b;
+    document.getElementById('dv-code').textContent = '(x + '+a+')(x + '+b+')';
+    document.getElementById('dv-detail').textContent =
+      'x × x = x², puis '+b+'x et '+a+'x qui se regroupent en '+somme+'x, puis '+a+' × '+b+' = '+prod+'.';
+    document.getElementById('dv-result').textContent = 'x² + '+somme+'x + '+prod;
+
+    document.getElementById('dv-svg').innerHTML =
+      '<rect x="30" y="35" width="130" height="70" fill="#E6F1FB" stroke="#185FA5" stroke-width="2.5"/>' +
+      '<rect x="160" y="35" width="70" height="70" fill="#EEEDFE" stroke="#534AB7" stroke-width="2.5"/>' +
+      '<rect x="30" y="105" width="130" height="45" fill="#EAF3DE" stroke="#3B6D11" stroke-width="2.5"/>' +
+      '<rect x="160" y="105" width="70" height="45" fill="#FAEEDA" stroke="#854F0B" stroke-width="2.5"/>' +
+      '<text x="95" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#185FA5">x</text>' +
+      '<text x="195" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#534AB7">'+a+'</text>' +
+      '<text x="20" y="74" text-anchor="middle" font-size="14" font-weight="700" fill="#55534e">x</text>' +
+      '<text x="20" y="133" text-anchor="middle" font-size="14" font-weight="700" fill="#55534e">'+b+'</text>' +
+      '<text x="95" y="77" text-anchor="middle" font-size="19" font-weight="700" fill="#123F6E">x²</text>' +
+      '<text x="195" y="77" text-anchor="middle" font-size="17" font-weight="700" fill="#3A3390">'+a+'x</text>' +
+      '<text x="95" y="134" text-anchor="middle" font-size="17" font-weight="700" fill="#2A5009">'+b+'x</text>' +
+      '<text x="195" y="134" text-anchor="middle" font-size="17" font-weight="700" fill="#6A3E08">'+prod+'</text>' +
+      '<text x="130" y="172" text-anchor="middle" font-size="13" fill="#55534e">x² + '+a+'x + '+b+'x + '+prod+' = x² + '+somme+'x + '+prod+'</text>';
+  }
+}
+
+/* ── Explorateur : réduire ───────────────────────────────────────────── */
+function calcRd(){
+  var xp = v('rd-xp'), xn = v('rd-xn'), cp = v('rd-cp'), cn = v('rd-cn');
+  if (xp < 0) xp = 0; if (xp > 8) xp = 8;
+  if (xn < 0) xn = 0; if (xn > 8) xn = 8;
+  if (cp < 0) cp = 0; if (cp > 10) cp = 10;
+  if (cn < 0) cn = 0; if (cn > 10) cn = 10;
+
+  var xCoef = xp - xn, cst = cp - cn;
+  var expr = fmtPoly2(0, xCoef, cst);
+
+  var departStr = '';
+  if (xp) departStr += fmtCoef(xp);
+  if (xn) departStr += (departStr ? ' '+M+' ' : M) + fmtCoef(xn);
+  if (cp) departStr += (departStr ? ' + ' : '') + cp;
+  if (cn) departStr += (departStr ? ' '+M+' ' : M) + cn;
+  if (!departStr) departStr = '0';
+
+  document.getElementById('rd-code').textContent = departStr;
+  document.getElementById('rd-detail').textContent =
+    'Les x : '+xp+' '+M+' '+xn+' = '+fmtN(xCoef)+'  ·  les nombres : '+cp+' '+M+' '+cn+' = '+fmtN(cst);
+  document.getElementById('rd-result').textContent = expr;
+
+  var s = '', i, x0;
+  s += '<text x="6" y="18" font-size="12" font-weight="700" fill="#185FA5">'+xp+' fois « + x »</text>';
+  for (i = 0; i < xp; i++) {
+    x0 = 8 + i*30;
+    s += '<rect x="'+x0+'" y="24" width="24" height="38" rx="3" fill="#E6F1FB" stroke="#185FA5" stroke-width="2"/>'
+       + '<text x="'+(x0+12)+'" y="49" text-anchor="middle" font-size="14" font-weight="700" fill="#123F6E">x</text>';
+  }
+  if (!xp) s += '<text x="8" y="49" font-size="13" fill="#7d7a73">aucun</text>';
+
+  s += '<text x="6" y="84" font-size="12" font-weight="700" fill="#A32D2D">'+xn+' fois « '+M+' x »</text>';
+  for (i = 0; i < xn; i++) {
+    x0 = 8 + i*30;
+    s += '<rect x="'+x0+'" y="90" width="24" height="38" rx="3" fill="#FCEBEB" stroke="#A32D2D" stroke-width="2"/>'
+       + '<text x="'+(x0+12)+'" y="115" text-anchor="middle" font-size="14" font-weight="700" fill="#7A1F1F">'+M+'x</text>';
+  }
+  if (!xn) s += '<text x="8" y="115" font-size="13" fill="#7d7a73">aucun</text>';
+
+  s += '<text x="6" y="150" font-size="12" font-weight="700" fill="#854F0B">nombres : + '+cp+'  et  '+M+' '+cn+'</text>';
+  for (i = 0; i < cp; i++) {
+    x0 = 8 + i*19;
+    s += '<rect x="'+x0+'" y="156" width="15" height="15" rx="2" fill="#FAEEDA" stroke="#854F0B" stroke-width="1.6"/>';
+  }
+  for (i = 0; i < cn; i++) {
+    x0 = 8 + i*19;
+    s += '<rect x="'+x0+'" y="178" width="15" height="15" rx="2" fill="#FCEBEB" stroke="#A32D2D" stroke-width="1.6"/>';
+  }
+
+  s += '<rect x="8" y="200" width="244" height="26" rx="5" fill="#EEEDFE" stroke="#534AB7" stroke-width="2"/>'
+     + '<text x="130" y="219" text-anchor="middle" font-size="17" font-weight="700" fill="#3A3390">'+esc(expr)+'</text>';
+
+  document.getElementById('red-svg').innerHTML = s;
+}
+
+/* ═══ MODE DÉFI ═════════════════════════════════════════════════════════ */
+var famille = 'mix';
+var courante = null, repondu = false, bons = 0, total = 0;
+
+function setFam(f, btn){
+  famille = f;
+  var tabs = document.querySelectorAll('#mode-defi .shape-tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+  nextDefi();
+}
+
+function nextDefi(){
+  var fam = (famille === 'mix') ? pick(['traduire','calculer','developper','reduire']) : famille;
+  courante = generators[fam]();
+  repondu = false;
+
+  var fb = document.getElementById('defi-feedback');
+  fb.className = 'feedback-box';
+  fb.innerHTML = '';
+  document.getElementById('btn-next').style.display = 'none';
+
+  var aide = (currentMode !== 'defiplus');
+  var z = document.getElementById('defi-zone');
+  var h = '';
+
+  if (courante.type === 'qcm') {
+    h += '<div class="q-label">'+famNoms[fam]+' — '+famConsignes[fam]+'</div>';
+    h += '<div class="question '+(courante.questionFr ? 'fr' : 'math')+'">'+courante.question+'</div>';
+    h += '<div class="q-label">Réponses possibles</div><div class="choices">';
+    for (var i = 0; i < courante.choices.length; i++) {
+      h += '<button class="choice math" data-i="'+i+'">'+courante.choices[i]+'</button>';
     }
-  `;
+    h += '</div>';
+    if (aide) h += '<div class="aide"><h3>💡 Aide</h3><div class="aide-content">'+courante.hint+'</div></div>';
+  } else {
+    h += '<div class="q-label">Calculer — remplace x par sa valeur</div>';
+    h += '<div class="question math">'+courante.expr+'</div>';
+    h += '<div class="calc-pair">'
+       + '<div class="calc-box" id="cb1"><span class="lbl">Pour x = '+fmtN(courante.x1)+'</span>'
+       + '<input type="text" inputmode="numeric" id="ans1" placeholder="Résultat"></div>'
+       + '<div class="calc-box" id="cb2"><span class="lbl">Pour x = '+fmtN(courante.x2)+'</span>'
+       + '<input type="text" inputmode="numeric" id="ans2" placeholder="Résultat"></div></div>';
+    if (aide) {
+      h += '<div class="aide"><h3>💡 Aide : substituer x par sa valeur</h3><div class="aide-content">'
+         + '<div class="step math">x = '+fmtN(courante.x1)+' → '+courante.hint1+'</div>'
+         + '<div class="step math">x = '+fmtN(courante.x2)+' → '+courante.hint2+'</div>'
+         + '</div></div>';
+    }
+  }
 
-  const html = `<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8">
-<title>Fiche calcul littéral — ${date}</title>
-<style>${css}</style>
-</head><body>
+  z.innerHTML = h;
 
-<div class="toolbar">
-  <button onclick="window.print()">🖨️ Imprimer / PDF</button>
-  <button class="alt" onclick="window.close()">✕ Fermer</button>
-</div>
+  if (courante.type === 'qcm') {
+    var btns = z.querySelectorAll('.choice');
+    for (var k = 0; k < btns.length; k++) {
+      btns[k].addEventListener('click', function(){
+        if (repondu) return;
+        var all = z.querySelectorAll('.choice');
+        for (var j = 0; j < all.length; j++) all[j].classList.remove('selected');
+        this.classList.add('selected');
+      });
+    }
+  } else {
+    var a1 = document.getElementById('ans1');
+    if (a1) a1.focus();
+  }
+  majScore();
+}
 
-<header>
-  <div>
-    <h1>Calcul littéral — entraînement</h1>
-    <div style="font-size:9pt;color:#64748b">3ᵉ prépa-métiers · 2ᵈᵉ Bac Pro</div>
-  </div>
-  <div class="meta">${date}</div>
-</header>
+function parseNum(s){
+  if (!s) return null;
+  s = s.trim().replace(',','.').replace(/\u2212/g,'-').replace(/\s+/g,'');
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
+  return Math.round(parseFloat(s)*1000)/1000;
+}
 
-<div class="id-line">
-  <div class="field">Nom :</div>
-  <div class="field">Prénom :</div>
-  <div class="field">Classe :</div>
-</div>
+function checkDefi(){
+  if (repondu || !courante) return;
+  var z = document.getElementById('defi-zone');
+  var fb = document.getElementById('defi-feedback');
+  var ok = false;
 
-${exHtml}
+  if (courante.type === 'qcm') {
+    var sel = z.querySelector('.choice.selected');
+    if (!sel) {
+      fb.className = 'feedback-box wrong show';
+      fb.innerHTML = '<strong>Choisis une réponse</strong> avant de vérifier.';
+      return;
+    }
+    ok = (sel.textContent === courante.correct);
+    var all = z.querySelectorAll('.choice');
+    for (var i = 0; i < all.length; i++) {
+      all[i].classList.add('locked');
+      if (all[i].textContent === courante.correct) all[i].classList.add('correct');
+      else if (all[i].classList.contains('selected')) all[i].classList.add('incorrect');
+    }
+    fb.className = 'feedback-box '+(ok ? 'correct' : 'wrong')+' show';
+    fb.innerHTML = ok
+      ? '<strong>Correct !</strong> ' + courante.correct + ' est bien la bonne écriture.'
+      : '<strong>Pas tout à fait.</strong> La bonne réponse est <strong>'+courante.correct+'</strong>.';
+  } else {
+    var r1 = parseNum(document.getElementById('ans1').value);
+    var r2 = parseNum(document.getElementById('ans2').value);
+    var ok1 = (r1 !== null && r1 === courante.a1);
+    var ok2 = (r2 !== null && r2 === courante.a2);
+    document.getElementById('cb1').classList.add(ok1 ? 'ok' : 'ko');
+    document.getElementById('cb2').classList.add(ok2 ? 'ok' : 'ko');
+    ok = ok1 && ok2;
+    fb.className = 'feedback-box '+(ok ? 'correct' : 'wrong')+' show';
+    fb.innerHTML = ok
+      ? '<strong>Correct !</strong> Les deux valeurs sont justes.'
+      : '<strong>Pas tout à fait.</strong> Pour x = '+fmtN(courante.x1)+' → <strong>'+fmtN(courante.a1)+'</strong>'
+        + ' &nbsp;·&nbsp; pour x = '+fmtN(courante.x2)+' → <strong>'+fmtN(courante.a2)+'</strong>.';
+  }
 
-<div class="corrige-page">
-  <header>
-    <div>
-      <h1>📋 Corrigé</h1>
-      <div style="font-size:9pt;color:#64748b">Calcul littéral — ${date}</div>
-    </div>
-    <div class="meta">Pour ne pas l'imprimer :<br>imprimer la page 1 uniquement</div>
-  </header>
-  ${corrigeBlocks}
-</div>
+  repondu = true;
+  total++;
+  if (ok) bons++;
+  document.getElementById('btn-next').style.display = 'block';
+  majScore();
+}
 
-</body></html>`;
+function majScore(){
+  document.getElementById('defi-score').textContent = bons+' / '+total+' correct'+(total > 1 ? 's' : '');
+  var pct = total > 0 ? (bons/total*100) : 0;
+  document.getElementById('defi-progress').style.width = pct+'%';
+}
 
-  const w = window.open('', '_blank');
-  if(!w){
-    alert("Le navigateur a bloqué l'ouverture de la fenêtre. Autorise les popups pour ce site puis réessaie.");
+document.addEventListener('keydown', function(e){
+  if (document.getElementById('modal-fiche').classList.contains('show')) {
+    if (e.key === 'Escape') closeFiche();
     return;
   }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-}
-
-document.addEventListener('keydown',(e)=>{
-  // Si modale ouverte : Entrée valide, Échap ferme, rien d'autre
-  if(document.getElementById('modal-fiche').classList.contains('show')){
-    if(e.key==='Enter' && !document.getElementById('modal-confirm').disabled){
-      document.getElementById('modal-confirm').click();
-    }
-    return;
-  }
-  if(e.key==='Enter'){
-    if(state.answered) render();
-    else check();
+  if (currentMode === 'explo') return;
+  if (e.key === 'Enter') {
+    if (!repondu) checkDefi();
+    else nextDefi();
   }
 });
 
-// Initial
-render();
-updateScore();
+/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
+function famillesCochees(){
+  var out = [], cbs = document.querySelectorAll('#modal-checks input');
+  for (var i = 0; i < cbs.length; i++) if (cbs[i].checked) out.push(cbs[i].value);
+  return out;
+}
+
+function repartir10(fams){
+  var k = fams.length, base = Math.floor(10/k), reste = 10 % k;
+  return fams.map(function(f,i){ return { fam:f, n:base + (i < reste ? 1 : 0) }; });
+}
+
+function majRepartition(){
+  var sel = famillesCochees();
+  var el = document.getElementById('dist-info');
+  var labels = document.querySelectorAll('#modal-checks label');
+  for (var i = 0; i < labels.length; i++) {
+    labels[i].classList.toggle('on', labels[i].querySelector('input').checked);
+  }
+  if (!sel.length) {
+    el.className = 'dist-info warn';
+    el.textContent = '⚠ Sélectionne au moins une famille';
+    document.getElementById('modal-confirm').disabled = true;
+    return;
+  }
+  el.className = 'dist-info ok';
+  el.textContent = '→ '+repartir10(sel).map(function(d){ return d.n; }).join(' + ')+' = 10 exercices';
+  document.getElementById('modal-confirm').disabled = false;
+}
+
+(function brancherCases(){
+  var cbs = document.querySelectorAll('#modal-checks input');
+  for (var i = 0; i < cbs.length; i++) cbs[i].addEventListener('change', majRepartition);
+})();
+
+function openFiche(){
+  document.getElementById('modal-fiche').classList.add('show');
+  majRepartition();
+}
+function closeFiche(){
+  document.getElementById('modal-fiche').classList.remove('show');
+}
+document.getElementById('modal-fiche').addEventListener('click', function(e){
+  if (e.target.id === 'modal-fiche') closeFiche();
+});
+
+/* Découpe un texte en lignes courtes pour un dessin SVG */
+function couper(txt, maxi){
+  var mots = String(txt).split(' '), lignes = [], cur = '';
+  for (var i = 0; i < mots.length; i++) {
+    if (!cur) { cur = mots[i]; }
+    else if ((cur+' '+mots[i]).length <= maxi) { cur += ' '+mots[i]; }
+    else { lignes.push(cur); cur = mots[i]; }
+  }
+  if (cur) lignes.push(cur);
+  return lignes;
+}
+
+/* Carte SVG de la fiche : 200 × 160, texte centré */
+function svgEnonce(texte, grand){
+  var maxi = grand ? 15 : 24;
+  var fs   = grand ? 21 : 14;
+  var lh   = grand ? 27 : 19;
+  var lignes = couper(texte, maxi);
+  var y0 = 84 - (lignes.length - 1) * lh / 2;
+  var out = '<rect x="5" y="5" width="190" height="150" rx="7" fill="#EEEDFE" stroke="#534AB7" stroke-width="2"/>';
+  for (var i = 0; i < lignes.length; i++) {
+    out += '<text x="100" y="'+(y0 + i*lh)+'" text-anchor="middle" font-size="'+fs+'"'
+         + ' font-weight="'+(grand ? 700 : 500)+'" fill="#2F2A73">'+esc(lignes[i])+'</text>';
+  }
+  return out;
+}
+
+var lettres = ['A','B','C','D'];
+
+function carteFiche(q, fam, num){
+  if (q.type === 'qcm') {
+    var choix = [], i;
+    for (i = 0; i < q.choices.length; i++) choix.push(lettres[i]+'. '+q.choices[i]);
+    var idx = q.choices.indexOf(q.correct);
+    return {
+      num:num,
+      nom:famNoms[fam],
+      hint:famConsignes[fam],
+      svg:svgEnonce(q.question, !q.questionFr),
+      cotes:choix.join(' · '),
+      answerText:(lettres[idx] || '?')+'.  '+q.correct
+    };
+  }
+  return {
+    num:num,
+    nom:famNoms[fam],
+    hint:famConsignes[fam],
+    svg:svgEnonce(q.expr, true),
+    cotes:'Calcule pour x = '+fmtN(q.x1),
+    answerText:fmtN(q.a1)
+  };
+}
+
+function confirmFiche(){
+  var sel = famillesCochees();
+  if (!sel.length) return;
+
+  var plan = repartir10(sel), questions = [], num = 1, vus = {};
+  plan.forEach(function(d){
+    for (var i = 0; i < d.n; i++) {
+      var q, cle, essais = 0;
+      do {
+        q = generators[d.fam]();
+        cle = q.question || q.expr;
+        essais++;
+      } while (vus[cle] && essais < 30);
+      vus[cle] = true;
+      questions.push(carteFiche(q, d.fam, num++));
+    }
+  });
+
+  var isPlus = (currentMode === 'defiplus');
+  var aide = sel.map(function(f){ return famAides[f]; }).join('<br>');
+  var titre = (sel.length === 4)
+    ? 'Calcul littéral'
+    : 'Calcul littéral — '+sel.map(function(f){ return famNoms[f]; }).join(', ');
+
+  closeFiche();
+
+  LP.fiche({
+    icon:'\u{1F523}',
+    title:titre,
+    subtitle:'3e prépa-métiers · CAP · 2de Bac Pro',
+    modeLabel:isPlus ? 'Défi ⁺' : 'Mode défi',
+    isPlus:isPlus,
+    tolerance:'réponse exacte',
+    accent:'#534AB7',
+    answerLabel:'Réponse :',
+    unit:'',
+    aide:aide,
+    questions:questions
+  });
+}
+
+/* ═══ INITIALISATION ════════════════════════════════════════════════════ */
+calcTrad();
+calcCa();
+calcDv();
+calcRd();
+nextDefi();
 </script>
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio collège</a> &nbsp;·&nbsp;
+  Licence MIT · © 2025 Moïse Muller &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
+</footer>
 </body>
 </html>
