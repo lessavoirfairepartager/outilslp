@@ -373,7 +373,7 @@ SOFTWARE.
   </div>
 
   <!-- ═══════════════ DÉFI ═══════════════ -->
-  <div id="mode-defi" style="display:none">
+  <div id="mode-defi">
     <div class="defi-card">
       <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI ⁺ — aides masquées</div>
       <div class="defi-header">
@@ -865,8 +865,11 @@ function setMode(m, btn){
   for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
   btn.classList.add('active');
 
-  document.getElementById('mode-explo').style.display = (m === 'explo') ? '' : 'none';
-  document.getElementById('mode-defi').style.display  = (m === 'explo') ? 'none' : '';
+  var isDefi = (m !== 'explo');
+  document.getElementById('mode-explo').style.display = isDefi ? 'none' : 'block';
+  var defi = document.getElementById('mode-defi');
+  defi.style.display = isDefi ? 'block' : 'none';
+  defi.classList.toggle('active', isDefi);
 
   document.getElementById('defi-plus-badge').classList.toggle('visible', m === 'defiplus');
   document.getElementById('defi-mode-title').textContent =
