@@ -1,590 +1,1021 @@
+<!--
+Pythagore — calcul d'un côté et réciproque
+Copyright (c) 2025 Moise Muller <moise.muller@ac-dijon.fr>
+Version harmonisée du 4 août 2026 pour outilslp.netlify.app
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pythagore - Entraînement</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pythagore — calcul d'un côté et réciproque</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--pink); --accent-bg: var(--pink-bg); }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            transition: background 0.3s ease;
-        }
+  .math { font-family: "Cambria Math", "Latin Modern Math", "Times New Roman", serif; }
 
-        body.correct {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        }
+  .field select {
+    width: 100%; padding: 9px 12px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: var(--fs-sm); font-weight: 600;
+    background: var(--surface2); color: var(--text);
+  }
 
-        body.incorrect {
-            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-        }
+  .result-value.expr { font-size: var(--fs-xl); line-height: 1.25; }
 
-        .header {
-            background: white;
-            padding: 20px 30px;
-            border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            text-align: center;
-            width: 100%;
-            max-width: 800px;
-        }
+  /* Verdict de la réciproque */
+  .verdict {
+    border-radius: var(--radius); padding: 12px 14px;
+    font-size: var(--fs-md); font-weight: 700; text-align: center;
+  }
+  .verdict.oui { background: var(--teal-bg); color: var(--teal); border: 2px solid var(--teal); }
+  .verdict.non { background: var(--red-bg);  color: var(--red);  border: 2px solid var(--red); }
+  .verdict.pas { background: var(--surface2); color: var(--text2); border: 2px dashed var(--border2); }
 
-        h1 {
-            color: #667eea;
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
+  .compare {
+    display: flex; flex-direction: column; gap: 6px;
+    font-size: var(--fs-sm); color: var(--text2);
+  }
+  .compare .l { display: flex; justify-content: space-between; gap: 10px; }
+  .compare .l b { color: var(--text); }
 
-        .stats {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin-top: 15px;
-            flex-wrap: wrap;
-        }
+  /* Boutons oui / non du défi */
+  .choix-rec { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  @media (max-width: 520px) { .choix-rec { grid-template-columns: 1fr; } }
+  .btn-rec {
+    padding: 15px; border: 2px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); color: var(--text); cursor: pointer;
+    font-family: inherit; font-size: var(--fs-md); font-weight: 600;
+    transition: border-color .15s, background-color .15s;
+  }
+  .btn-rec:hover:not(.locked)  { border-color: var(--accent); background: var(--accent-bg); }
+  .btn-rec.selected  { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+  .btn-rec.correct   { border-color: var(--teal); background: var(--teal-bg); color: var(--teal); }
+  .btn-rec.incorrect { border-color: var(--red);  background: var(--red-bg);  color: var(--red); }
+  .btn-rec.locked    { cursor: default; }
 
-        .stat {
-            background: #f8f9fa;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-weight: bold;
-        }
+  .defi-aide {
+    background: var(--amber-bg); border-left: 4px solid var(--amber);
+    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 1rem;
+    font-size: var(--fs-sm); color: var(--text2); line-height: 1.65;
+  }
+  .defi-aide b { color: var(--amber); }
 
-        .stat-label {
-            color: #666;
-            font-size: 0.9em;
-        }
+  /* Modale de fiche */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(20,19,15,.55);
+    display: none; align-items: center; justify-content: center; padding: 1rem; z-index: 200;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.5rem;
+    max-width: 540px; width: 100%; box-shadow: 0 10px 34px rgba(0,0,0,.3);
+  }
+  .modal h2 { font-size: var(--fs-lg); margin-bottom: 8px; }
+  .modal p  { font-size: var(--fs-xs); color: var(--text2); margin-bottom: 14px; line-height: 1.6; }
+  .modal-checks { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .modal-checks label {
+    display: flex; align-items: center; gap: 10px; padding: 11px 13px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    cursor: pointer; font-size: var(--fs-sm); color: var(--text2);
+  }
+  .modal-checks label.on {
+    border-color: var(--accent); background: var(--accent-bg);
+    color: var(--accent); font-weight: 700;
+  }
+  .modal-checks input { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .dist-info {
+    padding: 10px 12px; border-radius: var(--radius);
+    font-size: var(--fs-xs); font-weight: 700; text-align: center; margin-bottom: 16px;
+  }
+  .dist-info.ok   { background: var(--teal-bg);  color: var(--teal); }
+  .dist-info.warn { background: var(--amber-bg); color: var(--amber); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  .modal-actions button {
+    padding: 11px 20px; border-radius: var(--radius); font-family: inherit;
+    font-size: var(--fs-sm); font-weight: 700; cursor: pointer; border: 1px solid var(--border);
+  }
+  .btn-modal-ok { background: var(--accent); color: #fff; border-color: var(--accent); }
+  html[data-theme="dark"] .btn-modal-ok { color: #14130f; }
+  .btn-modal-no { background: var(--surface2); color: var(--text2); }
+  .btn-modal-ok:disabled { opacity: .45; cursor: not-allowed; }
 
-        .stat-value {
-            color: #667eea;
-            font-size: 1.5em;
-        }
+  /* Confettis discrets, désactivés si les animations le sont */
+  .confetti {
+    position: fixed; width: 9px; height: 9px; z-index: 300;
+    pointer-events: none; border-radius: 1px;
+    animation: tombe 2.4s linear forwards;
+  }
+  @keyframes tombe {
+    to { transform: translateY(105vh) rotate(540deg); opacity: 0; }
+  }
+  html[data-motion="off"] .confetti { display: none; }
 
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 800px;
-            position: relative;
-        }
-
-        .canvas-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 400px;
-            margin-bottom: 30px;
-            position: relative;
-        }
-
-        canvas {
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-        }
-
-        .input-section {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .question {
-            font-size: 1.2em;
-            color: #333;
-            margin-bottom: 15px;
-        }
-
-        .input-group {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        input[type="number"] {
-            padding: 12px 20px;
-            font-size: 1.2em;
-            border: 2px solid #667eea;
-            border-radius: 10px;
-            width: 150px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        input[type="number"]:focus {
-            outline: none;
-            border-color: #764ba2;
-            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
-        }
-
-        input.shake {
-            animation: shake 0.5s;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
-            20%, 40%, 60%, 80% { transform: translateX(10px); }
-        }
-
-        button {
-            padding: 12px 30px;
-            font-size: 1.1em;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: bold;
-        }
-
-        .btn-validate {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-validate:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-new {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-            margin-top: 10px;
-        }
-
-        .btn-new:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
-        }
-
-        .confetti {
-            position: fixed;
-            width: 10px;
-            height: 10px;
-            background: #f0f;
-            position: absolute;
-            animation: confetti-fall 3s linear forwards;
-            pointer-events: none;
-        }
-
-        @keyframes confetti-fall {
-            to {
-                transform: translateY(100vh) rotate(360deg);
-                opacity: 0;
-            }
-        }
-
-        @media (max-width: 600px) {
-            h1 {
-                font-size: 1.5em;
-            }
-
-            .stats {
-                gap: 15px;
-            }
-
-            .container {
-                padding: 20px;
-            }
-
-            canvas {
-                max-width: 100%;
-                height: auto;
-            }
-
-            input[type="number"] {
-                width: 120px;
-            }
-        }
-    </style>
+  @media print { .modal-bg, .confetti, .btn-check, .btn-next, .shape-tabs { display: none !important; } }
+</style>
 </head>
 <body>
-    <div class="header">
-        <h1>🔺 Théorème de Pythagore</h1>
-        <div class="stats">
-            <div class="stat">
-                <div class="stat-label">Réussites</div>
-                <div class="stat-value" id="success">0</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Total</div>
-                <div class="stat-value" id="total">0</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Taux</div>
-                <div class="stat-value" id="rate">0%</div>
-            </div>
-        </div>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <path d="M8 32 L32 32 L32 10 Z" stroke="var(--pink)" stroke-width="3"
+            stroke-linejoin="round" class="lp-draw" style="--dash:120"/>
+      <path d="M26 32 L26 26 L32 26" stroke="var(--pink)" stroke-width="2" class="lp-blink"/>
+    </svg></div>
+  <div>
+    <h1>Théorème de Pythagore</h1>
+    <p>Calcul d'un côté · réciproque — 3<sup>e</sup> prépa-métiers · CAP · 2<sup>de</sup> Bac Pro</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('explo',this)">Explorateur</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi ⁺</button>
+  </div>
+
+  <!-- ═══════════════ EXPLORATEUR ═══════════════ -->
+  <div id="mode-explo">
+
+    <div class="shape-tabs-row">
+      <div class="shape-tabs">
+        <button class="shape-tab active" data-color="pink"  onclick="setShape('hyp',this)"><span class="dot" style="background:var(--pink)"></span>Hypoténuse</button>
+        <button class="shape-tab"        data-color="blue"  onclick="setShape('cot',this)"><span class="dot" style="background:var(--blue)"></span>Côté de l'angle droit</button>
+        <button class="shape-tab"        data-color="green" onclick="setShape('rec',this)"><span class="dot" style="background:var(--green)"></span>Réciproque</button>
+      </div>
+      <button class="btn-rnd" onclick="randomizeCurrent()">🎲 Nouvelles valeurs</button>
     </div>
 
-    <div class="container">
-        <div class="canvas-container">
-            <canvas id="triangleCanvas" width="600" height="400"></canvas>
+    <!-- HYPOTÉNUSE -->
+    <div id="panel-hyp" class="panel active">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--pink-bg);color:var(--pink)">Triangle ABC rectangle en A</span>
+        <svg id="hy-svg" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">L'hypoténuse est le côté opposé à l'angle droit. C'est toujours le plus long des trois.</div>
+      </div>
+      <div class="controls-card">
+        <div class="section-label">Les deux côtés de l'angle droit</div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="hy-a">AB</label>
+            <div class="field-row"><input type="number" id="hy-a" value="8" min="1" max="40" step="0.5" oninput="calcHyp()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="hy-b">AC</label>
+            <div class="field-row"><input type="number" id="hy-b" value="6" min="1" max="40" step="0.5" oninput="calcHyp()"><span class="unit">cm</span></div>
+          </div>
         </div>
-
-        <div class="input-section">
-            <div class="question" id="question"></div>
-            <div class="input-group">
-                <input type="number" id="answer" step="0.01" placeholder="Réponse">
-                <button class="btn-validate" onclick="checkAnswer()">Valider</button>
-            </div>
-            <button class="btn-new" onclick="newExercise()">Nouvel exercice</button>
+        <div class="formula-box">
+          <code>BC² = AB² + AC²</code>
+          <div class="formula-detail" id="hy-detail"></div>
         </div>
+        <div class="result-block">
+          <div class="result-label">Hypoténuse BC</div>
+          <div class="result-value" id="hy-result">—<span class="result-unit">cm</span></div>
+          <div class="result-sub" id="hy-sub"></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> oublier la racine carrée et donner BC² à la place de BC. Vérification rapide : l'hypoténuse doit être plus longue que chacun des deux autres côtés, et plus courte que leur somme.</div>
+      </div>
     </div>
 
-    <script>
-        let currentExercise = null;
-        let stats = { success: 0, total: 0 };
+    <!-- CÔTÉ DE L'ANGLE DROIT -->
+    <div id="panel-cot" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--blue-bg);color:var(--blue)">Triangle ABC rectangle en A</span>
+        <svg id="co-svg" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">Quand l'hypoténuse est connue, on soustrait : le côté cherché est forcément plus court qu'elle.</div>
+      </div>
+      <div class="controls-card">
+        <div class="section-label">L'hypoténuse et un côté de l'angle droit</div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="co-h">BC (hypoténuse)</label>
+            <div class="field-row"><input type="number" id="co-h" value="13" min="2" max="50" step="0.5" oninput="calcCot()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="co-a">AB</label>
+            <div class="field-row"><input type="number" id="co-a" value="5" min="1" max="49" step="0.5" oninput="calcCot()"><span class="unit">cm</span></div>
+          </div>
+        </div>
+        <div class="formula-box">
+          <code>AC² = BC² − AB²</code>
+          <div class="formula-detail" id="co-detail"></div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Côté AC</div>
+          <div class="result-value" id="co-result">—<span class="result-unit">cm</span></div>
+          <div class="result-sub" id="co-sub"></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> additionner au lieu de soustraire. Le repère : si le résultat trouvé dépasse l'hypoténuse, c'est le signe qu'on s'est trompé d'opération.</div>
+      </div>
+    </div>
 
-        const vertexNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+    <!-- RÉCIPROQUE -->
+    <div id="panel-rec" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--green-bg);color:var(--green)">Triangle quelconque</span>
+        <svg id="re-svg" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">La figure est tracée à l'échelle : à l'œil, un triangle presque rectangle est indiscernable d'un triangle rectangle. Seul le calcul tranche.</div>
+      </div>
+      <div class="controls-card">
+        <div class="section-label">Les trois longueurs</div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="re-1">Premier côté</label>
+            <div class="field-row"><input type="number" id="re-1" value="6" min="1" max="60" step="0.5" oninput="calcRec()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="re-2">Deuxième côté</label>
+            <div class="field-row"><input type="number" id="re-2" value="8" min="1" max="60" step="0.5" oninput="calcRec()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="re-3">Troisième côté</label>
+            <div class="field-row"><input type="number" id="re-3" value="10" min="1" max="60" step="0.5" oninput="calcRec()"><span class="unit">cm</span></div>
+          </div>
+        </div>
+        <div class="formula-box">
+          <code id="re-code">—</code>
+          <div class="formula-detail" id="re-detail"></div>
+        </div>
+        <div class="compare" id="re-compare"></div>
+        <div class="verdict pas" id="re-verdict">—</div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> comparer n'importe quel côté au lieu du plus long. C'est toujours le carré du plus grand côté qu'on compare à la somme des carrés des deux autres.</div>
+      </div>
+    </div>
 
-        function getRandomInt(min, max) {
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        }
+  </div>
 
-        function shuffleArray(array) {
-            const newArray = [...array];
-            for (let i = newArray.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-            }
-            return newArray;
-        }
+  <!-- ═══════════════ DÉFI ═══════════════ -->
+  <div id="mode-defi">
+    <div class="defi-card">
+      <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI ⁺ — propriété masquée</div>
+      <div class="defi-header">
+        <div class="defi-title" id="defi-mode-title">Mode défi — avec aide</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
 
-        function generateExercise() {
-            const names = shuffleArray(vertexNames).slice(0, 3);
-            const cathete1 = getRandomInt(3, 12);
-            const cathete2 = getRandomInt(3, 12);
-            const hypotenuse = Math.sqrt(cathete1 * cathete1 + cathete2 * cathete2);
-            
-            const givenType = Math.random() < 0.5 ? 'hyp_cath' : 'two_cath';
-            const orientation = getRandomInt(0, 3);
-            
-            let given, unknown, unknownVertex;
-            
-            if (givenType === 'hyp_cath') {
-                const whichCathete = Math.random() < 0.5 ? 0 : 1;
-                if (whichCathete === 0) {
-                    given = { hypotenuse: hypotenuse, cathete: cathete1 };
-                    unknown = cathete2;
-                    unknownVertex = 1;
-                } else {
-                    given = { hypotenuse: hypotenuse, cathete: cathete2 };
-                    unknown = cathete1;
-                    unknownVertex = 0;
-                }
-            } else {
-                given = { cathete1: cathete1, cathete2: cathete2 };
-                unknown = hypotenuse;
-                unknownVertex = 2;
-            }
-            
-            return {
-                names,
-                cathete1,
-                cathete2,
-                hypotenuse,
-                given,
-                givenType,
-                unknown,
-                unknownVertex,
-                orientation
-            };
-        }
+      <div class="shape-tabs" style="margin-bottom:1.25rem">
+        <button class="shape-tab active" data-color="purple" onclick="setFam('mix',this)"><span class="dot" style="background:var(--purple)"></span>Mélange</button>
+        <button class="shape-tab" data-color="pink"  onclick="setFam('hyp',this)"><span class="dot" style="background:var(--pink)"></span>Hypoténuse</button>
+        <button class="shape-tab" data-color="blue"  onclick="setFam('cot',this)"><span class="dot" style="background:var(--blue)"></span>Côté de l'angle droit</button>
+        <button class="shape-tab" data-color="green" onclick="setFam('rec',this)"><span class="dot" style="background:var(--green)"></span>Réciproque</button>
+      </div>
 
-        function drawTriangle(exercise) {
-            const canvas = document.getElementById('triangleCanvas');
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            const scale = 20;
-            const width = exercise.cathete1 * scale;
-            const height = exercise.cathete2 * scale;
-            
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            
-            let points;
-            const offset = 40;
-            
-            switch(exercise.orientation) {
-                case 0:
-                    points = [
-                        {x: centerX - width/2, y: centerY + height/2},
-                        {x: centerX + width/2, y: centerY + height/2},
-                        {x: centerX + width/2, y: centerY - height/2}
-                    ];
-                    break;
-                case 1:
-                    points = [
-                        {x: centerX + width/2, y: centerY + height/2},
-                        {x: centerX + width/2, y: centerY - height/2},
-                        {x: centerX - width/2, y: centerY - height/2}
-                    ];
-                    break;
-                case 2:
-                    points = [
-                        {x: centerX + width/2, y: centerY - height/2},
-                        {x: centerX - width/2, y: centerY - height/2},
-                        {x: centerX - width/2, y: centerY + height/2}
-                    ];
-                    break;
-                case 3:
-                    points = [
-                        {x: centerX - width/2, y: centerY - height/2},
-                        {x: centerX - width/2, y: centerY + height/2},
-                        {x: centerX + width/2, y: centerY + height/2}
-                    ];
-                    break;
-            }
-            
-            ctx.strokeStyle = '#667eea';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(points[0].x, points[0].y);
-            ctx.lineTo(points[1].x, points[1].y);
-            ctx.lineTo(points[2].x, points[2].y);
-            ctx.closePath();
-            ctx.stroke();
-            
-            const rightAngleSize = 15;
-            ctx.strokeStyle = '#667eea';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            
-            if (exercise.orientation === 0) {
-                ctx.moveTo(points[1].x - rightAngleSize, points[1].y);
-                ctx.lineTo(points[1].x - rightAngleSize, points[1].y - rightAngleSize);
-                ctx.lineTo(points[1].x, points[1].y - rightAngleSize);
-            } else if (exercise.orientation === 1) {
-                ctx.moveTo(points[1].x, points[1].y + rightAngleSize);
-                ctx.lineTo(points[1].x - rightAngleSize, points[1].y + rightAngleSize);
-                ctx.lineTo(points[1].x - rightAngleSize, points[1].y);
-            } else if (exercise.orientation === 2) {
-                ctx.moveTo(points[1].x + rightAngleSize, points[1].y);
-                ctx.lineTo(points[1].x + rightAngleSize, points[1].y + rightAngleSize);
-                ctx.lineTo(points[1].x, points[1].y + rightAngleSize);
-            } else {
-                ctx.moveTo(points[1].x, points[1].y - rightAngleSize);
-                ctx.lineTo(points[1].x + rightAngleSize, points[1].y - rightAngleSize);
-                ctx.lineTo(points[1].x + rightAngleSize, points[1].y);
-            }
-            ctx.stroke();
-            
-            ctx.fillStyle = '#333';
-            ctx.font = 'bold 18px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
-            const vertexOffset = 25;
-            ctx.fillText(exercise.names[0], points[0].x + (exercise.orientation === 1 || exercise.orientation === 2 ? vertexOffset : -vertexOffset), 
-                         points[0].y + (exercise.orientation === 0 || exercise.orientation === 1 ? vertexOffset : -vertexOffset));
-            ctx.fillText(exercise.names[1], points[1].x + (exercise.orientation === 2 || exercise.orientation === 3 ? -vertexOffset : vertexOffset), 
-                         points[1].y + (exercise.orientation === 1 || exercise.orientation === 2 ? -vertexOffset : vertexOffset));
-            ctx.fillText(exercise.names[2], points[2].x + (exercise.orientation === 0 || exercise.orientation === 3 ? vertexOffset : -vertexOffset), 
-                         points[2].y + (exercise.orientation === 2 || exercise.orientation === 3 ? vertexOffset : -vertexOffset));
-            
-            ctx.font = '16px Arial';
-            ctx.fillStyle = '#764ba2';
-            
-            const labelOffset = 25;
-            
-            const midpoint01 = {
-                x: (points[0].x + points[1].x) / 2,
-                y: (points[0].y + points[1].y) / 2
-            };
-            const midpoint12 = {
-                x: (points[1].x + points[2].x) / 2,
-                y: (points[1].y + points[2].y) / 2
-            };
-            const midpoint02 = {
-                x: (points[0].x + points[2].x) / 2,
-                y: (points[0].y + points[2].y) / 2
-            };
-            
-            // Fonction pour dessiner un label pour côté vertical
-            function drawVerticalLabel(text, x, y, isLeft) {
-                const textWidth = ctx.measureText(text).width;
-                if (isLeft) {
-                    // Côté à gauche : on affiche le texte à gauche du côté
-                    ctx.textAlign = 'right';
-                    ctx.fillText(text, x - labelOffset, y);
-                } else {
-                    // Côté à droite : on affiche le texte à droite du côté
-                    ctx.textAlign = 'left';
-                    ctx.fillText(text, x + labelOffset, y);
-                }
-                ctx.textAlign = 'center'; // reset
-            }
-            
-            // Fonction pour dessiner un label pour côté horizontal
-            function drawHorizontalLabel(text, x, y, isTop) {
-                if (isTop) {
-                    // Côté en haut : on affiche au-dessus
-                    ctx.fillText(text, x, y - labelOffset);
-                } else {
-                    // Côté en bas : on affiche en dessous
-                    ctx.fillText(text, x, y + labelOffset);
-                }
-            }
-            
-            // Fonction pour dessiner un label pour l'hypoténuse (en diagonal)
-            function drawDiagonalLabel(text, x, y, orientation) {
-                const textWidth = ctx.measureText(text).width;
-                if (orientation === 0) {
-                    // Triangle orienté vers le haut-droite : label à gauche
-                    ctx.textAlign = 'right';
-                    ctx.fillText(text, x - labelOffset * 0.7, y);
-                } else if (orientation === 1) {
-                    // Triangle orienté vers le bas-droite : label en haut
-                    ctx.fillText(text, x, y - labelOffset * 0.7);
-                } else if (orientation === 2) {
-                    // Triangle orienté vers le bas-gauche : label à droite
-                    ctx.textAlign = 'left';
-                    ctx.fillText(text, x + labelOffset * 0.7, y);
-                } else {
-                    // Triangle orienté vers le haut-gauche : label en bas
-                    ctx.fillText(text, x, y + labelOffset * 0.7);
-                }
-                ctx.textAlign = 'center'; // reset
-            }
-            
-            // Déterminer si les côtés sont à gauche/droite ou haut/bas selon l'orientation
-            const isVerticalLeft = exercise.orientation === 2 || exercise.orientation === 3;
-            const isHorizontalTop = exercise.orientation === 2 || exercise.orientation === 3;
-            
-            if (exercise.givenType === 'hyp_cath') {
-                if (exercise.unknownVertex === 0) {
-                    // Cathète vertical donné
-                    drawVerticalLabel(`${exercise.given.cathete.toFixed(1)} cm`, midpoint12.x, midpoint12.y, isVerticalLeft);
-                    // Hypoténuse donnée
-                    drawDiagonalLabel(`${exercise.given.hypotenuse.toFixed(1)} cm`, midpoint02.x, midpoint02.y, exercise.orientation);
-                    // Cathète horizontal inconnu
-                    drawHorizontalLabel('?', midpoint01.x, midpoint01.y, isHorizontalTop);
-                } else {
-                    // Cathète horizontal donné
-                    drawHorizontalLabel(`${exercise.given.cathete.toFixed(1)} cm`, midpoint01.x, midpoint01.y, isHorizontalTop);
-                    // Hypoténuse donnée
-                    drawDiagonalLabel(`${exercise.given.hypotenuse.toFixed(1)} cm`, midpoint02.x, midpoint02.y, exercise.orientation);
-                    // Cathète vertical inconnu
-                    drawVerticalLabel('?', midpoint12.x, midpoint12.y, isVerticalLeft);
-                }
-            } else {
-                // Deux cathètes donnés
-                drawHorizontalLabel(`${exercise.given.cathete1.toFixed(1)} cm`, midpoint01.x, midpoint01.y, isHorizontalTop);
-                drawVerticalLabel(`${exercise.given.cathete2.toFixed(1)} cm`, midpoint12.x, midpoint12.y, isVerticalLeft);
-                // Hypoténuse inconnue
-                drawDiagonalLabel('?', midpoint02.x, midpoint02.y, exercise.orientation);
-            }
-        }
+      <div class="defi-aide" id="defi-aide"></div>
 
-        function updateQuestion(exercise) {
-            const unknownSide = exercise.names[exercise.unknownVertex] + exercise.names[(exercise.unknownVertex + 1) % 3];
-            document.getElementById('question').textContent = `Calculer la longueur ${unknownSide} (en cm, arrondie au centième)`;
-        }
+      <div class="defi-shape-display">
+        <svg id="defi-svg" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg" style="max-width:300px;width:100%;"></svg>
+        <div class="defi-cotes" id="defi-cotes"></div>
+      </div>
 
-        function newExercise() {
-            currentExercise = generateExercise();
-            drawTriangle(currentExercise);
-            updateQuestion(currentExercise);
-            document.getElementById('answer').value = '';
-            document.getElementById('answer').focus();
-            document.body.className = '';
-        }
+      <div class="defi-input-row" id="zone-nombre">
+        <label id="defi-label">? =</label>
+        <input type="number" id="defi-input" placeholder="?" step="0.01">
+        <span class="unit">cm</span>
+      </div>
+      <div id="zone-rec" style="display:none">
+        <div class="choix-rec">
+          <button class="btn-rec" data-rep="oui" onclick="choisirRec(this)">Oui, il est rectangle</button>
+          <button class="btn-rec" data-rep="non" onclick="choisirRec(this)">Non, il ne l'est pas</button>
+        </div>
+      </div>
 
-        function playBuzzer() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.value = 200;
-            oscillator.type = 'square';
-            gainNode.gain.value = 0.3;
-            
-            oscillator.start();
-            setTimeout(() => oscillator.stop(), 300);
-        }
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol">Arrondir au centième · tolérance ± 0,05 cm</div>
 
-        function createConfetti() {
-            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffa500'];
-            for (let i = 0; i < 50; i++) {
-                setTimeout(() => {
-                    const confetti = document.createElement('div');
-                    confetti.className = 'confetti';
-                    confetti.style.left = Math.random() * window.innerWidth + 'px';
-                    confetti.style.top = '-10px';
-                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
-                    confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
-                    document.body.appendChild(confetti);
-                    
-                    setTimeout(() => confetti.remove(), 3000);
-                }, i * 30);
-            }
-        }
+      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+      <div class="feedback-box" id="defi-feedback"></div>
+      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Question suivante →</button>
 
-        function updateStats() {
-            document.getElementById('success').textContent = stats.success;
-            document.getElementById('total').textContent = stats.total;
-            const rate = stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0;
-            document.getElementById('rate').textContent = rate + '%';
-        }
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="openFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+      </div>
+    </div>
+  </div>
 
-        function checkAnswer() {
-            const input = document.getElementById('answer');
-            const userAnswer = parseFloat(input.value);
-            
-            if (isNaN(userAnswer)) {
-                return;
-            }
-            
-            stats.total++;
-            
-            const tolerance = 0.1;
-            if (Math.abs(userAnswer - currentExercise.unknown) < tolerance) {
-                stats.success++;
-                document.body.className = 'correct';
-                createConfetti();
-                setTimeout(() => {
-                    newExercise();
-                }, 2000);
-            } else {
-                document.body.className = 'incorrect';
-                input.classList.add('shake');
-                playBuzzer();
-                setTimeout(() => {
-                    input.classList.remove('shake');
-                    document.body.className = '';
-                }, 500);
-            }
-            
-            updateStats();
-        }
+</div>
 
-        document.getElementById('answer').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                checkAnswer();
-            }
-        });
+<!-- Modale de génération de fiche -->
+<div class="modal-bg" id="modal-fiche">
+  <div class="modal">
+    <h2>📄 Générer une fiche d'exercices</h2>
+    <p>Choisis les familles de questions à inclure. Les 10 exercices seront répartis entre les familles sélectionnées.</p>
+    <div class="modal-checks" id="modal-checks">
+      <label class="on"><input type="checkbox" value="hyp" checked> Calculer l'hypoténuse</label>
+      <label class="on"><input type="checkbox" value="cot" checked> Calculer un côté de l'angle droit</label>
+      <label class="on"><input type="checkbox" value="rec" checked> Réciproque : le triangle est-il rectangle ?</label>
+    </div>
+    <div class="dist-info ok" id="dist-info">→ 4 + 3 + 3 = 10 exercices</div>
+    <div class="modal-actions">
+      <button class="btn-modal-no" onclick="closeFiche()">Annuler</button>
+      <button class="btn-modal-ok" id="modal-confirm" onclick="confirmFiche()">Générer la fiche</button>
+    </div>
+  </div>
+</div>
 
-        newExercise();
-    </script>
+<script src="/assets/lp-fiche.js"></script>
+<script>
+/* ═══ UTILITAIRES ═══════════════════════════════════════════════════════ */
+var M = '\u2212';                       /* vrai signe moins */
+var LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ'.split('');   /* ni I ni O */
+
+function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function shuffle(a){
+  var r = a.slice(), i, j, t;
+  for (i = r.length-1; i > 0; i--) { j = Math.floor(Math.random()*(i+1)); t = r[i]; r[i] = r[j]; r[j] = t; }
+  return r;
+}
+function val(id){ var n = parseFloat(document.getElementById(id).value.replace(',','.')); return isNaN(n) ? 0 : n; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* Écriture française : virgule décimale, 2 décimales au plus */
+function nb(x){
+  var r = Math.round(x*100)/100;
+  var s = (Math.abs(r - Math.round(r)) < 1e-9) ? String(Math.round(r)) : r.toFixed(2);
+  return s.replace('.', ',');
+}
+function nb2(x){ return (Math.round(x*100)/100).toFixed(2).replace('.', ','); }
+
+/* ═══ GÉOMÉTRIE ═════════════════════════════════════════════════════════ */
+function tourner(pts, k){
+  return pts.map(function(p){
+    var x = p.x, y = p.y, i, nx;
+    for (i = 0; i < k; i++) { nx = -y; y = x; x = nx; }
+    return { x:x, y:y };
+  });
+}
+
+/* Met les points à l'échelle du cadre, avec une marge propre à chaque côté.
+   L'axe vertical du SVG est inversé : dy se mesure depuis le bas. */
+function ajuster(pts, W, H, m){
+  var xs = pts.map(function(p){ return p.x; });
+  var ys = pts.map(function(p){ return p.y; });
+  var minx = Math.min.apply(null, xs), miny = Math.min.apply(null, ys);
+  var bw = (Math.max.apply(null, xs) - minx) || 1;
+  var bh = (Math.max.apply(null, ys) - miny) || 1;
+  var utileW = Math.max(W - m.l - m.r, 20);
+  var utileH = Math.max(H - m.t - m.b, 20);
+  var s = Math.min(utileW/bw, utileH/bh);
+  var dx = m.l + (utileW - bw*s)/2;
+  var dy = m.b + (utileH - bh*s)/2;
+  return pts.map(function(p){
+    return { x:(p.x - minx)*s + dx, y:H - ((p.y - miny)*s + dy) };
+  });
+}
+function centre(pts){
+  var sx = 0, sy = 0, i;
+  for (i = 0; i < pts.length; i++) { sx += pts[i].x; sy += pts[i].y; }
+  return { x:sx/pts.length, y:sy/pts.length };
+}
+function unitaire(d){
+  var n = Math.sqrt(d.x*d.x + d.y*d.y) || 1;
+  return { x:d.x/n, y:d.y/n };
+}
+
+/* Étiquette placée vers l'extérieur, ancrage choisi selon la direction */
+function etiquette(p, d, texte, fs, couleur){
+  var anc = d.x > 0.3 ? 'start' : (d.x < -0.3 ? 'end' : 'middle');
+  var dy  = d.y > 0.3 ? fs*0.85 : (d.y < -0.3 ? -fs*0.22 : fs*0.34);
+  var dx  = d.x > 0.3 ? 2 : (d.x < -0.3 ? -2 : 0);
+  return { x:p.x + dx, y:p.y + dy, anc:anc, fs:fs, texte:String(texte), couleur:couleur };
+}
+function rendreEtiquette(e){
+  return '<text x="'+e.x.toFixed(1)+'" y="'+e.y.toFixed(1)+'" text-anchor="'+e.anc+'"'
+       + ' font-size="'+e.fs+'" font-weight="700" fill="'+e.couleur+'">'+esc(e.texte)+'</text>';
+}
+/* Encombrement estimé d'une étiquette (Arial : un chiffre ≈ 0,56 em) */
+function boiteEtiquette(e){
+  var larg = e.texte.length * e.fs * 0.62;
+  var x0 = e.anc === 'start' ? e.x : (e.anc === 'end' ? e.x - larg : e.x - larg/2);
+  return { x0:x0, x1:x0 + larg, y0:e.y - e.fs*0.95, y1:e.y + e.fs*0.32 };
+}
+
+var TRAIT = '#993556', REMPLI = '#FBEAF0', NOIR = '#1a1917', INCONNU = '#A32D2D', GRIS = '#55534e';
+
+/* Liste des étiquettes (côtés puis sommets) pour un placement donné */
+function etiquettesDe(P, ex, fs, offCote, offSom){
+  var c = centre(P), L = [];
+  ex.cotes.forEach(function(co){
+    var m = { x:(P[co.de].x + P[co.a].x)/2, y:(P[co.de].y + P[co.a].y)/2 };
+    var d = unitaire({ x:m.x - c.x, y:m.y - c.y });
+    L.push(etiquette({ x:m.x + d.x*offCote, y:m.y + d.y*offCote }, d,
+                     co.texte, fs, co.inconnu ? INCONNU : GRIS));
+  });
+  ex.noms.forEach(function(n,i){
+    var d = unitaire({ x:P[i].x - c.x, y:P[i].y - c.y });
+    L.push(etiquette({ x:P[i].x + d.x*offSom, y:P[i].y + d.y*offSom }, d, n, fs+3, NOIR));
+  });
+  return L;
+}
+
+/* Dessine un exercice. W/H = cadre, o = réglages de taille.
+   Le cadrage est repris jusqu'à ce que les étiquettes tiennent dans le cadre. */
+function dessin(ex, W, H, o){
+  o = o || {};
+  var fs      = o.fs      || 14;
+  var offCote = o.offCote || 15;
+  var offSom  = o.offSom  || 16;
+  var tAngle  = o.tAngle  || 15;
+
+  var m = { l:14, r:14, t:14, b:14 };
+  var P, L, i, b, deb, it;
+
+  for (it = 0; it < 5; it++) {
+    P = ajuster(ex.pts, W, H, m);
+    L = etiquettesDe(P, ex, fs, offCote, offSom);
+    deb = { l:0, r:0, t:0, b:0 };
+    for (i = 0; i < L.length; i++) {
+      b = boiteEtiquette(L[i]);
+      deb.l = Math.max(deb.l, 4 - b.x0);
+      deb.r = Math.max(deb.r, b.x1 - (W - 4));
+      deb.t = Math.max(deb.t, 4 - b.y0);
+      deb.b = Math.max(deb.b, b.y1 - (H - 4));
+    }
+    if (deb.l + deb.r + deb.t + deb.b < 0.5) break;
+    if (m.l + m.r > W*0.72 || m.t + m.b > H*0.72) break;
+    m = { l:m.l + deb.l, r:m.r + deb.r, t:m.t + deb.t, b:m.b + deb.b };
+  }
+
+  var s = '<polygon points="' + P.map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ')
+        + '" fill="'+REMPLI+'" stroke="'+TRAIT+'" stroke-width="2.5" stroke-linejoin="round"/>';
+
+  if (ex.droitEn !== null && ex.droitEn !== undefined) {
+    var k = ex.droitEn, j = (k+1)%3, l = (k+2)%3;
+    var u1 = unitaire({ x:P[j].x - P[k].x, y:P[j].y - P[k].y });
+    var u2 = unitaire({ x:P[l].x - P[k].x, y:P[l].y - P[k].y });
+    s += '<path d="M'+(P[k].x + u1.x*tAngle).toFixed(1)+' '+(P[k].y + u1.y*tAngle).toFixed(1)
+       + ' L'+(P[k].x + (u1.x+u2.x)*tAngle).toFixed(1)+' '+(P[k].y + (u1.y+u2.y)*tAngle).toFixed(1)
+       + ' L'+(P[k].x + u2.x*tAngle).toFixed(1)+' '+(P[k].y + u2.y*tAngle).toFixed(1)
+       + '" fill="none" stroke="'+TRAIT+'" stroke-width="1.8"/>';
+  }
+
+  for (i = 0; i < L.length; i++) s += rendreEtiquette(L[i]);
+  return s;
+}
+
+/* ═══ GÉNÉRATEURS ═══════════════════════════════════════════════════════ */
+/* Triplets pythagoriciens dont le dessin reste équilibré */
+var TRIPLETS = [
+  [3,4,5], [6,8,10], [9,12,15], [12,16,20], [15,20,25], [18,24,30],
+  [5,12,13], [10,24,26], [8,15,17], [20,21,29], [12,35,37]
+];
+function tripletsDessinables(){
+  return TRIPLETS.filter(function(t){ return Math.min(t[0],t[1]) / Math.max(t[0],t[1]) > 0.32; });
+}
+
+/* Les données affichées sont TOUJOURS exactes : seule l'inconnue est arrondie. */
+function genHyp(){
+  var a, b, t;
+  if (Math.random() < 0.35) {
+    t = pick(tripletsDessinables());
+    a = t[0]; b = t[1];
+    if (Math.random() < 0.5) { var z = a; a = b; b = z; }
+  } else {
+    do { a = rand(3,14); b = rand(3,14); }
+    while (Math.min(a,b) / Math.max(a,b) < 0.3);     /* figure trop effilée */
+  }
+  var h = Math.sqrt(a*a + b*b);
+  var noms = shuffle(LETTRES).slice(0,3);
+  var pts = tourner([{x:0,y:0},{x:a,y:0},{x:a,y:b}], rand(0,3));
+  var cAB = noms[0]+noms[1], cBC = noms[1]+noms[2], cAC = noms[0]+noms[2];
+
+  return {
+    fam:'hyp', pts:pts, noms:noms, droitEn:1,
+    cotes:[
+      { de:0, a:1, texte:nb(a)+' cm' },
+      { de:1, a:2, texte:nb(b)+' cm' },
+      { de:0, a:2, texte:'?', inconnu:true }
+    ],
+    donnees:cAB+' = '+nb(a)+' cm · '+cBC+' = '+nb(b)+' cm',
+    question:'Calculer la longueur '+cAC,
+    inconnue:cAC,
+    reponse:h,
+    reponseTexte:nb2(h)+' cm',
+    hint:'Angle droit en '+noms[1]+', donc '+cAC+'² = '+cAB+'² + '+cBC+'²',
+    detail:cAC+'² = '+nb(a)+'² + '+nb(b)+'² = '+nb(a*a)+' + '+nb(b*b)+' = '+nb(a*a+b*b)
+         + ', donc '+cAC+' = √'+nb(a*a+b*b)+' ≈ '+nb2(h)+' cm'
+  };
+}
+
+function genCot(){
+  var h, a, b, t, essais = 0;
+  if (Math.random() < 0.35) {
+    t = pick(tripletsDessinables());
+    h = t[2];
+    if (Math.random() < 0.5) { a = t[0]; b = t[1]; } else { a = t[1]; b = t[0]; }
+  } else {
+    do {
+      h = rand(7,22);
+      a = rand(3, h-2);
+      b = Math.sqrt(h*h - a*a);
+      essais++;
+    } while ((b < 3 || a/b < 0.32 || a/b > 3.1) && essais < 80);
+    if (b < 3) { h = 13; a = 5; b = 12; }
+  }
+  var noms = shuffle(LETTRES).slice(0,3);
+  var pts = tourner([{x:0,y:0},{x:a,y:0},{x:a,y:b}], rand(0,3));
+  var cAB = noms[0]+noms[1], cBC = noms[1]+noms[2], cAC = noms[0]+noms[2];
+
+  return {
+    fam:'cot', pts:pts, noms:noms, droitEn:1,
+    cotes:[
+      { de:0, a:1, texte:nb(a)+' cm' },
+      { de:1, a:2, texte:'?', inconnu:true },
+      { de:0, a:2, texte:nb(h)+' cm' }
+    ],
+    donnees:cAC+' = '+nb(h)+' cm (hypoténuse) · '+cAB+' = '+nb(a)+' cm',
+    question:'Calculer la longueur '+cBC,
+    inconnue:cBC,
+    reponse:b,
+    reponseTexte:nb2(b)+' cm',
+    hint:'Angle droit en '+noms[1]+', donc '+cBC+'² = '+cAC+'² '+M+' '+cAB+'²',
+    detail:cBC+'² = '+nb(h)+'² '+M+' '+nb(a)+'² = '+nb(h*h)+' '+M+' '+nb(a*a)+' = '+nb(h*h-a*a)
+         + ', donc '+cBC+' = √'+nb(h*h-a*a)+' ≈ '+nb2(b)+' cm'
+  };
+}
+
+function genRec(){
+  var t, p, q, r, rect, d, x, y, essais = 0;
+  do {
+    t = pick(TRIPLETS);
+    p = t[0]; q = t[1]; r = t[2];
+    rect = Math.random() < 0.5;
+    if (!rect) {
+      d = pick([-2,-1,1,2]);
+      if (Math.random() < 0.5) r = r + d; else q = q + d;
+    }
+    /* A = (0,0), B = (r,0) : le plus grand côté est AB. C est le sommet restant. */
+    x = (r*r + q*q - p*p) / (2*r);
+    y = Math.sqrt(Math.max(q*q - x*x, 0));
+    essais++;
+  } while (essais < 80 && (
+      r <= Math.max(p,q) ||           /* r doit rester le plus grand côté */
+      p + q <= r + 0.001 ||           /* inégalité triangulaire */
+      p < 2 || q < 2 ||
+      y / r < 0.25 ||                 /* triangle trop aplati pour être coté */
+      (!rect && Math.abs(r*r - (p*p + q*q)) < 0.5)
+  ));
+  var noms = shuffle(LETTRES).slice(0,3);
+  var pts = tourner([{x:0,y:0},{x:r,y:0},{x:x,y:y}], rand(0,3));
+  var cAB = noms[0]+noms[1], cAC = noms[0]+noms[2], cBC = noms[1]+noms[2];
+  var somme = p*p + q*q, grand = r*r;
+
+  return {
+    fam:'rec', pts:pts, noms:noms, droitEn:null,
+    cotes:[
+      { de:0, a:1, texte:nb(r)+' cm' },
+      { de:0, a:2, texte:nb(q)+' cm' },
+      { de:1, a:2, texte:nb(p)+' cm' }
+    ],
+    donnees:cAB+' = '+nb(r)+' cm · '+cAC+' = '+nb(q)+' cm · '+cBC+' = '+nb(p)+' cm',
+    question:'Le triangle '+noms[0]+noms[1]+noms[2]+' est-il rectangle ?',
+    inconnue:'',
+    reponse:rect ? 'oui' : 'non',
+    reponseTexte:rect ? 'Rectangle en '+noms[2] : 'Pas rectangle',
+    hint:'Le plus grand côté est '+cAB+'. On compare '+cAB+'² à '+cAC+'² + '+cBC+'².',
+    detail:cAB+'² = '+nb(grand)+'  et  '+cAC+'² + '+cBC+'² = '+nb(q*q)+' + '+nb(p*p)+' = '+nb(somme)
+         + (rect
+            ? '. Les deux résultats sont égaux : d\u2019après la réciproque du théorème de Pythagore, le triangle est rectangle en '+noms[2]+'.'
+            : '. Les deux résultats sont différents : d\u2019après la contraposée du théorème, le triangle n\u2019est pas rectangle.')
+  };
+}
+
+var generateurs = { hyp:genHyp, cot:genCot, rec:genRec };
+var famNoms     = { hyp:'Hypoténuse', cot:'Côté de l\u2019angle droit', rec:'Réciproque' };
+var famConsignes= { hyp:'Calcule la longueur manquante', cot:'Calcule la longueur manquante',
+                    rec:'Ce triangle est-il rectangle ?' };
+var famAides    = {
+  hyp:'hypoténuse² = somme des carrés des deux côtés de l\u2019angle droit',
+  cot:'côté² = hypoténuse² '+M+' autre côté² (on soustrait)',
+  rec:'comparer le carré du plus grand côté à la somme des carrés des deux autres'
+};
+
+/* ═══ MODES ═════════════════════════════════════════════════════════════ */
+var currentMode = 'explo';
+
+function setMode(m, btn){
+  currentMode = m;
+  var tabs = document.querySelectorAll('.mode-tab'), i;
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+
+  var isDefi = (m !== 'explo');
+  document.getElementById('mode-explo').style.display = isDefi ? 'none' : 'block';
+  var defi = document.getElementById('mode-defi');
+  defi.style.display = isDefi ? 'block' : 'none';
+  defi.classList.toggle('active', isDefi);
+
+  document.getElementById('defi-plus-badge').classList.toggle('visible', m === 'defiplus');
+  document.getElementById('defi-mode-title').textContent =
+    (m === 'defiplus') ? 'Défi ⁺ — sans aide' : 'Mode défi — avec aide';
+
+  if (isDefi) nextDefi();
+}
+
+/* ═══ EXPLORATEUR ═══════════════════════════════════════════════════════ */
+var currentShape = 'hyp';
+
+function setShape(s, btn){
+  currentShape = s;
+  var tabs = document.querySelectorAll('#mode-explo .shape-tab'), i;
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+  var panels = document.querySelectorAll('#mode-explo .panel');
+  for (i = 0; i < panels.length; i++) panels[i].classList.remove('active');
+  document.getElementById('panel-'+s).classList.add('active');
+}
+
+function randomizeCurrent(){
+  var t;
+  if (currentShape === 'hyp') {
+    if (Math.random() < 0.4) { t = pick(tripletsDessinables()); document.getElementById('hy-a').value = t[0]; document.getElementById('hy-b').value = t[1]; }
+    else { document.getElementById('hy-a').value = rand(3,16); document.getElementById('hy-b').value = rand(3,16); }
+    calcHyp();
+  } else if (currentShape === 'cot') {
+    if (Math.random() < 0.4) { t = pick(tripletsDessinables()); document.getElementById('co-h').value = t[2]; document.getElementById('co-a').value = t[0]; }
+    else { var h = rand(8,24); document.getElementById('co-h').value = h; document.getElementById('co-a').value = rand(3,h-2); }
+    calcCot();
+  } else {
+    t = pick(TRIPLETS);
+    var p = t[0], q = t[1], r = t[2];
+    if (Math.random() < 0.5) { r = r + pick([-2,-1,1,2]); }
+    document.getElementById('re-1').value = p;
+    document.getElementById('re-2').value = q;
+    document.getElementById('re-3').value = r;
+    calcRec();
+  }
+}
+
+function calcHyp(){
+  var a = val('hy-a'), b = val('hy-b');
+  if (a <= 0) a = 1;
+  if (b <= 0) b = 1;
+  var h = Math.sqrt(a*a + b*b);
+
+  document.getElementById('hy-detail').textContent =
+    'BC² = '+nb(a)+'² + '+nb(b)+'² = '+nb(a*a)+' + '+nb(b*b)+' = '+nb(a*a+b*b)+'  →  BC = √'+nb(a*a+b*b);
+  document.getElementById('hy-result').innerHTML = nb2(h)+'<span class="result-unit">cm</span>';
+  var exact = Math.abs(h - Math.round(h)) < 1e-9;
+  document.getElementById('hy-sub').textContent = exact
+    ? 'Tombe juste : ' + nb(a) + ', ' + nb(b) + ' et ' + nb(h) + ' forment un triplet pythagoricien.'
+    : 'Valeur arrondie au centième. La valeur exacte est √' + nb(a*a+b*b) + '.';
+
+  var ex = {
+    pts:[{x:0,y:0},{x:a,y:0},{x:a,y:b}], noms:['A','B','C'], droitEn:0,
+    cotes:[
+      { de:0, a:1, texte:'AB = '+nb(a)+' cm' },
+      { de:0, a:2, texte:'AC = '+nb(b)+' cm' },
+      { de:1, a:2, texte:'BC = '+nb2(h)+' cm', inconnu:true }
+    ]
+  };
+  document.getElementById('hy-svg').innerHTML = dessin(ex, 320, 240, {});
+}
+
+function calcCot(){
+  var h = val('co-h'), a = val('co-a');
+  if (h <= 0) h = 1;
+  if (a <= 0) a = 1;
+  var res = document.getElementById('co-result');
+  var sub = document.getElementById('co-sub');
+
+  if (a >= h) {
+    document.getElementById('co-detail').textContent =
+      'Impossible : AB = '+nb(a)+' cm ne peut pas atteindre ou dépasser l\u2019hypoténuse BC = '+nb(h)+' cm.';
+    res.innerHTML = '—<span class="result-unit">cm</span>';
+    sub.textContent = 'Dans un triangle rectangle, l\u2019hypoténuse est strictement le plus long côté.';
+    document.getElementById('co-svg').innerHTML =
+      '<text x="160" y="115" text-anchor="middle" font-size="15" fill="'+INCONNU+'">Triangle impossible</text>'
+    + '<text x="160" y="140" text-anchor="middle" font-size="13" fill="'+GRIS+'">AB doit être plus court que BC</text>';
+    return;
+  }
+
+  var b = Math.sqrt(h*h - a*a);
+  document.getElementById('co-detail').textContent =
+    'AC² = '+nb(h)+'² '+M+' '+nb(a)+'² = '+nb(h*h)+' '+M+' '+nb(a*a)+' = '+nb(h*h-a*a)+'  →  AC = √'+nb(h*h-a*a);
+  res.innerHTML = nb2(b)+'<span class="result-unit">cm</span>';
+  var exact = Math.abs(b - Math.round(b)) < 1e-9;
+  sub.textContent = exact
+    ? 'Tombe juste : '+nb(a)+', '+nb(b)+' et '+nb(h)+' forment un triplet pythagoricien.'
+    : 'Valeur arrondie au centième. La valeur exacte est √'+nb(h*h-a*a)+'.';
+
+  var ex = {
+    pts:[{x:0,y:0},{x:a,y:0},{x:0,y:b}], noms:['A','B','C'], droitEn:0,
+    cotes:[
+      { de:0, a:1, texte:'AB = '+nb(a)+' cm' },
+      { de:0, a:2, texte:'AC = '+nb2(b)+' cm', inconnu:true },
+      { de:1, a:2, texte:'BC = '+nb(h)+' cm' }
+    ]
+  };
+  document.getElementById('co-svg').innerHTML = dessin(ex, 320, 240, {});
+}
+
+function calcRec(){
+  var L = [val('re-1'), val('re-2'), val('re-3')].map(function(z){ return z <= 0 ? 1 : z; });
+  var tri = L.slice().sort(function(u,w){ return u - w; });
+  var p = tri[0], q = tri[1], r = tri[2];
+  var somme = p*p + q*q, grand = r*r;
+  var possible = (p + q > r + 1e-9);
+
+  var code = document.getElementById('re-code');
+  var det  = document.getElementById('re-detail');
+  var comp = document.getElementById('re-compare');
+  var verd = document.getElementById('re-verdict');
+
+  if (!possible) {
+    code.textContent = 'Triangle impossible';
+    det.textContent = nb(p)+' + '+nb(q)+' = '+nb(p+q)+' n\u2019atteint pas '+nb(r)+' : ces trois longueurs ne forment pas un triangle.';
+    comp.innerHTML = '';
+    verd.className = 'verdict pas';
+    verd.textContent = 'Pas de triangle possible';
+    document.getElementById('re-svg').innerHTML =
+      '<text x="160" y="115" text-anchor="middle" font-size="15" fill="'+INCONNU+'">Triangle impossible</text>'
+    + '<text x="160" y="140" text-anchor="middle" font-size="13" fill="'+GRIS+'">le plus grand côté dépasse la somme des deux autres</text>';
+    return;
+  }
+
+  var rectangle = Math.abs(grand - somme) < 1e-9;
+  code.textContent = 'Plus grand côté : '+nb(r)+' cm';
+  det.textContent = 'On compare son carré à la somme des carrés des deux autres.';
+  comp.innerHTML =
+      '<div class="l"><span>carré du plus grand côté</span><b>'+nb(r)+'² = '+nb(grand)+'</b></div>'
+    + '<div class="l"><span>somme des deux autres carrés</span><b>'+nb(q)+'² + '+nb(p)+'² = '+nb(somme)+'</b></div>'
+    + '<div class="l"><span>écart</span><b>'+nb(Math.abs(grand - somme))+'</b></div>';
+  verd.className = 'verdict ' + (rectangle ? 'oui' : 'non');
+  verd.textContent = rectangle
+    ? 'Égalité : le triangle est rectangle'
+    : 'Pas d\u2019égalité : le triangle n\u2019est pas rectangle';
+
+  var x = (r*r + q*q - p*p) / (2*r);
+  var y = Math.sqrt(Math.max(q*q - x*x, 0.01));
+  var ex = {
+    pts:[{x:0,y:0},{x:r,y:0},{x:x,y:y}], noms:['A','B','C'], droitEn:null,
+    cotes:[
+      { de:0, a:1, texte:nb(r)+' cm' },
+      { de:0, a:2, texte:nb(q)+' cm' },
+      { de:1, a:2, texte:nb(p)+' cm' }
+    ]
+  };
+  document.getElementById('re-svg').innerHTML = dessin(ex, 320, 240, {});
+}
+
+/* ═══ MODE DÉFI ═════════════════════════════════════════════════════════ */
+var famille = 'mix';
+var courante = null, repondu = false, bons = 0, total = 0, choixRec = null;
+
+function setFam(f, btn){
+  famille = f;
+  var tabs = document.querySelectorAll('#mode-defi .shape-tab'), i;
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+  nextDefi();
+}
+
+function nextDefi(){
+  var fam = (famille === 'mix') ? pick(['hyp','cot','rec']) : famille;
+  courante = generateurs[fam]();
+  repondu = false;
+  choixRec = null;
+
+  var fb = document.getElementById('defi-feedback');
+  fb.className = 'feedback-box';
+  fb.innerHTML = '';
+  document.getElementById('btn-next').style.display = 'none';
+
+  document.getElementById('defi-svg').innerHTML = dessin(courante, 320, 240, {});
+
+  var cotes = '<strong>' + courante.question + '</strong><br>' + courante.donnees;
+  document.getElementById('defi-cotes').innerHTML = cotes;
+
+  var aide = document.getElementById('defi-aide');
+  if (currentMode === 'defiplus') {
+    aide.style.display = 'none';
+  } else {
+    aide.style.display = 'block';
+    aide.innerHTML = '<b>Rappel :</b> ' + courante.hint;
+  }
+
+  var estRec = (fam === 'rec');
+  document.getElementById('zone-nombre').style.display = estRec ? 'none' : 'flex';
+  document.getElementById('zone-rec').style.display    = estRec ? 'block' : 'none';
+  document.getElementById('defi-tol').textContent = estRec
+    ? 'Réponds par oui ou par non, après avoir comparé les carrés.'
+    : 'Arrondir au centième · tolérance ± 0,05 cm';
+
+  var btns = document.querySelectorAll('.btn-rec'), i;
+  for (i = 0; i < btns.length; i++) {
+    btns[i].className = 'btn-rec';
+  }
+
+  if (!estRec) {
+    document.getElementById('defi-label').textContent = courante.inconnue + ' =';
+    var inp = document.getElementById('defi-input');
+    inp.value = '';
+    inp.focus();
+  }
+  majScore();
+}
+
+function choisirRec(btn){
+  if (repondu) return;
+  var btns = document.querySelectorAll('.btn-rec'), i;
+  for (i = 0; i < btns.length; i++) btns[i].classList.remove('selected');
+  btn.classList.add('selected');
+  choixRec = btn.getAttribute('data-rep');
+}
+
+function checkDefi(){
+  if (repondu || !courante) return;
+  var fb = document.getElementById('defi-feedback');
+  var ok, i, btns;
+
+  if (courante.fam === 'rec') {
+    if (!choixRec) {
+      fb.className = 'feedback-box wrong show';
+      fb.innerHTML = '<strong>Choisis une réponse</strong> avant de vérifier.';
+      return;
+    }
+    ok = (choixRec === courante.reponse);
+    btns = document.querySelectorAll('.btn-rec');
+    for (i = 0; i < btns.length; i++) {
+      btns[i].classList.add('locked');
+      if (btns[i].getAttribute('data-rep') === courante.reponse) btns[i].classList.add('correct');
+      else if (btns[i].classList.contains('selected')) btns[i].classList.add('incorrect');
+    }
+  } else {
+    var brut = document.getElementById('defi-input').value.replace(',', '.');
+    var rep = parseFloat(brut);
+    if (isNaN(rep)) {
+      fb.className = 'feedback-box wrong show';
+      fb.innerHTML = '<strong>Entre une valeur</strong> avant de vérifier.';
+      return;
+    }
+    ok = Math.abs(rep - courante.reponse) <= 0.05;
+  }
+
+  fb.className = 'feedback-box ' + (ok ? 'correct' : 'wrong') + ' show';
+  fb.innerHTML = (ok ? '<strong>Correct !</strong> ' : '<strong>Pas tout à fait.</strong> ')
+               + courante.detail;
+
+  repondu = true;
+  total++;
+  if (ok) { bons++; confettis(); }
+  document.getElementById('btn-next').style.display = 'block';
+  majScore();
+}
+
+function majScore(){
+  document.getElementById('defi-score').textContent = bons + ' / ' + total + ' correct' + (total > 1 ? 's' : '');
+  var pct = total > 0 ? (bons/total*100) : 0;
+  document.getElementById('defi-progress').style.width = pct + '%';
+}
+
+function confettis(){
+  if (document.documentElement.getAttribute('data-motion') === 'off') return;
+  var couleurs = ['#993556','#185FA5','#0F6E56','#854F0B','#534AB7','#3B6D11'];
+  for (var i = 0; i < 26; i++) {
+    (function(k){
+      setTimeout(function(){
+        var c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.round(Math.random()*100) + 'vw';
+        c.style.top = '-12px';
+        c.style.background = couleurs[Math.floor(Math.random()*couleurs.length)];
+        document.body.appendChild(c);
+        setTimeout(function(){ if (c.parentNode) c.parentNode.removeChild(c); }, 2600);
+      }, k*28);
+    })(i);
+  }
+}
+
+document.addEventListener('keydown', function(e){
+  if (document.getElementById('modal-fiche').classList.contains('show')) {
+    if (e.key === 'Escape') closeFiche();
+    return;
+  }
+  if (currentMode === 'explo') return;
+  if (e.key === 'Enter') {
+    if (!repondu) checkDefi();
+    else nextDefi();
+  }
+});
+
+/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
+function famillesCochees(){
+  var out = [], cbs = document.querySelectorAll('#modal-checks input'), i;
+  for (i = 0; i < cbs.length; i++) if (cbs[i].checked) out.push(cbs[i].value);
+  return out;
+}
+function repartir10(fams){
+  var k = fams.length, base = Math.floor(10/k), reste = 10 % k;
+  return fams.map(function(f,i){ return { fam:f, n:base + (i < reste ? 1 : 0) }; });
+}
+function majRepartition(){
+  var sel = famillesCochees();
+  var el = document.getElementById('dist-info');
+  var labels = document.querySelectorAll('#modal-checks label'), i;
+  for (i = 0; i < labels.length; i++) {
+    labels[i].classList.toggle('on', labels[i].querySelector('input').checked);
+  }
+  if (!sel.length) {
+    el.className = 'dist-info warn';
+    el.textContent = '⚠ Sélectionne au moins une famille';
+    document.getElementById('modal-confirm').disabled = true;
+    return;
+  }
+  el.className = 'dist-info ok';
+  el.textContent = '→ ' + repartir10(sel).map(function(d){ return d.n; }).join(' + ') + ' = 10 exercices';
+  document.getElementById('modal-confirm').disabled = false;
+}
+(function brancherCases(){
+  var cbs = document.querySelectorAll('#modal-checks input'), i;
+  for (i = 0; i < cbs.length; i++) cbs[i].addEventListener('change', majRepartition);
+})();
+
+function openFiche(){ document.getElementById('modal-fiche').classList.add('show'); majRepartition(); }
+function closeFiche(){ document.getElementById('modal-fiche').classList.remove('show'); }
+document.getElementById('modal-fiche').addEventListener('click', function(e){
+  if (e.target.id === 'modal-fiche') closeFiche();
+});
+
+function confirmFiche(){
+  var sel = famillesCochees();
+  if (!sel.length) return;
+
+  var plan = repartir10(sel), questions = [], num = 1;
+  plan.forEach(function(d){
+    for (var i = 0; i < d.n; i++) {
+      var ex = generateurs[d.fam]();
+      questions.push({
+        num:num++,
+        nom:famNoms[d.fam],
+        hint:famConsignes[d.fam],
+        svg:dessin(ex, 200, 160, { fs:11, offCote:11, offSom:12, tAngle:10 }),
+        cotes:ex.donnees + ' · ' + ex.question,
+        answerText:ex.reponseTexte
+      });
+    }
+  });
+
+  var isPlus = (currentMode === 'defiplus');
+  var aide = sel.map(function(f){ return famAides[f]; }).join('<br>');
+  var titre = (sel.length === 3)
+    ? 'Théorème de Pythagore'
+    : 'Pythagore — ' + sel.map(function(f){ return famNoms[f]; }).join(', ');
+
+  closeFiche();
+
+  LP.fiche({
+    icon:'\u{1F4D0}',
+    title:titre,
+    subtitle:'3e prépa-métiers · CAP · 2de Bac Pro',
+    modeLabel:isPlus ? 'Défi ⁺' : 'Mode défi',
+    isPlus:isPlus,
+    tolerance:'± 0,05 cm',
+    accent:'#993556',
+    answerLabel:'Réponse :',
+    unit:'',
+    aide:aide,
+    questions:questions
+  });
+}
+
+/* ═══ INITIALISATION ════════════════════════════════════════════════════ */
+calcHyp();
+calcCot();
+calcRec();
+nextDefi();
+</script>
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio collège</a> &nbsp;·&nbsp;
+  Licence MIT · © 2025 Moïse Muller &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
+</footer>
 </body>
 </html>
