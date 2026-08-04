@@ -268,6 +268,14 @@ var PALETTE = ['#378ADD','#1D9E75','#BA7517','#D85A30','#7C5CFA','#D4537E','#63A
 
 function rnd(min, max) { return Math.floor(min + Math.random() * (max - min + 1)); }
 function pickArr(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function pickWeighted(items, weights) {
+  var r = Math.random(), acc = 0;
+  for (var i = 0; i < items.length; i++) {
+    acc += weights[i];
+    if (r <= acc) return items[i];
+  }
+  return items[items.length - 1];
+}
 function shuffleArr(a) {
   a = a.slice();
   for (var i = a.length - 1; i > 0; i--) {
@@ -317,7 +325,10 @@ var CONTINU_THEMES = [
 
 /* ── Génération d'une distribution aléatoire ─────────────────────────── */
 function genDistribution(forceType) {
-  var type = forceType || pickArr(['qualitatif','discret','continu']);
+  // Pondéré : le type continu impose toujours l'histogramme (jamais de
+  // circulaire), on le tire donc un peu moins souvent pour équilibrer les
+  // chances de voir un diagramme circulaire dans les défis.
+  var type = forceType || pickWeighted(['qualitatif','discret','continu'], [0.4, 0.35, 0.25]);
   var nomCaractere, entries, k, th, labs, v, hi;
 
   if (type === 'qualitatif') {
@@ -796,29 +807,45 @@ function attachDefi3Handlers(diagType, missing) {
     svgEl.addEventListener('pointerup', up);
     svgEl.addEventListener('pointercancel', up);
   } else {
-    missing.forEach(function (idx) {
-      var guide = svgEl.querySelector('.lp-guide[data-idx="' + idx + '"]');
-      var bar = svgEl.querySelector('#d3-bar' + idx);
-      var dragging2 = false;
-      function update(evt) {
-        var P = svgPoint(evt);
-        var y = P.y;
-        if (y < geo.marginT) y = geo.marginT;
-        if (y > geo.marginT + geo.plotH) y = geo.marginT + geo.plotH;
-        var frac = 1 - (y - geo.marginT) / geo.plotH;
-        var val = Math.round(frac * geo.maxV);
-        if (val < 0) val = 0;
-        var bh = geo.plotH * (val / geo.maxV);
-        bar.setAttribute('y', (geo.marginT + geo.plotH - bh).toFixed(1));
-        bar.setAttribute('height', bh.toFixed(1));
-        defi3.constructed[idx] = val;
-        document.getElementById('defi3-readout').textContent =
-          'Valeur choisie pour « ' + esc(defi3.dist.data[idx].label) + ' » : ' + val;
+    // Un seul écouteur sur le SVG entier : on retrouve la colonne visée par sa
+    // position en X (pas par l'élément survolé), pour pouvoir aussi bien
+    // AUGMENTER que DIMINUER une barre déjà tracée (sinon le rectangle plein,
+    // par-dessus le pointillé, bloque les clics vers le bas une fois monté).
+    var draggingIdx = null;
+    function findColumn(x) {
+      for (var mi = 0; mi < missing.length; mi++) {
+        var idx = missing[mi], b = geo.bars[idx];
+        if (x >= b.x0 && x <= b.x0 + b.w) return idx;
       }
-      guide.addEventListener('pointerdown', function (evt) { dragging2 = true; svgEl.setPointerCapture(evt.pointerId); update(evt); });
-      svgEl.addEventListener('pointermove', function (evt) { if (dragging2) update(evt); });
-      window.addEventListener('pointerup', function () { dragging2 = false; });
+      return null;
+    }
+    function update(evt, idx) {
+      var P = svgPoint(evt);
+      var y = P.y;
+      if (y < geo.marginT) y = geo.marginT;
+      if (y > geo.marginT + geo.plotH) y = geo.marginT + geo.plotH;
+      var frac = 1 - (y - geo.marginT) / geo.plotH;
+      var val = Math.round(frac * geo.maxV);
+      if (val < 0) val = 0;
+      var bh = geo.plotH * (val / geo.maxV);
+      var bar = svgEl.querySelector('#d3-bar' + idx);
+      bar.setAttribute('y', (geo.marginT + geo.plotH - bh).toFixed(1));
+      bar.setAttribute('height', bh.toFixed(1));
+      defi3.constructed[idx] = val;
+      document.getElementById('defi3-readout').textContent =
+        'Valeur choisie pour « ' + esc(defi3.dist.data[idx].label) + ' » : ' + val;
+    }
+    svgEl.addEventListener('pointerdown', function (evt) {
+      var P = svgPoint(evt);
+      var idx = findColumn(P.x);
+      if (idx == null) return;
+      draggingIdx = idx;
+      svgEl.setPointerCapture(evt.pointerId);
+      update(evt, idx);
     });
+    svgEl.addEventListener('pointermove', function (evt) { if (draggingIdx != null) update(evt, draggingIdx); });
+    svgEl.addEventListener('pointerup', function () { draggingIdx = null; });
+    svgEl.addEventListener('pointercancel', function () { draggingIdx = null; });
   }
 }
 
@@ -1165,32 +1192,39 @@ function setMode(m, btn) {
     var titreDiagramme = titreDiagrammeInput.value.trim() || (typeGraph === "circulaire" ? "Diagramme Circulaire" : (typeGraph === "colonnes" ? "Diagramme en colonnes" : "Histogramme"));
 
     if(typeGraph === "circulaire") {
+      var pieCx = canvas.width/2, pieCy = canvas.height/2 + 10;
       var startAngle = 0;
       data.forEach(function (d,i) {
         var val = d.eff/totalEff;
         var sliceAngle = val * 2 * Math.PI;
 
         ctx.beginPath();
-        ctx.moveTo(canvas.width/4, canvas.height/2);
-        ctx.arc(canvas.width/4, canvas.height/2, 110, startAngle, startAngle + sliceAngle);
+        ctx.moveTo(pieCx, pieCy);
+        ctx.arc(pieCx, pieCy, 110, startAngle, startAngle + sliceAngle);
         ctx.closePath();
         ctx.fillStyle = palette[i % palette.length];
         ctx.fill();
 
         var midAngle = startAngle + sliceAngle/2;
-        var labelX = canvas.width/4 + Math.cos(midAngle) * 130;
-        var labelY = canvas.height/2 + Math.sin(midAngle) * 130;
+        var labelX = pieCx + Math.cos(midAngle) * 130;
+        var labelY = pieCy + Math.sin(midAngle) * 130;
         ctx.fillStyle = "#2d3748";
         ctx.font = "14px Segoe UI";
-        ctx.textAlign = (midAngle > Math.PI/2 && midAngle < 3*Math.PI/2) ? "right" : "left";
-        ctx.fillText(d.label + " (" + (val*100).toFixed(1) + "%)", labelX, labelY);
+        var alignRight = (midAngle > Math.PI/2 && midAngle < 3*Math.PI/2);
+        ctx.textAlign = alignRight ? "right" : "left";
+        var labelText = d.label + " (" + (val*100).toFixed(1) + "%)";
+        // Sécurité : on ne laisse jamais une étiquette déborder du canevas.
+        var labelW = ctx.measureText(labelText).width;
+        if (alignRight) { if (labelX - labelW < 6) labelX = labelW + 6; }
+        else { if (labelX + labelW > canvas.width - 6) labelX = canvas.width - 6 - labelW; }
+        ctx.fillText(labelText, labelX, labelY);
         startAngle += sliceAngle;
       });
 
       ctx.fillStyle = "#764ba2";
       ctx.font = "20px Segoe UI";
       ctx.textAlign = "center";
-      ctx.fillText(titreDiagramme, canvas.width/4, 35);
+      ctx.fillText(titreDiagramme, pieCx, 35);
 
     } else {
       var margin = 60;
