@@ -924,7 +924,7 @@ function calcAng(){
 
 /* ═══ MODE DÉFI — parcours guidé ════════════════════════════════════════ */
 var famille = 'mix';
-var courante = null, fini = false, bons = 0, total = 0;
+var courante = null, fini = false, bons = 0, total = 0, instantFin = 0;
 
 function setFam(f, btn){
   famille = f;
@@ -1192,16 +1192,36 @@ function saisie(st, attendu, tol, unite, apres, sansCloture){
     if (!sansCloture) clore(st, ok);
     apres(ok);
   };
-  inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') btn.click(); });
+  inp.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();   /* sinon le même appui passerait à l'exercice suivant */
+      btn.click();
+    }
+  });
   setTimeout(function(){ inp.focus(); }, 60);
 }
 
 function terminer(ok, st){
   if (fini) return;
   fini = true;
+  instantFin = Date.now();
   total++;
   if (ok) bons++;
-  if (!ok) contenu(st).appendChild(elem('div', 'reveal', courante.reponseTexte));
+  if (!ok) contenu(st).appendChild(elem('div', 'reveal',
+    courante.question + ' → ' + courante.reponseTexte));
+
+  /* La figure se complète : le « ? » est remplacé par la valeur trouvée. */
+  var vue = {
+    pts:courante.pts, noms:courante.noms, ref:courante.ref, droit:courante.droit,
+    angleTexte:(courante.fam === 'angle') ? courante.reponseTexte : courante.angleTexte,
+    cotes:courante.cotes.map(function(c){
+      return { de:c.de, a:c.a, rel:c.rel,
+               texte:(c.texte === '?' ? courante.reponseTexte : c.texte) };
+    })
+  };
+  document.getElementById('defi-svg').innerHTML = dessin(vue, 320, 250, {});
+
   var fb = document.getElementById('defi-feedback');
   fb.className = 'feedback-box ' + (ok ? 'correct' : 'wrong') + ' show';
   fb.innerHTML = (ok ? '<strong>Correct !</strong> ' : '<strong>Pas tout à fait.</strong> ') + courante.detail;
@@ -1220,7 +1240,11 @@ document.addEventListener('keydown', function(e){
     return;
   }
   if (currentMode === 'explo') return;
-  if (e.key === 'Enter' && fini) nextDefi();
+  if (e.key !== 'Enter' || !fini) return;
+  if (e.target && e.target.tagName === 'INPUT') return;
+  /* on laisse le temps de lire la correction avant d'enchaîner */
+  if (Date.now() - instantFin < 1200) return;
+  nextDefi();
 });
 
 /* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
