@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnostic — Outils LP</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--coral); --accent-bg: var(--coral-bg); }
+
+  .check {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 4px 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    margin-bottom: 8px;
+  }
+  .check .mark { font-size: var(--fs-lg); line-height: 1; grid-row: 1 / 3; }
+  .check .nom  { font-size: var(--fs-sm); font-weight: 700; }
+  .check .txt  { font-size: var(--fs-xs); color: var(--text2); line-height: 1.5; }
+  .check .txt code {
+    font-family: var(--font-mono);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: .95em;
+    word-break: break-all;
+  }
+  .check.ko { border-color: var(--red);   background: var(--red-bg);   }
+  .check.warn { border-color: var(--amber); background: var(--amber-bg); }
+
+  .grp { margin-bottom: var(--gap); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <circle cx="18" cy="18" r="11" stroke="var(--coral)" stroke-width="3"/>
+      <line x1="26" y1="26" x2="34" y2="34" stroke="var(--coral)" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="18" cy="18" r="4" fill="var(--coral)" class="lp-beat"/>
+    </svg></div>
+  <div>
+    <h1>Diagnostic du site</h1>
+    <p>Vérifie les fichiers, le compteur et l'application installable</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="grp">
+    <p class="section-label">1 · Scripts partagés</p>
+    <div id="g1"></div>
+  </div>
+
+  <div class="grp">
+    <p class="section-label">2 · Fichiers attendus sur le serveur</p>
+    <div id="g2"></div>
+  </div>
+
+  <div class="grp">
+    <p class="section-label">3 · Compteur de visites</p>
+    <div id="g3"></div>
+  </div>
+
+  <div class="grp">
+    <p class="section-label">4 · Application installable</p>
+    <div id="g4"></div>
+    <div class="actions">
+      <button class="btn-rnd" onclick="forceUpdate()">🔄 Forcer la mise à jour</button>
+      <button class="btn-rnd" onclick="wipe()">🧹 Désinstaller le service worker et vider les caches</button>
+    </div>
+    <p class="pt-note" style="font-size:var(--fs-xs);color:var(--text3);margin-top:10px;line-height:1.5;">
+      Le bouton de nettoyage est le geste à connaître pendant les essais : un service
+      worker qui s'accroche est la première cause des « pourtant j'ai mis à jour ».
+      Il ne supprime rien sur le serveur, seulement ce que ce navigateur a gardé.
+    </p>
+  </div>
+
+</div>
+
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp; Page de diagnostic
+</footer>
+
+<script>
+// Cette page ne dépend PAS de lp-ui.js pour fonctionner : c'est justement
+// lui qu'elle est chargée d'examiner.
+
+function ligne(cible, etat, nom, txt){
+  var d = document.createElement('div');
+  d.className = 'check' + (etat === 'ko' ? ' ko' : etat === 'warn' ? ' warn' : '');
+  d.innerHTML = '<span class="mark">' +
+    (etat === 'ok' ? '\u2705' : etat === 'warn' ? '\u26A0\uFE0F' : etat === 'ko' ? '\u274C' : '\u23F3') +
+    '</span><span class="nom">' + nom + '</span><span class="txt">' + txt + '</span>';
+  document.getElementById(cible).appendChild(d);
+  return d;
+}
+
+// ── 1. lp-ui.js s'exécute-t-il ? ────────────────────────────────────────────
+if (window.LP && window.LP.diag) {
+  ligne('g1', 'ok', 'lp-ui.js s\'exécute',
+    'Version <code>' + window.LP.diag.version + '</code>. ' +
+    'Code compteur réglé : <code>' + (window.LP.diag.gcCode || '(vide)') + '</code>');
+  if (window.LP.diag.erreurs.length) {
+    ligne('g1', 'warn', 'Modules en échec',
+      window.LP.diag.erreurs.join('<br>') +
+      '<br>La barre d\'outils fonctionne quand même : chaque module est cloisonné.');
+  }
+} else if (window.LP) {
+  ligne('g1', 'warn', 'lp-ui.js est une ancienne version',
+    'Le fichier s\'exécute mais ne contient pas le diagnostic. Remplace-le par la version durcie.');
+} else {
+  ligne('g1', 'ko', 'lp-ui.js NE s\'exécute PAS',
+    'C\'est la cause de la barre d\'outils disparue. Le test ci-dessous dit pourquoi.');
+}
+
+// ── Analyse du fichier réellement servi ────────────────────────────────────
+fetch('/assets/lp-ui.js', { cache: 'reload' })
+  .then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.text();
+  })
+  .then(function (src) {
+    // a) apostrophes et guillemets typographiques : la panne classique
+    var lignes = src.split('\n'), fautives = [];
+    for (var i = 0; i < lignes.length; i++) {
+      if (/[\u2018\u2019\u201C\u201D]/.test(lignes[i])) {
+        fautives.push('ligne ' + (i + 1) + ' : <code>' + lignes[i].trim().slice(0, 90) + '</code>');
+      }
+    }
+    if (fautives.length) {
+      ligne('g1', 'ko', 'Apostrophes typographiques détectées',
+        'Remplace \u2019 par l\'apostrophe droite \' :<br>' + fautives.join('<br>'));
+    }
+
+    // b) compilation sans exécution : révèle l'erreur de syntaxe exacte
+    try {
+      new Function(src);
+      ligne('g1', 'ok', 'Le fichier servi est syntaxiquement correct',
+        'Le navigateur sait le lire de bout en bout.');
+    } catch (e) {
+      ligne('g1', 'ko', 'Erreur de syntaxe dans le fichier servi',
+        '<code>' + e.message + '</code><br>Tant qu\'elle est là, rien du fichier ne tourne : ' +
+        'ni la barre d\'affichage, ni le compteur.');
+    }
+
+    // c) la ligne de réglage
+    var m = src.match(/var\s+GOATCOUNTER\s*=\s*(.*)/);
+    if (m) ligne('g1', 'ok', 'Ligne de réglage trouvée', '<code>var GOATCOUNTER = ' + m[1] + '</code>');
+  })
+  .catch(function (e) {
+    ligne('g1', 'ko', 'Impossible de lire /assets/lp-ui.js',
+      '<code>' + e.message + '</code> — le fichier est absent ou mal placé. ' +
+      'Il doit être exactement à <code>/assets/lp-ui.js</code>.');
+  });
+
+// ── 2. présence des fichiers ────────────────────────────────────────────────
+var FICHIERS = [
+  ['/assets/lp-ui.css',  'obligatoire', 'Feuille de style commune'],
+  ['/assets/lp-ui.js',   'obligatoire', 'Barre d\'affichage, compteur, manifeste'],
+  ['/assets/lp-fiche.js','obligatoire', 'Fiches imprimables des modes défi'],
+  ['/manifest.webmanifest', 'pwa', 'Identité de l\'application installable'],
+  ['/sw.js',             'pwa', 'Fonctionnement hors ligne'],
+  ['/offline.html',      'pwa', 'Page affichée sans connexion'],
+  ['/assets/icons/icon-192.png', 'pwa', 'Icône de l\'application'],
+  ['/assets/icons/apple-touch-icon.png', 'pwa', 'Icône iPhone / iPad']
+];
+
+FICHIERS.forEach(function (f) {
+  fetch(f[0], { cache: 'reload' }).then(function (r) {
+    if (r.ok) {
+      ligne('g2', 'ok', f[0], f[2]);
+    } else {
+      ligne('g2', f[1] === 'obligatoire' ? 'ko' : 'warn', f[0],
+        'Réponse <code>HTTP ' + r.status + '</code> — fichier absent. ' + f[2] +
+        (f[1] === 'obligatoire' ? '<br><strong>Celui-là est indispensable.</strong>' : ''));
+    }
+  }).catch(function () {
+    ligne('g2', 'ko', f[0], 'Requête impossible (hors ligne ?)');
+  });
+});
+
+// ── 3. compteur ─────────────────────────────────────────────────────────────
+(function () {
+  var code = (window.LP && window.LP.conf && window.LP.conf.gcCode) || '';
+  if (!code) {
+    ligne('g3', 'warn', 'Aucun code GoatCounter réglé',
+      'Le compteur est volontairement inactif : rien n\'est envoyé à l\'extérieur. ' +
+      'Renseigne <code>var GOATCOUNTER = \'ton-code\';</code> en haut de lp-ui.js.');
+    return;
+  }
+  // On teste via le PROXY (/gc/…), exactement comme le fait le site.
+  var base = '/gc/';
+  [['TOTAL.json', 'Total du site'],
+   [encodeURIComponent(location.pathname) + '.json', 'Cette page']
+  ].forEach(function (t) {
+    fetch(base + t[0]).then(function (r) {
+      // Le proxy renvoie du HTML (la page d'accueil) si la règle _redirects
+      // manque : on le repère au type de contenu.
+      var ct = r.headers.get('content-type') || '';
+      if (r.ok && ct.indexOf('json') === -1) {
+        ligne('g3', 'ko', t[1],
+          'Le proxy <code>/gc/</code> ne renvoie pas du JSON mais <code>' + (ct || '?') +
+          '</code>. La règle manque dans <code>_redirects</code> à la racine, ' +
+          'ou ce fichier n\'est pas déployé.');
+        return;
+      }
+      if (r.ok) return r.json().then(function (j) {
+        ligne('g3', 'ok', t[1], 'Réponse : <code>' + j.count + '</code> vue(s)');
+      });
+      if (r.status === 404) {
+        ligne('g3', 'warn', t[1],
+          '<code>404</code> — soit la page n\'a encore jamais été vue (normal au début), ' +
+          'soit l\'option <strong>Allow adding visitor counts on your website</strong> ' +
+          'n\'est pas cochée dans les réglages GoatCounter.');
+        return;
+      }
+      ligne('g3', 'ko', t[1], 'Réponse <code>HTTP ' + r.status + '</code> via le proxy.');
+    }).catch(function (e) {
+      ligne('g3', 'ko', t[1],
+        'Requête <code>/gc/</code> impossible : <code>' + e.message + '</code>. ' +
+        'Le fichier <code>_redirects</code> est-il bien déployé ?');
+    });
+  });
+
+  try {
+    if (localStorage.getItem('skipgc') === 't') {
+      ligne('g3', 'warn', 'Ce navigateur est exclu du comptage',
+        'Le drapeau <code>skipgc</code> est posé : tes visites ne sont pas comptées. ' +
+        'C\'est voulu si tu as ouvert une page avec <code>?skipgc</code>.');
+    }
+  } catch (e) {}
+})();
+
+// ── 4. service worker ───────────────────────────────────────────────────────
+if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+  ligne('g4', 'warn', 'Pas en HTTPS',
+    'Un service worker n\'est autorisé qu\'en HTTPS. En local, ouvre le site via ' +
+    '<code>localhost</code> et non par double-clic sur le fichier.');
+} else if (!('serviceWorker' in navigator)) {
+  ligne('g4', 'warn', 'Navigateur sans service worker', 'Le site fonctionne, mais pas hors ligne.');
+} else {
+  navigator.serviceWorker.getRegistrations().then(function (regs) {
+    if (!regs.length) {
+      ligne('g4', 'warn', 'Aucun service worker enregistré',
+        'Recharge la page une fois. Si rien ne vient, vérifie que <code>/sw.js</code> ' +
+        'est bien à la racine du site (section 2 ci-dessus).');
+      return;
+    }
+    regs.forEach(function (reg) {
+      ligne('g4', 'ok', 'Service worker actif',
+        'Portée <code>' + reg.scope + '</code>' +
+        (navigator.serviceWorker.controller ? '<br>Il pilote bien cette page.'
+                                            : '<br>Il ne pilote pas encore cette page : recharge une fois.'));
+    });
+  });
+  caches.keys().then(function (k) {
+    ligne('g4', k.length ? 'ok' : 'warn', 'Caches hors ligne',
+      k.length ? k.join(', ') : 'Aucun cache pour l\'instant.');
+  }).catch(function () {});
+}
+
+function forceUpdate(){
+  if (!navigator.serviceWorker) return;
+  navigator.serviceWorker.getRegistrations().then(function (regs) {
+    Promise.all(regs.map(function (r) { return r.update(); })).then(function () {
+      alert('Mise à jour demandée. Recharge la page.');
+    });
+  });
+}
+
+function wipe(){
+  if (!confirm('Désinstaller le service worker et vider les caches de ce navigateur ?')) return;
+  var jobs = [];
+  if (navigator.serviceWorker) {
+    jobs.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+      return Promise.all(regs.map(function (r) { return r.unregister(); }));
+    }));
+  }
+  if (window.caches) {
+    jobs.push(caches.keys().then(function (k) {
+      return Promise.all(k.map(function (n) { return caches.delete(n); }));
+    }));
+  }
+  Promise.all(jobs).then(function () {
+    alert('Nettoyé. La page va se recharger depuis le serveur.');
+    location.reload(true);
+  });
+}
+</script>
+</body>
+</html>
