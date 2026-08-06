@@ -1,0 +1,1415 @@
+<!--
+Thalès — calcul d'une longueur et réciproque
+Copyright (c) 2026 Moise Muller <lessavoirfairepartager@gmail.com>
+Créé le 6 août 2026 pour outilslp.netlify.app
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thalès — calcul d'une longueur et réciproque</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--coral); --accent-bg: var(--coral-bg); }
+
+  .field select {
+    width: 100%; padding: 9px 12px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: var(--fs-sm); font-weight: 600;
+    background: var(--surface2); color: var(--text);
+  }
+
+  /* Deux résultats côte à côte dans l'explorateur */
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 520px) { .duo { grid-template-columns: 1fr; } }
+  .duo .result-block { margin: 0; }
+  .duo .result-value { font-size: var(--fs-xl); }
+
+  /* Verdict de la réciproque */
+  .verdict {
+    border-radius: var(--radius); padding: 12px 14px;
+    font-size: var(--fs-md); font-weight: 700; text-align: center;
+  }
+  .verdict.oui { background: var(--teal-bg); color: var(--teal); border: 2px solid var(--teal); }
+  .verdict.non { background: var(--red-bg);  color: var(--red);  border: 2px solid var(--red); }
+  .verdict.pas { background: var(--surface2); color: var(--text2); border: 2px dashed var(--border2); }
+
+  .compare {
+    display: flex; flex-direction: column; gap: 6px;
+    font-size: var(--fs-sm); color: var(--text2);
+  }
+  .compare .l { display: flex; justify-content: space-between; gap: 10px; }
+  .compare .l b { color: var(--text); }
+
+  /* Boutons oui / non du défi */
+  .choix-rec { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  @media (max-width: 520px) { .choix-rec { grid-template-columns: 1fr; } }
+  .btn-rec {
+    padding: 15px; border: 2px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); color: var(--text); cursor: pointer;
+    font-family: inherit; font-size: var(--fs-md); font-weight: 600;
+    transition: border-color .15s, background-color .15s;
+  }
+  .btn-rec:hover:not(.locked)  { border-color: var(--accent); background: var(--accent-bg); }
+  .btn-rec.selected  { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+  .btn-rec.correct   { border-color: var(--teal); background: var(--teal-bg); color: var(--teal); }
+  .btn-rec.incorrect { border-color: var(--red);  background: var(--red-bg);  color: var(--red); }
+  .btn-rec.locked    { cursor: default; }
+
+  .defi-aide {
+    background: var(--amber-bg); border-left: 4px solid var(--amber);
+    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 1rem;
+    font-size: var(--fs-sm); color: var(--text2); line-height: 1.65;
+  }
+  .defi-aide b { color: var(--amber); }
+
+  /* Modale de fiche */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(20,19,15,.55);
+    display: none; align-items: center; justify-content: center; padding: 1rem; z-index: 200;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.5rem;
+    max-width: 540px; width: 100%; box-shadow: 0 10px 34px rgba(0,0,0,.3);
+  }
+  .modal h2 { font-size: var(--fs-lg); margin-bottom: 8px; }
+  .modal p  { font-size: var(--fs-xs); color: var(--text2); margin-bottom: 14px; line-height: 1.6; }
+  .modal-checks { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .modal-checks label {
+    display: flex; align-items: center; gap: 10px; padding: 11px 13px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    cursor: pointer; font-size: var(--fs-sm); color: var(--text2);
+  }
+  .modal-checks label.on {
+    border-color: var(--accent); background: var(--accent-bg);
+    color: var(--accent); font-weight: 700;
+  }
+  .modal-checks input { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .dist-info {
+    padding: 10px 12px; border-radius: var(--radius);
+    font-size: var(--fs-xs); font-weight: 700; text-align: center; margin-bottom: 16px;
+  }
+  .dist-info.ok   { background: var(--teal-bg);  color: var(--teal); }
+  .dist-info.warn { background: var(--amber-bg); color: var(--amber); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  .modal-actions button {
+    padding: 11px 20px; border-radius: var(--radius); font-family: inherit;
+    font-size: var(--fs-sm); font-weight: 700; cursor: pointer; border: 1px solid var(--border);
+  }
+  .btn-modal-ok { background: var(--accent); color: #fff; border-color: var(--accent); }
+  html[data-theme="dark"] .btn-modal-ok { color: #14130f; }
+  .btn-modal-no { background: var(--surface2); color: var(--text2); }
+  .btn-modal-ok:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* Confettis discrets, désactivés si les animations le sont */
+  .confetti {
+    position: fixed; width: 9px; height: 9px; z-index: 300;
+    pointer-events: none; border-radius: 1px;
+    animation: tombe 2.4s linear forwards;
+  }
+  @keyframes tombe {
+    to { transform: translateY(105vh) rotate(540deg); opacity: 0; }
+  }
+  html[data-motion="off"] .confetti { display: none; }
+
+  @media print { .modal-bg, .confetti, .btn-check, .btn-next, .shape-tabs { display: none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <path d="M20 7 L33 32 L7 32 Z" stroke="var(--coral)" stroke-width="3"
+            stroke-linejoin="round" class="lp-draw" style="--dash:88"/>
+      <path d="M13.5 20 L26.5 20" stroke="var(--coral)" stroke-width="2.6" class="lp-blink"/>
+    </svg></div>
+  <div>
+    <h1>Théorème de Thalès</h1>
+    <p>Calcul d'une longueur · réciproque — 3<sup>e</sup> prépa-métiers · CAP · 2<sup>de</sup> Bac Pro</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('explo',this)">Explorateur</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi ⁺</button>
+  </div>
+
+  <!-- ═══════════════ EXPLORATEUR ═══════════════ -->
+  <div id="mode-explo">
+
+    <div class="shape-tabs-row">
+      <div class="shape-tabs">
+        <button class="shape-tab active" data-color="coral" onclick="setShape('tri',this)"><span class="dot" style="background:var(--coral)"></span>Configuration triangle</button>
+        <button class="shape-tab"        data-color="blue"  onclick="setShape('pap',this)"><span class="dot" style="background:var(--blue)"></span>Configuration papillon</button>
+        <button class="shape-tab"        data-color="green" onclick="setShape('rec',this)"><span class="dot" style="background:var(--green)"></span>Réciproque</button>
+      </div>
+      <button class="btn-rnd" onclick="randomizeCurrent()">🎲 Nouvelles valeurs</button>
+    </div>
+
+    <!-- CONFIGURATION TRIANGLE -->
+    <div id="panel-tri" class="panel active">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--coral-bg);color:var(--coral)">M sur [AB], N sur [AC], (MN) // (BC)</span>
+        <svg id="tr-svg" viewBox="0 0 320 250" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">Le petit triangle AMN est une réduction du grand triangle ABC. Toutes ses longueurs sont multipliées par le même nombre.</div>
+      </div>
+      <div class="controls-card">
+        <div class="section-label">Le grand triangle ABC</div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="tr-ab">AB</label>
+            <div class="field-row"><input type="number" id="tr-ab" value="12" min="2" max="40" step="0.5" oninput="calcTri()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="tr-ac">AC</label>
+            <div class="field-row"><input type="number" id="tr-ac" value="9" min="2" max="40" step="0.5" oninput="calcTri()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="tr-bc">BC</label>
+            <div class="field-row"><input type="number" id="tr-bc" value="15" min="2" max="60" step="0.5" oninput="calcTri()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="tr-am">AM (sur [AB])</label>
+            <div class="field-row"><input type="number" id="tr-am" value="8" min="0.5" max="40" step="0.5" oninput="calcTri()"><span class="unit">cm</span></div>
+          </div>
+        </div>
+        <div class="formula-box">
+          <code>AM / AB = AN / AC = MN / BC</code>
+          <div class="formula-detail" id="tr-detail"></div>
+        </div>
+        <div class="duo">
+          <div class="result-block">
+            <div class="result-label">AN</div>
+            <div class="result-value" id="tr-an">—<span class="result-unit">cm</span></div>
+          </div>
+          <div class="result-block">
+            <div class="result-label">MN</div>
+            <div class="result-value" id="tr-mn">—<span class="result-unit">cm</span></div>
+          </div>
+        </div>
+        <div class="result-sub" id="tr-sub" style="margin-bottom:1rem"></div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> mélanger le petit et le grand triangle dans le quotient. Le repère : AM est plus court que AB, donc AN doit être plus court que AC et MN plus court que BC.</div>
+      </div>
+    </div>
+
+    <!-- CONFIGURATION PAPILLON -->
+    <div id="panel-pap" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--blue-bg);color:var(--blue)">A entre B et M, A entre C et N, (MN) // (BC)</span>
+        <svg id="pa-svg" viewBox="0 0 320 250" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">Les deux triangles se font face de part et d'autre du point de croisement A. Les quotients sont les mêmes que dans la configuration triangle.</div>
+      </div>
+      <div class="controls-card">
+        <div class="section-label">Le triangle ABC</div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="pa-ab">AB</label>
+            <div class="field-row"><input type="number" id="pa-ab" value="6" min="2" max="40" step="0.5" oninput="calcPap()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="pa-ac">AC</label>
+            <div class="field-row"><input type="number" id="pa-ac" value="8" min="2" max="40" step="0.5" oninput="calcPap()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="pa-bc">BC</label>
+            <div class="field-row"><input type="number" id="pa-bc" value="10" min="2" max="60" step="0.5" oninput="calcPap()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="pa-am">AM (de l'autre côté)</label>
+            <div class="field-row"><input type="number" id="pa-am" value="9" min="0.5" max="40" step="0.5" oninput="calcPap()"><span class="unit">cm</span></div>
+          </div>
+        </div>
+        <div class="formula-box">
+          <code>AM / AB = AN / AC = MN / BC</code>
+          <div class="formula-detail" id="pa-detail"></div>
+        </div>
+        <div class="duo">
+          <div class="result-block">
+            <div class="result-label">AN</div>
+            <div class="result-value" id="pa-an">—<span class="result-unit">cm</span></div>
+          </div>
+          <div class="result-block">
+            <div class="result-label">MN</div>
+            <div class="result-value" id="pa-mn">—<span class="result-unit">cm</span></div>
+          </div>
+        </div>
+        <div class="result-sub" id="pa-sub" style="margin-bottom:1rem"></div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> croire que le triangle du haut est forcément le plus petit. Ici AM peut dépasser AB : le petit triangle devient alors le grand. Seuls les quotients décident.</div>
+      </div>
+    </div>
+
+    <!-- RÉCIPROQUE -->
+    <div id="panel-rec" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--green-bg);color:var(--green)">A, M, B alignés · A, N, C alignés</span>
+        <svg id="re-svg" viewBox="0 0 320 250" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">La figure est tracée à l'échelle : à l'œil, deux droites presque parallèles sont indiscernables de deux droites parallèles. Seul le calcul tranche.</div>
+      </div>
+      <div class="controls-card">
+        <div class="section-label">Les quatre longueurs</div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="re-am">AM</label>
+            <div class="field-row"><input type="number" id="re-am" value="4" min="0.5" max="40" step="0.5" oninput="calcRec()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="re-ab">AB</label>
+            <div class="field-row"><input type="number" id="re-ab" value="6" min="1" max="40" step="0.5" oninput="calcRec()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="re-an">AN</label>
+            <div class="field-row"><input type="number" id="re-an" value="6" min="0.5" max="40" step="0.5" oninput="calcRec()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="re-ac">AC</label>
+            <div class="field-row"><input type="number" id="re-ac" value="9" min="1" max="40" step="0.5" oninput="calcRec()"><span class="unit">cm</span></div>
+          </div>
+        </div>
+        <div class="formula-box">
+          <code id="re-code">—</code>
+          <div class="formula-detail" id="re-detail"></div>
+        </div>
+        <div class="compare" id="re-compare"></div>
+        <div class="verdict pas" id="re-verdict">—</div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> comparer AM à AN au lieu de comparer les quotients. Ce sont les rapports AM/AB et AN/AC qui doivent être égaux, pas les longueurs prises une à une.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ DÉFI ═══════════════ -->
+  <div id="mode-defi">
+    <div class="defi-card">
+      <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI ⁺ — propriété masquée</div>
+      <div class="defi-header">
+        <div class="defi-title" id="defi-mode-title">Mode défi — avec aide</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
+
+      <div class="shape-tabs" style="margin-bottom:1.25rem">
+        <button class="shape-tab active" data-color="purple" onclick="setFam('mix',this)"><span class="dot" style="background:var(--purple)"></span>Mélange</button>
+        <button class="shape-tab" data-color="coral" onclick="setFam('tri',this)"><span class="dot" style="background:var(--coral)"></span>Triangle</button>
+        <button class="shape-tab" data-color="blue"  onclick="setFam('pap',this)"><span class="dot" style="background:var(--blue)"></span>Papillon</button>
+        <button class="shape-tab" data-color="green" onclick="setFam('rec',this)"><span class="dot" style="background:var(--green)"></span>Réciproque</button>
+      </div>
+
+      <div class="defi-aide" id="defi-aide"></div>
+
+      <div class="defi-shape-display">
+        <svg id="defi-svg" viewBox="0 0 320 250" xmlns="http://www.w3.org/2000/svg" style="max-width:300px;width:100%;"></svg>
+        <div class="defi-cotes" id="defi-cotes"></div>
+      </div>
+
+      <div class="defi-input-row" id="zone-nombre">
+        <label id="defi-label">? =</label>
+        <input type="number" id="defi-input" placeholder="?" step="0.01">
+        <span class="unit">cm</span>
+      </div>
+      <div id="zone-rec" style="display:none">
+        <div class="choix-rec">
+          <button class="btn-rec" data-rep="oui" onclick="choisirRec(this)">Oui, elles sont parallèles</button>
+          <button class="btn-rec" data-rep="non" onclick="choisirRec(this)">Non, elles ne le sont pas</button>
+        </div>
+      </div>
+
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol">Arrondir au centième · tolérance ± 0,05 cm</div>
+
+      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+      <div class="feedback-box" id="defi-feedback"></div>
+      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Question suivante →</button>
+
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="openFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modale de génération de fiche -->
+<div class="modal-bg" id="modal-fiche">
+  <div class="modal">
+    <h2>📄 Générer une fiche d'exercices</h2>
+    <p>Choisis les familles de questions à inclure. Les 10 exercices seront répartis entre les familles sélectionnées.</p>
+    <div class="modal-checks" id="modal-checks">
+      <label class="on"><input type="checkbox" value="tri" checked> Configuration triangle</label>
+      <label class="on"><input type="checkbox" value="pap" checked> Configuration papillon</label>
+      <label class="on"><input type="checkbox" value="rec" checked> Réciproque : les droites sont-elles parallèles ?</label>
+    </div>
+    <div class="dist-info ok" id="dist-info">→ 4 + 3 + 3 = 10 exercices</div>
+    <div class="modal-actions">
+      <button class="btn-modal-no" onclick="closeFiche()">Annuler</button>
+      <button class="btn-modal-ok" id="modal-confirm" onclick="confirmFiche()">Générer la fiche</button>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/lp-fiche.js"></script>
+<script>
+/* ═══ UTILITAIRES ═══════════════════════════════════════════════════════ */
+var M = '\u2212';                       /* vrai signe moins */
+var LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ'.split('');   /* ni I ni O */
+
+function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function shuffle(a){
+  var r = a.slice(), i, j, t;
+  for (i = r.length-1; i > 0; i--) { j = Math.floor(Math.random()*(i+1)); t = r[i]; r[i] = r[j]; r[j] = t; }
+  return r;
+}
+function val(id){ var n = parseFloat(document.getElementById(id).value.replace(',','.')); return isNaN(n) ? 0 : n; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* Écriture française : virgule décimale, 2 décimales au plus */
+function nb(x){
+  var r = Math.round(x*100)/100;
+  /* deux décimales au plus, sans zéro inutile : 6 · 5,5 · 4,67 */
+  var s = r.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  return s.replace('.', ',');
+}
+function nb2(x){ return (Math.round(x*100)/100).toFixed(2).replace('.', ','); }
+function entier(x){ return Math.abs(x - Math.round(x)) < 1e-9; }
+/* La valeur affichée par nb() est-elle la valeur exacte, ou un arrondi ? */
+function exact2(x){ return Math.abs(x - Math.round(x*100)/100) < 1e-9; }
+function eq(x){ return exact2(x) ? '= ' : '≈ '; }
+/* « = 6 cm » si la valeur tombe juste, « ≈ 4,67 cm » sinon */
+function approx(x){ return eq(x) + nb(x) + ' cm'; }
+
+/* ═══ GÉOMÉTRIE DE BASE ═════════════════════════════════════════════════ */
+function cles(o){ var k = [], n; for (n in o) if (Object.prototype.hasOwnProperty.call(o,n)) k.push(n); return k; }
+
+function unitaire(d){
+  var n = Math.sqrt(d.x*d.x + d.y*d.y) || 1;
+  return { x:d.x/n, y:d.y/n };
+}
+
+/* Rotation du nuage de points, pour que deux figures ne se ressemblent pas */
+function tourner(pts, ang){
+  var c = Math.cos(ang), s = Math.sin(ang), out = {}, k = cles(pts), i, p;
+  for (i = 0; i < k.length; i++) {
+    p = pts[k[i]];
+    out[k[i]] = { x:p.x*c - p.y*s, y:p.x*s + p.y*c };
+  }
+  return out;
+}
+
+/* Met les points à l'échelle du cadre, avec une marge propre à chaque côté.
+   L'axe vertical du SVG est inversé : dy se mesure depuis le bas. */
+function ajuster(pts, W, H, m){
+  var k = cles(pts), xs = [], ys = [], i, out = {};
+  for (i = 0; i < k.length; i++) { xs.push(pts[k[i]].x); ys.push(pts[k[i]].y); }
+  var minx = Math.min.apply(null, xs), miny = Math.min.apply(null, ys);
+  var bw = (Math.max.apply(null, xs) - minx) || 1;
+  var bh = (Math.max.apply(null, ys) - miny) || 1;
+  var utileW = Math.max(W - m.l - m.r, 20);
+  var utileH = Math.max(H - m.t - m.b, 20);
+  var s  = Math.min(utileW/bw, utileH/bh);
+  var dx = m.l + (utileW - bw*s)/2;
+  var dy = m.b + (utileH - bh*s)/2;
+  for (i = 0; i < k.length; i++) {
+    out[k[i]] = { x:(pts[k[i]].x - minx)*s + dx, y:H - ((pts[k[i]].y - miny)*s + dy) };
+  }
+  return out;
+}
+
+/* Normale au segment [de,a], dirigée à l'opposé du point « fuir » */
+function perpFuir(P, de, a, fuir){
+  var s = unitaire({ x:P[a].x - P[de].x, y:P[a].y - P[de].y });
+  var n = { x:-s.y, y:s.x };
+  var mid = { x:(P[de].x + P[a].x)/2, y:(P[de].y + P[a].y)/2 };
+  var v = { x:mid.x - P[fuir].x, y:mid.y - P[fuir].y };
+  if (n.x*v.x + n.y*v.y < 0) { n.x = -n.x; n.y = -n.y; }
+  return n;
+}
+/* Direction qui s'écarte de plusieurs points à la fois (coin d'un polygone) */
+function ecart(P, p, autres){
+  var d = { x:0, y:0 }, i, u;
+  for (i = 0; i < autres.length; i++) {
+    u = unitaire({ x:P[p].x - P[autres[i]].x, y:P[p].y - P[autres[i]].y });
+    d.x += u.x; d.y += u.y;
+  }
+  return unitaire(d);
+}
+/* Direction qui partage en deux le secteur vide entre deux demi-droites */
+function bissectrice(P, p, q1, q2){
+  var u1 = unitaire({ x:P[q1].x - P[p].x, y:P[q1].y - P[p].y });
+  var u2 = unitaire({ x:P[q2].x - P[p].x, y:P[q2].y - P[p].y });
+  return unitaire({ x:u1.x + u2.x, y:u1.y + u2.y });
+}
+
+/* ═══ ÉTIQUETTES ════════════════════════════════════════════════════════ */
+function etiquette(p, d, texte, fs, couleur){
+  var anc = d.x > 0.3 ? 'start' : (d.x < -0.3 ? 'end' : 'middle');
+  var dy  = d.y > 0.3 ? fs*0.85 : (d.y < -0.3 ? -fs*0.22 : fs*0.34);
+  var dx  = d.x > 0.3 ? 2 : (d.x < -0.3 ? -2 : 0);
+  return { x:p.x + dx, y:p.y + dy, anc:anc, fs:fs, texte:String(texte), couleur:couleur };
+}
+function rendreEtiquette(e){
+  return '<text x="'+e.x.toFixed(1)+'" y="'+e.y.toFixed(1)+'" text-anchor="'+e.anc+'"'
+       + ' font-size="'+e.fs+'" font-weight="700" fill="'+e.couleur+'">'+esc(e.texte)+'</text>';
+}
+/* Encombrement estimé d'une étiquette (Arial : un chiffre ≈ 0,62 em) */
+function boiteEtiquette(e){
+  var larg = e.texte.length * e.fs * 0.62;
+  var x0 = e.anc === 'start' ? e.x : (e.anc === 'end' ? e.x - larg : e.x - larg/2);
+  return { x0:x0, x1:x0 + larg, y0:e.y - e.fs*0.95, y1:e.y + e.fs*0.32 };
+}
+
+var TRAIT = '#993C1D', REMPLI = '#FAECE7', REMPLI2 = '#F3D8CC',
+    NOIR = '#1a1917', INCONNU = '#A32D2D', GRIS = '#55534e';
+
+/* ═══ PLACEMENT DES ÉTIQUETTES ══════════════════════════════════════════ */
+/* Une étiquette ne doit recouvrir ni une autre étiquette, ni un trait de la
+   figure. Chaque étiquette propose donc plusieurs positions, essayées dans
+   l'ordre de préférence : on garde la première qui ne gêne personne. */
+
+function chevauchent(a, b){
+  var g = 3.5;
+  return !(a.x1 + g < b.x0 || b.x1 + g < a.x0 || a.y1 + g < b.y0 || b.y1 + g < a.y0);
+}
+function memeCote(p, q, r){
+  return (q.x - p.x)*(r.y - p.y) - (q.y - p.y)*(r.x - p.x);
+}
+function segmentsSeCoupent(p1, p2, p3, p4){
+  var d1 = memeCote(p3, p4, p1), d2 = memeCote(p3, p4, p2);
+  var d3 = memeCote(p1, p2, p3), d4 = memeCote(p1, p2, p4);
+  return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+}
+function segmentCoupeBoite(p, q, b){
+  if (Math.max(p.x,q.x) < b.x0 || Math.min(p.x,q.x) > b.x1) return false;
+  if (Math.max(p.y,q.y) < b.y0 || Math.min(p.y,q.y) > b.y1) return false;
+  if (p.x >= b.x0 && p.x <= b.x1 && p.y >= b.y0 && p.y <= b.y1) return true;
+  if (q.x >= b.x0 && q.x <= b.x1 && q.y >= b.y0 && q.y <= b.y1) return true;
+  var c = [{x:b.x0,y:b.y0},{x:b.x1,y:b.y0},{x:b.x1,y:b.y1},{x:b.x0,y:b.y1}], i;
+  for (i = 0; i < 4; i++) if (segmentsSeCoupent(p, q, c[i], c[(i+1)%4])) return true;
+  return false;
+}
+
+/* Traits réellement tracés, que les étiquettes doivent éviter */
+function aretesDe(P, ex, offCote){
+  var A = [], i, me, d, r;
+  for (i = 0; i < ex.aretes.length; i++) {
+    A.push([P[ex.aretes[i][0]], P[ex.aretes[i][1]]]);
+  }
+  for (i = 0; i < ex.mesures.length; i++) {
+    me = ex.mesures[i];
+    if (!me.cote) continue;
+    d = perpFuir(P, me.de, me.a, me.fuir);
+    r = offCote*2;
+    A.push([{ x:P[me.de].x + d.x*r, y:P[me.de].y + d.y*r },
+            { x:P[me.a].x  + d.x*r, y:P[me.a].y  + d.y*r }]);
+  }
+  return A;
+}
+
+/* Positions candidates d'une étiquette de longueur : on glisse le long du
+   segment, puis on s'en éloigne. */
+function candidatsMesure(P, me, fs, offCote){
+  var d0 = perpFuir(P, me.de, me.a, me.fuir);
+  var base = me.cote ? offCote*2 + fs*0.6 : offCote;
+  var ts   = me.cote ? [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74]
+                     : [0.5, 0.4, 0.6, 0.3, 0.7, 0.22, 0.78];
+  var ds   = me.cote ? [base, base + fs*0.45, base + fs*0.95, base + fs*1.5]
+                     : [base, base*1.4, base*1.9, base*2.5, base*3.1];
+  var cand = [], cotes = [d0], a, b, c, p, d;
+  /* En dernier recours, une longueur peut se poser de l'autre côté de son
+     propre segment : elle en reste la plus proche, donc sans ambiguïté. */
+  if (!me.cote) cotes.push({ x:-d0.x, y:-d0.y });
+  for (c = 0; c < cotes.length; c++) {
+    d = cotes[c];
+    for (a = 0; a < ds.length; a++) {
+      for (b = 0; b < ts.length; b++) {
+        p = { x:P[me.de].x + (P[me.a].x - P[me.de].x)*ts[b],
+              y:P[me.de].y + (P[me.a].y - P[me.de].y)*ts[b] };
+        cand.push(etiquette({ x:p.x + d.x*ds[a], y:p.y + d.y*ds[a] }, d,
+                            me.texte, fs, me.inconnu ? INCONNU : GRIS));
+      }
+    }
+  }
+  return cand;
+}
+
+/* Positions candidates d'un nom de point : on tourne autour du point */
+function candidatsSommet(P, so, nom, fs, offSom){
+  var d0;
+  if (so.perp)      d0 = perpFuir(P, so.perp[0], so.perp[1], so.perp[2]);
+  else if (so.vers) { d0 = perpFuir(P, so.vers[0], so.vers[1], so.vers[2]); d0 = { x:-d0.x, y:-d0.y }; }
+  else if (so.bis)  d0 = bissectrice(P, so.p, so.bis[0], so.bis[1]);
+  else              d0 = ecart(P, so.p, so.fuir);
+
+  var angles = [0, 24, -24, 48, -48, 72, -72, 96, -96, 122, -122, 150, -150, 180];
+  var ds = [offSom, offSom*1.35, offSom*1.8];
+  var cand = [], a, b, r, c, si, d;
+  for (a = 0; a < ds.length; a++) {
+    for (b = 0; b < angles.length; b++) {
+      r = angles[b]*Math.PI/180; c = Math.cos(r); si = Math.sin(r);
+      d = { x:d0.x*c - d0.y*si, y:d0.x*si + d0.y*c };
+      cand.push(etiquette({ x:P[so.p].x + d.x*ds[a], y:P[so.p].y + d.y*ds[a] }, d,
+                          nom, fs + 3, NOIR));
+    }
+  }
+  return cand;
+}
+
+/* Retenue, dans l'ordre : cotes reportées, inconnue, autres longueurs, noms */
+function etiquettesDe(P, ex, fs, offCote, offSom){
+  var lots = [], i, me;
+  for (i = 0; i < ex.mesures.length; i++) {
+    me = ex.mesures[i];
+    lots.push({ prio: me.cote ? 0 : (me.inconnu ? 1 : 2),
+                cand: candidatsMesure(P, me, fs, offCote) });
+  }
+  for (i = 0; i < ex.sommets.length; i++) {
+    lots.push({ prio:3, cand: candidatsSommet(P, ex.sommets[i], ex.n[ex.sommets[i].p], fs, offSom) });
+  }
+  lots.sort(function(a,b){ return a.prio - b.prio; });
+
+  var aretes = aretesDe(P, ex, offCote);
+  if (typeof window !== 'undefined') { window.__dernieresAretes = aretes; }
+  var prises = [], sortie = [], k, c, b, ok, m, choisi;
+
+  for (i = 0; i < lots.length; i++) {
+    choisi = null;
+    /* 1er passage : rien à toucher, ni étiquette ni trait */
+    for (k = 0; k < lots[i].cand.length && !choisi; k++) {
+      c = lots[i].cand[k]; b = boiteEtiquette(c); ok = true;
+      for (m = 0; m < prises.length && ok; m++) if (chevauchent(b, prises[m])) ok = false;
+      for (m = 0; m < aretes.length && ok; m++) if (segmentCoupeBoite(aretes[m][0], aretes[m][1], b)) ok = false;
+      if (ok) choisi = c;
+    }
+    /* 2e passage : on tolère de longer un trait, jamais une autre étiquette */
+    for (k = 0; k < lots[i].cand.length && !choisi; k++) {
+      c = lots[i].cand[k]; b = boiteEtiquette(c); ok = true;
+      for (m = 0; m < prises.length && ok; m++) if (chevauchent(b, prises[m])) ok = false;
+      if (ok) choisi = c;
+    }
+    if (!choisi) choisi = lots[i].cand[0];
+    prises.push(boiteEtiquette(choisi));
+    sortie.push(choisi);
+  }
+  if (typeof window !== 'undefined') { window.__dernieresEtiquettes = sortie; }
+  return sortie;
+}
+
+/* Ligne de cote (dessin technique) pour une longueur qui recouvre un autre
+   segment : elle est reportée à l'écart, avec deux traits d'attache. */
+function ligneDeCote(P, me, offCote, fs){
+  var d = perpFuir(P, me.de, me.a, me.fuir);
+  var r = offCote*2;
+  var A = P[me.de], B = P[me.a];
+  var a2 = { x:A.x + d.x*r, y:A.y + d.y*r };
+  var b2 = { x:B.x + d.x*r, y:B.y + d.y*r };
+  var s  = unitaire({ x:B.x - A.x, y:B.y - A.y });
+  var t  = 4;
+  function trait(p, q, w, dash){
+    return '<line x1="'+p.x.toFixed(1)+'" y1="'+p.y.toFixed(1)+'" x2="'+q.x.toFixed(1)
+         + '" y2="'+q.y.toFixed(1)+'" stroke="'+GRIS+'" stroke-width="'+w+'"'
+         + (dash ? ' stroke-dasharray="3 3"' : '') + '/>';
+  }
+  return trait({ x:A.x + d.x*4, y:A.y + d.y*4 }, { x:a2.x + d.x*3, y:a2.y + d.y*3 }, 0.9, true)
+       + trait({ x:B.x + d.x*4, y:B.y + d.y*4 }, { x:b2.x + d.x*3, y:b2.y + d.y*3 }, 0.9, true)
+       + trait(a2, b2, 1.2, false)
+       + trait({ x:a2.x - s.x*t, y:a2.y - s.y*t }, { x:a2.x + s.x*t, y:a2.y + s.y*t }, 1.6, false)
+       + trait({ x:b2.x - s.x*t, y:b2.y - s.y*t }, { x:b2.x + s.x*t, y:b2.y + s.y*t }, 1.6, false);
+}
+
+/* Chevron de codage des droites parallèles */
+function chevron(P, a, b, t, q){
+  var s = unitaire({ x:P[b].x - P[a].x, y:P[b].y - P[a].y });
+  var n = { x:-s.y, y:s.x };
+  var p = { x:P[a].x + (P[b].x - P[a].x)*t, y:P[a].y + (P[b].y - P[a].y)*t };
+  return '<path d="M'+(p.x - s.x*q + n.x*q).toFixed(1)+' '+(p.y - s.y*q + n.y*q).toFixed(1)
+       + ' L'+p.x.toFixed(1)+' '+p.y.toFixed(1)
+       + ' L'+(p.x - s.x*q - n.x*q).toFixed(1)+' '+(p.y - s.y*q - n.y*q).toFixed(1)
+       + '" fill="none" stroke="'+TRAIT+'" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>';
+}
+
+function poly(P, noms, remplissage, contour){
+  var i, pts = [];
+  for (i = 0; i < noms.length; i++) pts.push(P[noms[i]].x.toFixed(1)+','+P[noms[i]].y.toFixed(1));
+  return '<polygon points="'+pts.join(' ')+'" fill="'+remplissage+'"'
+       + (contour ? ' stroke="'+TRAIT+'" stroke-width="2.5" stroke-linejoin="round"' : ' stroke="none"')
+       + '/>';
+}
+
+/* Dessine un exercice. W/H = cadre, o = réglages de taille.
+   Le cadrage est repris jusqu'à ce que les étiquettes tiennent dans le cadre. */
+function dessin(ex, W, H, o){
+  o = o || {};
+  var fs      = o.fs      || 14;
+  var offCote = o.offCote || 14;
+  var offSom  = o.offSom  || 15;
+  var rPt     = o.rPt     || 3;
+
+  /* Sur la fiche imprimée, les longueurs sont déjà écrites en toutes lettres
+     à côté du croquis. Les répéter sur une figure de 200 px la sature sans
+     rien apprendre : on n'y laisse que les noms de points, le codage des
+     parallèles et le « ? » de la longueur cherchée. */
+  if (o.sansValeurs) {
+    var reduit = {}, cl = cles(ex), z;
+    for (z = 0; z < cl.length; z++) reduit[cl[z]] = ex[cl[z]];
+    reduit.mesures = ex.mesures
+      .filter(function(me){ return me.inconnu; })
+      .map(function(me){
+        return { de:me.de, a:me.a, texte:me.texte, fuir:me.fuir, inconnu:true };
+      });
+    ex = reduit;
+  }
+
+  var m = { l:14, r:14, t:14, b:14 };
+  var P, L, i, b, deb, it;
+
+  for (it = 0; it < 6; it++) {
+    P = ajuster(ex.pts, W, H, m);
+    L = etiquettesDe(P, ex, fs, offCote, offSom);
+    deb = { l:0, r:0, t:0, b:0 };
+    for (i = 0; i < L.length; i++) {
+      b = boiteEtiquette(L[i]);
+      deb.l = Math.max(deb.l, 4 - b.x0);
+      deb.r = Math.max(deb.r, b.x1 - (W - 4));
+      deb.t = Math.max(deb.t, 4 - b.y0);
+      deb.b = Math.max(deb.b, b.y1 - (H - 4));
+    }
+    if (deb.l + deb.r + deb.t + deb.b < 0.5) break;
+    if (m.l + m.r > W*0.7 || m.t + m.b > H*0.7) break;
+    m = { l:m.l + deb.l, r:m.r + deb.r, t:m.t + deb.t, b:m.b + deb.b };
+  }
+
+  var s = '';
+  /* fonds, du plus large au plus étroit */
+  for (i = 0; i < ex.faces.length; i++) s += poly(P, ex.faces[i].pts, ex.faces[i].fond, ex.faces[i].trait);
+  /* segments supplémentaires (la parallèle intérieure) */
+  for (i = 0; i < ex.segments.length; i++) {
+    s += '<line x1="'+P[ex.segments[i][0]].x.toFixed(1)+'" y1="'+P[ex.segments[i][0]].y.toFixed(1)
+       + '" x2="'+P[ex.segments[i][1]].x.toFixed(1)+'" y2="'+P[ex.segments[i][1]].y.toFixed(1)
+       + '" stroke="'+TRAIT+'" stroke-width="2.5" stroke-linecap="round"/>';
+  }
+  /* codage des parallèles */
+  for (i = 0; i < ex.paras.length; i++) s += chevron(P, ex.paras[i][0], ex.paras[i][1], 0.7, Math.max(4, fs*0.34));
+  /* lignes de cote */
+  for (i = 0; i < ex.mesures.length; i++) if (ex.mesures[i].cote) s += ligneDeCote(P, ex.mesures[i], offCote, fs);
+  /* points marqués */
+  for (i = 0; i < ex.marques.length; i++) {
+    s += '<circle cx="'+P[ex.marques[i]].x.toFixed(1)+'" cy="'+P[ex.marques[i]].y.toFixed(1)
+       + '" r="'+rPt+'" fill="'+TRAIT+'"/>';
+  }
+  for (i = 0; i < L.length; i++) s += rendreEtiquette(L[i]);
+  return s;
+}
+
+/* ═══ CONSTRUCTION DES CONFIGURATIONS ═══════════════════════════════════ */
+/* Angles du triangle, en degrés (A opposé à BC, B opposé à AC, C opposé à AB) */
+function anglesTri(AB, AC, BC){
+  function ang(op, u, v){
+    var c = (u*u + v*v - op*op)/(2*u*v);
+    c = Math.max(-1, Math.min(1, c));
+    return Math.acos(c)*180/Math.PI;
+  }
+  return { A:ang(BC,AB,AC), B:ang(AC,AB,BC), C:ang(AB,AC,BC) };
+}
+/* Troisième côté donnant un angle A choisi : figure stable pendant la saisie */
+function bcPourAngle(AB, AC, degres){
+  var a = degres*Math.PI/180;
+  return Math.sqrt(AB*AB + AC*AC - 2*AB*AC*Math.cos(a));
+}
+function bienProportionne(AB, AC, BC){
+  if (AB + AC <= BC + 0.2 || AB + BC <= AC + 0.2 || AC + BC <= AB + 0.2) return false;
+  var g = anglesTri(AB, AC, BC);
+  return g.A >= 40 && g.A <= 80 && g.B >= 30 && g.C >= 30;
+}
+/* Cherche la longueur laissée libre : elle n'est pas donnée à l'élève,
+   elle ne sert qu'à tracer une figure lisible. */
+function libre(fixe1, fixe2, role){
+  var cand = [], x, ok;
+  for (x = 2; x <= fixe1 + fixe2 - 0.5; x += 0.5) {
+    ok = (role === 'BC') ? bienProportionne(fixe1, fixe2, x)
+       : (role === 'AC') ? bienProportionne(fixe1, x, fixe2)
+       :                   bienProportionne(x, fixe1, fixe2);
+    if (ok) cand.push(x);
+  }
+  if (!cand.length) return (fixe1 + fixe2)/2;
+  return pick(cand);
+}
+
+/* Place les cinq points. kM = AM/AB, kN = AN/AC.
+   conf 'tri' : M et N du même côté que B et C.
+   conf 'pap' : M et N de l'autre côté du point A. */
+function placer(conf, AB, AC, BC, kM, kN, angDeg){
+  var c = (AB*AB + AC*AC - BC*BC)/(2*AB*AC);
+  c = Math.max(-0.985, Math.min(0.985, c));
+  var a = Math.acos(c);
+  var P = {
+    A:{ x:0, y:0 },
+    B:{ x:AB, y:0 },
+    C:{ x:AC*Math.cos(a), y:AC*Math.sin(a) }
+  };
+  var sg = (conf === 'pap') ? -1 : 1;
+  P.M = { x:sg*P.B.x*kM, y:sg*P.B.y*kM };
+  P.N = { x:sg*P.C.x*kN, y:sg*P.C.y*kN };
+  var a2 = (angDeg === undefined || angDeg === null)
+         ? rand(0,3)*90 + rand(-16,16)
+         : angDeg;
+  return tourner(P, a2*Math.PI/180);
+}
+
+/* Habillage commun : faces, segments, points marqués, noms des sommets. */
+function habiller(ex, conf, code){
+  if (conf === 'pap') {
+    ex.faces = [
+      { pts:['A','B','C'], fond:REMPLI,  trait:true },
+      { pts:['A','M','N'], fond:REMPLI2, trait:true }
+    ];
+    ex.segments = [];
+    ex.aretes   = [['A','B'],['B','C'],['C','A'],['A','M'],['M','N'],['N','A']];
+    ex.marques  = ['A'];
+    ex.sommets  = [
+      { p:'A', bis:['B','N'] },
+      { p:'B', fuir:['A','C'] },
+      { p:'C', fuir:['A','B'] },
+      { p:'M', fuir:['A','N'] },
+      { p:'N', fuir:['A','M'] }
+    ];
+  } else {
+    ex.faces = [
+      { pts:['A','B','C'], fond:REMPLI,  trait:true },
+      { pts:['A','M','N'], fond:REMPLI2, trait:false }
+    ];
+    ex.segments = [['M','N']];
+    ex.aretes   = [['A','B'],['B','C'],['C','A'],['M','N']];
+    ex.marques  = ['M','N'];
+    ex.sommets  = [
+      { p:'A', fuir:['B','C'] },
+      { p:'B', fuir:['A','C'] },
+      { p:'C', fuir:['A','B'] },
+      { p:'M', vers:['A','B','C'] },   /* nom tourné vers l'intérieur */
+      { p:'N', vers:['A','C','B'] }
+    ];
+  }
+  ex.paras = code ? [['M','N'],['B','C']] : [];
+  return ex;
+}
+
+/* ═══ GÉNÉRATEURS ═══════════════════════════════════════════════════════ */
+/* Rapports simples : dans la configuration triangle M est sur [AB], donc le
+   rapport reste inférieur à 1. Dans le papillon il peut le dépasser. */
+var RAT_TRI = [ [1,3],[2,5],[1,2],[3,5],[2,3],[3,4] ];
+var RAT_PAP = RAT_TRI.concat([ [5,4],[4,3],[3,2],[5,3] ]);
+
+/* Une longueur d'exercice : entière si « rond », décimale sinon. */
+function genLong(conf){
+  var r = pick(conf === 'pap' ? RAT_PAP : RAT_TRI);
+  var p = r[0], q = r[1];
+  var rond = Math.random() < 0.55;
+  var u = rand(2, 4);
+  var AB = q*u, AM = p*u;
+  var AC, AN, BC, MN, inconnue;
+
+  /* Variante : quelle longueur est cachée ? */
+  var variante = pick(['an','an','mn','mn','ac']);
+
+  if (variante === 'mn') {
+    if (rond) { var w = rand(2,5); BC = q*w; MN = p*w; }
+    else      { BC = rand(6,18); MN = BC*p/q; }
+    AC = libre(AB, BC, 'AC');
+    AN = AC*p/q;
+    inconnue = 'MN';
+  } else if (variante === 'ac') {
+    if (rond) { var v1 = rand(2,5); AN = p*v1; AC = q*v1; }
+    else      { AN = rand(3,14); AC = AN*q/p; }
+    BC = libre(AB, AC, 'BC');
+    MN = BC*p/q;
+    inconnue = 'AC';
+  } else {
+    if (rond) { var v2 = rand(2,5); AC = q*v2; AN = p*v2; }
+    else      { AC = rand(5,18); AN = AC*p/q; }
+    BC = libre(AB, AC, 'BC');
+    MN = BC*p/q;
+    inconnue = 'AN';
+  }
+
+  /* Figure impossible ou trop plate : on repart d'un tirage neuf, plutôt que
+     de retoucher une longueur qui est peut-être une donnée de l'énoncé. */
+  if (!bienProportionne(AB, AC, BC)) return genLong(conf);
+
+  var L = shuffle(LETTRES).slice(0,5);
+  var n = { A:L[0], B:L[1], C:L[2], M:L[3], N:L[4] };
+  function sg(a,b){ return n[a] + n[b]; }
+
+  var ex = { fam:conf, conf:conf, n:n, pts:placer(conf, AB, AC, BC, AM/AB, AN/AC) };
+
+  /* Étiquettes de la figure : la ligne de cote sert aux longueurs qui
+     recouvrent une autre longueur du même segment (uniquement en triangle). */
+  var mes = [];
+  var coteAB = (conf === 'tri');
+  mes.push({ de:'A', a:'M', texte:nb(AM)+' cm', fuir:(conf === 'pap' ? 'N' : 'C') });
+  mes.push({ de:'A', a:'B', texte:nb(AB)+' cm', fuir:'C', cote:coteAB });
+
+  if (inconnue === 'AN') {
+    mes.push({ de:'A', a:'N', texte:'?', fuir:(conf === 'pap' ? 'M' : 'B'), inconnu:true });
+    mes.push({ de:'A', a:'C', texte:nb(AC)+' cm', fuir:'B', cote:coteAB });
+  } else if (inconnue === 'AC') {
+    mes.push({ de:'A', a:'N', texte:nb(AN)+' cm', fuir:(conf === 'pap' ? 'M' : 'B') });
+    mes.push({ de:'A', a:'C', texte:'?', fuir:'B', cote:coteAB, inconnu:true });
+  } else {
+    mes.push({ de:'M', a:'N', texte:'?', fuir:(conf === 'pap' ? 'A' : 'B'), inconnu:true });
+    mes.push({ de:'B', a:'C', texte:nb(BC)+' cm', fuir:'A' });
+  }
+  ex.mesures = mes;
+  habiller(ex, conf, true);
+
+  /* Énoncé */
+  var hyp = '(' + sg('M','N') + ') // (' + sg('B','C') + ')';
+
+  var don, quest, rep, det;
+  if (inconnue === 'AN') {
+    don = hyp + ' · ' + sg('A','M')+' = '+nb(AM)+' cm ; '
+        + sg('A','B')+' = '+nb(AB)+' cm ; '+sg('A','C')+' = '+nb(AC)+' cm';
+    quest = 'Calculer la longueur ' + sg('A','N');
+    rep = AN;
+    det = sg('A','N')+' = ('+sg('A','M')+' × '+sg('A','C')+') ÷ '+sg('A','B')
+        + ' = ('+nb(AM)+' × '+nb(AC)+') ÷ '+nb(AB)+' = '+nb(AM*AC)+' ÷ '+nb(AB)+' '+approx(AN);
+  } else if (inconnue === 'AC') {
+    don = hyp + ' · ' + sg('A','M')+' = '+nb(AM)+' cm ; '
+        + sg('A','B')+' = '+nb(AB)+' cm ; '+sg('A','N')+' = '+nb(AN)+' cm';
+    quest = 'Calculer la longueur ' + sg('A','C');
+    rep = AC;
+    det = sg('A','C')+' = ('+sg('A','N')+' × '+sg('A','B')+') ÷ '+sg('A','M')
+        + ' = ('+nb(AN)+' × '+nb(AB)+') ÷ '+nb(AM)+' = '+nb(AN*AB)+' ÷ '+nb(AM)+' '+approx(AC);
+  } else {
+    don = hyp + ' · ' + sg('A','M')+' = '+nb(AM)+' cm ; '
+        + sg('A','B')+' = '+nb(AB)+' cm ; '+sg('B','C')+' = '+nb(BC)+' cm';
+    quest = 'Calculer la longueur ' + sg('M','N');
+    rep = MN;
+    det = sg('M','N')+' = ('+sg('A','M')+' × '+sg('B','C')+') ÷ '+sg('A','B')
+        + ' = ('+nb(AM)+' × '+nb(BC)+') ÷ '+nb(AB)+' = '+nb(AM*BC)+' ÷ '+nb(AB)+' '+approx(MN);
+  }
+
+  ex.donnees      = don;
+  ex.question     = quest;
+  ex.inconnue     = (inconnue === 'AN') ? sg('A','N') : (inconnue === 'AC' ? sg('A','C') : sg('M','N'));
+  ex.reponse      = rep;
+  ex.reponseTexte = nb2(rep) + ' cm';
+  ex.hint         = 'Thalès : ' + sg('A','M')+'/'+sg('A','B')+' = '+sg('A','N')+'/'+sg('A','C')
+                  + ' = '+sg('M','N')+'/'+sg('B','C')+'. On isole '+ex.inconnue+' par le produit en croix.';
+  ex.detail       = det;
+  return ex;
+}
+
+function genTri(){ return genLong('tri'); }
+function genPap(){ return genLong('pap'); }
+
+/* Réciproque : les quotients sont-ils égaux ? */
+function genRec(){
+  var conf = (Math.random() < 0.28) ? 'pap' : 'tri';
+  var r = pick(conf === 'pap' ? RAT_PAP : RAT_TRI);
+  var p = r[0], q = r[1];
+  var u = rand(2,4), v = rand(2,5);
+  var AB = q*u, AM = p*u, AC = q*v, AN = p*v;
+  var para = Math.random() < 0.5;
+
+  if (!para) {
+    /* Écart net au calcul, mais presque invisible à l'œil */
+    var essais = 0, AN0 = AN, choix;
+    do {
+      choix = pick([-2,-1,-1,1,1,2]);
+      AN = AN0 + choix*(Math.random() < 0.5 ? 1 : 0.5);
+      essais++;
+    } while (essais < 40 && (AN < 1.5 || (conf === 'tri' && AN > AC - 0.5)
+             || Math.abs(AN/AC - AM/AB) < 0.045 || Math.abs(AN/AC - AM/AB) > 0.30));
+    if (Math.abs(AN/AC - AM/AB) < 0.045) return genRec();
+  }
+  if (conf === 'tri' && (AM >= AB - 0.4 || AN >= AC - 0.4)) return genRec();
+
+  var BC = libre(AB, AC, 'BC');
+  if (!bienProportionne(AB, AC, BC)) return genRec();
+
+  var L = shuffle(LETTRES).slice(0,5);
+  var n = { A:L[0], B:L[1], C:L[2], M:L[3], N:L[4] };
+  function sg(a,b){ return n[a] + n[b]; }
+
+  var ex = { fam:'rec', conf:conf, n:n, pts:placer(conf, AB, AC, BC, AM/AB, AN/AC) };
+  var coteAB = (conf === 'tri');
+  ex.mesures = [
+    { de:'A', a:'M', texte:nb(AM)+' cm', fuir:(conf === 'pap' ? 'N' : 'C') },
+    { de:'A', a:'B', texte:nb(AB)+' cm', fuir:'C', cote:coteAB },
+    { de:'A', a:'N', texte:nb(AN)+' cm', fuir:(conf === 'pap' ? 'M' : 'B') },
+    { de:'A', a:'C', texte:nb(AC)+' cm', fuir:'B', cote:coteAB }
+  ];
+  habiller(ex, conf, false);
+
+  var align = (conf === 'pap')
+    ? n.M+', '+n.A+', '+n.B+' et '+n.N+', '+n.A+', '+n.C+' alignés'
+    : n.A+', '+n.M+', '+n.B+' et '+n.A+', '+n.N+', '+n.C+' alignés';
+  var g1 = AM*AC, g2 = AB*AN;
+
+  ex.donnees = align + ' · ' + sg('A','M')+' = '+nb(AM)+' cm ; '+sg('A','B')+' = '+nb(AB)+' cm ; '
+             + sg('A','N')+' = '+nb(AN)+' cm ; '+sg('A','C')+' = '+nb(AC)+' cm';
+  ex.question = '(' + sg('M','N') + ') et (' + sg('B','C') + ') sont-elles parallèles ?';
+  ex.inconnue = '';
+  ex.reponse  = para ? 'oui' : 'non';
+  ex.reponseTexte = para ? 'Parallèles' : 'Non parallèles';
+  ex.hint = 'Comparer '+sg('A','M')+'/'+sg('A','B')+' et '+sg('A','N')+'/'+sg('A','C')
+          + ', ou les produits en croix '+sg('A','M')+' × '+sg('A','C')+' et '+sg('A','B')+' × '+sg('A','N')+'.';
+  ex.detail = sg('A','M')+' × '+sg('A','C')+' = '+nb(AM)+' × '+nb(AC)+' = '+nb(g1)
+            + '  et  '+sg('A','B')+' × '+sg('A','N')+' = '+nb(AB)+' × '+nb(AN)+' = '+nb(g2)
+            + (para
+               ? '. Les deux produits sont égaux : d\u2019après la réciproque du théorème de Thalès, les droites sont parallèles.'
+               : '. Les deux produits sont différents : les quotients ne sont pas égaux, donc les droites ne sont pas parallèles ('
+                 + nb2(AM/AB) + ' contre ' + nb2(AN/AC) + ').');
+  return ex;
+}
+
+var generateurs  = { tri:genTri, pap:genPap, rec:genRec };
+var famNoms      = { tri:'Configuration triangle', pap:'Configuration papillon', rec:'Réciproque' };
+var famConsignes = { tri:'Calcule la longueur manquante', pap:'Calcule la longueur manquante',
+                     rec:'Ces droites sont-elles parallèles ?' };
+var famAides     = {
+  tri:'petit triangle et grand triangle : les trois quotients de longueurs sont égaux',
+  pap:'de part et d\u2019autre du point de croisement : les trois quotients de longueurs sont égaux',
+  rec:'comparer les deux quotients, ou les deux produits en croix : égalité = droites parallèles'
+};
+
+/* ═══ MODES ═════════════════════════════════════════════════════════════ */
+var currentMode = 'explo';
+
+function setMode(m, btn){
+  currentMode = m;
+  var tabs = document.querySelectorAll('.mode-tab'), i;
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+
+  var isDefi = (m !== 'explo');
+  document.getElementById('mode-explo').style.display = isDefi ? 'none' : 'block';
+  var defi = document.getElementById('mode-defi');
+  defi.style.display = isDefi ? 'block' : 'none';
+  defi.classList.toggle('active', isDefi);
+
+  document.getElementById('defi-plus-badge').classList.toggle('visible', m === 'defiplus');
+  document.getElementById('defi-mode-title').textContent =
+    (m === 'defiplus') ? 'Défi ⁺ — sans aide' : 'Mode défi — avec aide';
+
+  if (isDefi) nextDefi();
+}
+
+/* ═══ EXPLORATEUR ═══════════════════════════════════════════════════════ */
+var currentShape = 'tri';
+/* L'orientation de chaque croquis est mémorisée : elle ne change qu'au dé,
+   sinon la figure sauterait à chaque frappe au clavier. */
+var orient = { tri:0, pap:0, rec:0 };
+function nouvelleOrientation(){ return rand(0,3)*90 + rand(-16,16); }
+
+function setShape(s, btn){
+  currentShape = s;
+  var tabs = document.querySelectorAll('#mode-explo .shape-tab'), i;
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+  var panels = document.querySelectorAll('#mode-explo .panel');
+  for (i = 0; i < panels.length; i++) panels[i].classList.remove('active');
+  var p = document.getElementById('panel-'+s);
+  p.style.display = 'grid';
+  p.classList.add('active');
+  for (i = 0; i < panels.length; i++) if (panels[i] !== p) panels[i].style.display = 'none';
+}
+
+function randomizeCurrent(){
+  var r, p, q, u, v, AB, AM, AC, BC;
+  orient[currentShape] = nouvelleOrientation();
+  if (currentShape === 'rec') {
+    r = pick(RAT_TRI); p = r[0]; q = r[1];
+    u = rand(2,4); v = rand(2,5);
+    AB = q*u; AM = p*u; AC = q*v;
+    var AN = p*v;
+    if (Math.random() < 0.5) AN = Math.max(1, AN + pick([-2,-1,1,2]));
+    if (AN >= AC) AN = AC - 1;
+    document.getElementById('re-am').value = AM;
+    document.getElementById('re-ab').value = AB;
+    document.getElementById('re-an').value = AN;
+    document.getElementById('re-ac').value = AC;
+    calcRec();
+    return;
+  }
+  var pap = (currentShape === 'pap');
+  r = pick(pap ? RAT_PAP : RAT_TRI); p = r[0]; q = r[1];
+  u = rand(2,4); v = rand(2,5);
+  AB = q*u; AM = p*u; AC = q*v;
+  BC = libre(AB, AC, 'BC');
+  var pre = pap ? 'pa-' : 'tr-';
+  document.getElementById(pre+'ab').value = AB;
+  document.getElementById(pre+'ac').value = AC;
+  document.getElementById(pre+'bc').value = Math.round(BC*2)/2;
+  document.getElementById(pre+'am').value = AM;
+  if (pap) calcPap(); else calcTri();
+}
+
+/* Coeur commun aux deux configurations directes */
+function calcDirect(conf){
+  var pre = (conf === 'pap') ? 'pa-' : 'tr-';
+  var AB = val(pre+'ab'), AC = val(pre+'ac'), BC = val(pre+'bc'), AM = val(pre+'am');
+  var det = document.getElementById(pre+'detail');
+  var eAN = document.getElementById(pre+'an');
+  var eMN = document.getElementById(pre+'mn');
+  var sub = document.getElementById(pre+'sub');
+  var svg = document.getElementById((conf === 'pap') ? 'pa-svg' : 'tr-svg');
+
+  function stop(msg1, msg2){
+    det.textContent = msg1;
+    eAN.innerHTML = '—<span class="result-unit">cm</span>';
+    eMN.innerHTML = '—<span class="result-unit">cm</span>';
+    sub.textContent = msg2;
+    svg.innerHTML = '<text x="160" y="118" text-anchor="middle" font-size="15" fill="'+INCONNU+'">Figure impossible</text>'
+                  + '<text x="160" y="143" text-anchor="middle" font-size="13" fill="'+GRIS+'">'+esc(msg2)+'</text>';
+  }
+
+  if (AB <= 0 || AC <= 0 || BC <= 0 || AM <= 0) { stop('Toutes les longueurs doivent être positives.', 'Complète les quatre champs.'); return; }
+  if (AB + AC <= BC || AB + BC <= AC || AC + BC <= AB) {
+    stop('Ces trois longueurs ne forment pas un triangle.',
+         'Le plus grand côté doit rester plus court que la somme des deux autres.');
+    return;
+  }
+  if (conf === 'tri' && AM >= AB) {
+    stop('M doit se trouver sur le segment [AB].', 'AM doit donc rester plus court que AB.');
+    return;
+  }
+
+  var k = AM/AB, AN = AC*k, MN = BC*k;
+  det.textContent = 'Coefficient : AM ÷ AB = '+nb(AM)+' ÷ '+nb(AB)+' '+eq(k)+nb(k)
+                  + '  →  AN = AC × '+nb(k)+'  et  MN = BC × '+nb(k);
+  eAN.innerHTML = nb(AN) + '<span class="result-unit">cm</span>';
+  eMN.innerHTML = nb(MN) + '<span class="result-unit">cm</span>';
+  sub.textContent = (k < 1)
+    ? 'Le triangle AMN est une réduction de ABC : ses longueurs valent '+nb(k)+' fois celles de ABC.'
+    : (Math.abs(k-1) < 1e-9
+        ? 'Coefficient 1 : les deux triangles sont superposables.'
+        : 'Le triangle AMN est un agrandissement de ABC : ses longueurs valent '+nb(k)+' fois celles de ABC.');
+
+  var ex = {
+    n:{ A:'A', B:'B', C:'C', M:'M', N:'N' },
+    pts:placer(conf, AB, AC, BC, k, k, orient[conf]),
+    mesures:[
+      { de:'A', a:'M', texte:nb(AM)+' cm', fuir:(conf === 'pap' ? 'N' : 'C') },
+      { de:'A', a:'B', texte:nb(AB)+' cm', fuir:'C', cote:(conf === 'tri') },
+      { de:'A', a:'N', texte:nb(AN)+' cm', fuir:(conf === 'pap' ? 'M' : 'B'), inconnu:true },
+      { de:'A', a:'C', texte:nb(AC)+' cm', fuir:'B', cote:(conf === 'tri') },
+      { de:'M', a:'N', texte:nb(MN)+' cm', fuir:(conf === 'pap' ? 'A' : 'B'), inconnu:true },
+      { de:'B', a:'C', texte:nb(BC)+' cm', fuir:'A' }
+    ]
+  };
+  habiller(ex, conf, true);
+  svg.innerHTML = dessin(ex, 320, 250, {});
+}
+
+function calcTri(){ calcDirect('tri'); }
+function calcPap(){ calcDirect('pap'); }
+
+function calcRec(){
+  var AM = val('re-am'), AB = val('re-ab'), AN = val('re-an'), AC = val('re-ac');
+  var code = document.getElementById('re-code');
+  var det  = document.getElementById('re-detail');
+  var comp = document.getElementById('re-compare');
+  var verd = document.getElementById('re-verdict');
+  var svg  = document.getElementById('re-svg');
+
+  if (AM <= 0 || AB <= 0 || AN <= 0 || AC <= 0 || AM >= AB || AN >= AC) {
+    code.textContent = 'Configuration impossible';
+    det.textContent = 'M doit être sur le segment [AB] et N sur le segment [AC] : AM doit rester plus court que AB, et AN plus court que AC.';
+    comp.innerHTML = '';
+    verd.className = 'verdict pas';
+    verd.textContent = 'Vérifie les longueurs saisies';
+    svg.innerHTML = '<text x="160" y="118" text-anchor="middle" font-size="15" fill="'+INCONNU+'">Figure impossible</text>'
+                  + '<text x="160" y="143" text-anchor="middle" font-size="13" fill="'+GRIS+'">M sur [AB] et N sur [AC]</text>';
+    return;
+  }
+
+  var q1 = AM/AB, q2 = AN/AC, g1 = AM*AC, g2 = AB*AN;
+  var paral = Math.abs(g1 - g2) < 1e-9;
+
+  code.textContent = 'On compare AM/AB et AN/AC';
+  det.textContent = 'Autre méthode, sans arrondi : comparer les produits en croix AM × AC et AB × AN.';
+  comp.innerHTML =
+      '<div class="l"><span>AM / AB</span><b>'+nb(AM)+' / '+nb(AB)+' ≈ '+nb2(q1)+'</b></div>'
+    + '<div class="l"><span>AN / AC</span><b>'+nb(AN)+' / '+nb(AC)+' ≈ '+nb2(q2)+'</b></div>'
+    + '<div class="l"><span>AM × AC</span><b>'+nb(g1)+'</b></div>'
+    + '<div class="l"><span>AB × AN</span><b>'+nb(g2)+'</b></div>';
+  verd.className = 'verdict ' + (paral ? 'oui' : 'non');
+  verd.textContent = paral
+    ? 'Produits égaux : (MN) et (BC) sont parallèles'
+    : 'Produits différents : (MN) et (BC) ne sont pas parallèles';
+
+  var BC = bcPourAngle(AB, AC, 54);
+  var ex = {
+    n:{ A:'A', B:'B', C:'C', M:'M', N:'N' },
+    pts:placer('tri', AB, AC, BC, q1, q2, orient.rec),
+    mesures:[
+      { de:'A', a:'M', texte:nb(AM)+' cm', fuir:'C' },
+      { de:'A', a:'B', texte:nb(AB)+' cm', fuir:'C', cote:true },
+      { de:'A', a:'N', texte:nb(AN)+' cm', fuir:'B' },
+      { de:'A', a:'C', texte:nb(AC)+' cm', fuir:'B', cote:true }
+    ]
+  };
+  habiller(ex, 'tri', false);
+  svg.innerHTML = dessin(ex, 320, 250, {});
+}
+
+/* ═══ MODE DÉFI ═════════════════════════════════════════════════════════ */
+var famille = 'mix';
+var courante = null, repondu = false, bons = 0, total = 0, choixRec = null;
+
+function setFam(f, btn){
+  famille = f;
+  var tabs = document.querySelectorAll('#mode-defi .shape-tab'), i;
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+  nextDefi();
+}
+
+function nextDefi(){
+  var fam = (famille === 'mix') ? pick(['tri','pap','rec']) : famille;
+  courante = generateurs[fam]();
+  repondu = false;
+  choixRec = null;
+
+  var fb = document.getElementById('defi-feedback');
+  fb.className = 'feedback-box';
+  fb.innerHTML = '';
+  document.getElementById('btn-next').style.display = 'none';
+
+  document.getElementById('defi-svg').innerHTML = dessin(courante, 320, 250, {});
+
+  document.getElementById('defi-cotes').innerHTML =
+    '<strong>' + courante.question + '</strong><br>' + courante.donnees;
+
+  var aide = document.getElementById('defi-aide');
+  if (currentMode === 'defiplus') {
+    aide.style.display = 'none';
+  } else {
+    aide.style.display = 'block';
+    aide.innerHTML = '<b>Rappel :</b> ' + courante.hint;
+  }
+
+  var estRec = (fam === 'rec');
+  document.getElementById('zone-nombre').style.display = estRec ? 'none' : 'flex';
+  document.getElementById('zone-rec').style.display    = estRec ? 'block' : 'none';
+  document.getElementById('defi-tol').textContent = estRec
+    ? 'Réponds par oui ou par non, après avoir comparé les quotients.'
+    : 'Arrondir au centième · tolérance ± 0,05 cm';
+
+  var btns = document.querySelectorAll('.btn-rec'), i;
+  for (i = 0; i < btns.length; i++) btns[i].className = 'btn-rec';
+
+  if (!estRec) {
+    document.getElementById('defi-label').textContent = courante.inconnue + ' =';
+    var inp = document.getElementById('defi-input');
+    inp.value = '';
+    inp.focus();
+  }
+  majScore();
+}
+
+function choisirRec(btn){
+  if (repondu) return;
+  var btns = document.querySelectorAll('.btn-rec'), i;
+  for (i = 0; i < btns.length; i++) btns[i].classList.remove('selected');
+  btn.classList.add('selected');
+  choixRec = btn.getAttribute('data-rep');
+}
+
+function checkDefi(){
+  if (repondu || !courante) return;
+  var fb = document.getElementById('defi-feedback');
+  var ok, i, btns;
+
+  if (courante.fam === 'rec') {
+    if (!choixRec) {
+      fb.className = 'feedback-box wrong show';
+      fb.innerHTML = '<strong>Choisis une réponse</strong> avant de vérifier.';
+      return;
+    }
+    ok = (choixRec === courante.reponse);
+    btns = document.querySelectorAll('.btn-rec');
+    for (i = 0; i < btns.length; i++) {
+      btns[i].classList.add('locked');
+      if (btns[i].getAttribute('data-rep') === courante.reponse) btns[i].classList.add('correct');
+      else if (btns[i].classList.contains('selected')) btns[i].classList.add('incorrect');
+    }
+  } else {
+    var brut = document.getElementById('defi-input').value.replace(',', '.');
+    var rep = parseFloat(brut);
+    if (isNaN(rep)) {
+      fb.className = 'feedback-box wrong show';
+      fb.innerHTML = '<strong>Entre une valeur</strong> avant de vérifier.';
+      return;
+    }
+    /* Le 1e-6 évite qu'une réponse pile à la limite soit refusée par un
+       arrondi binaire : 4,72 + 0,05 ne vaut pas exactement 4,77 en machine. */
+    ok = Math.abs(rep - courante.reponse) <= 0.05 + 1e-6;
+  }
+
+  fb.className = 'feedback-box ' + (ok ? 'correct' : 'wrong') + ' show';
+  fb.innerHTML = (ok ? '<strong>Correct !</strong> ' : '<strong>Pas tout à fait.</strong> ')
+               + courante.detail;
+
+  repondu = true;
+  total++;
+  if (ok) { bons++; confettis(); }
+  document.getElementById('btn-next').style.display = 'block';
+  majScore();
+}
+
+function majScore(){
+  document.getElementById('defi-score').textContent = bons + ' / ' + total + ' correct' + (total > 1 ? 's' : '');
+  var pct = total > 0 ? (bons/total*100) : 0;
+  document.getElementById('defi-progress').style.width = pct + '%';
+}
+
+function confettis(){
+  if (document.documentElement.getAttribute('data-motion') === 'off') return;
+  var couleurs = ['#993C1D','#185FA5','#0F6E56','#854F0B','#534AB7','#3B6D11'];
+  for (var i = 0; i < 26; i++) {
+    (function(k){
+      setTimeout(function(){
+        var c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.round(Math.random()*100) + 'vw';
+        c.style.top = '-12px';
+        c.style.background = couleurs[Math.floor(Math.random()*couleurs.length)];
+        document.body.appendChild(c);
+        setTimeout(function(){ if (c.parentNode) c.parentNode.removeChild(c); }, 2600);
+      }, k*28);
+    })(i);
+  }
+}
+
+document.addEventListener('keydown', function(e){
+  if (document.getElementById('modal-fiche').classList.contains('show')) {
+    if (e.key === 'Escape') closeFiche();
+    return;
+  }
+  if (currentMode === 'explo') return;
+  if (e.key === 'Enter') {
+    if (!repondu) checkDefi();
+    else nextDefi();
+  }
+});
+
+/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
+function famillesCochees(){
+  var out = [], cbs = document.querySelectorAll('#modal-checks input'), i;
+  for (i = 0; i < cbs.length; i++) if (cbs[i].checked) out.push(cbs[i].value);
+  return out;
+}
+function repartir10(fams){
+  var k = fams.length, base = Math.floor(10/k), reste = 10 % k;
+  return fams.map(function(f,i){ return { fam:f, n:base + (i < reste ? 1 : 0) }; });
+}
+function majRepartition(){
+  var sel = famillesCochees();
+  var el = document.getElementById('dist-info');
+  var labels = document.querySelectorAll('#modal-checks label'), i;
+  for (i = 0; i < labels.length; i++) {
+    labels[i].classList.toggle('on', labels[i].querySelector('input').checked);
+  }
+  if (!sel.length) {
+    el.className = 'dist-info warn';
+    el.textContent = '⚠ Sélectionne au moins une famille';
+    document.getElementById('modal-confirm').disabled = true;
+    return;
+  }
+  el.className = 'dist-info ok';
+  el.textContent = '→ ' + repartir10(sel).map(function(d){ return d.n; }).join(' + ') + ' = 10 exercices';
+  document.getElementById('modal-confirm').disabled = false;
+}
+(function brancherCases(){
+  var cbs = document.querySelectorAll('#modal-checks input'), i;
+  for (i = 0; i < cbs.length; i++) cbs[i].addEventListener('change', majRepartition);
+})();
+
+function openFiche(){ document.getElementById('modal-fiche').classList.add('show'); majRepartition(); }
+function closeFiche(){ document.getElementById('modal-fiche').classList.remove('show'); }
+document.getElementById('modal-fiche').addEventListener('click', function(e){
+  if (e.target.id === 'modal-fiche') closeFiche();
+});
+
+function confirmFiche(){
+  var sel = famillesCochees();
+  if (!sel.length) return;
+
+  var plan = repartir10(sel), questions = [], num = 1;
+  plan.forEach(function(d){
+    for (var i = 0; i < d.n; i++) {
+      var ex = generateurs[d.fam]();
+      questions.push({
+        num:num++,
+        nom:famNoms[d.fam],
+        hint:famConsignes[d.fam],
+        svg:dessin(ex, 200, 160, { fs:13, offCote:12, offSom:14, rPt:3, sansValeurs:true }),
+        cotes:ex.donnees + ' · ' + ex.question,
+        answerText:ex.reponseTexte
+      });
+    }
+  });
+
+  var isPlus = (currentMode === 'defiplus');
+  var aide = sel.map(function(f){ return famAides[f]; }).join('<br>');
+  var titre = (sel.length === 3)
+    ? 'Théorème de Thalès'
+    : 'Thalès — ' + sel.map(function(f){ return famNoms[f]; }).join(', ');
+
+  closeFiche();
+
+  LP.fiche({
+    icon:'\u{1F4D0}',
+    title:titre,
+    subtitle:'3e prépa-métiers · CAP · 2de Bac Pro',
+    modeLabel:isPlus ? 'Défi ⁺' : 'Mode défi',
+    isPlus:isPlus,
+    tolerance:'± 0,05 cm',
+    accent:'#993C1D',
+    answerLabel:'Réponse :',
+    unit:'',
+    aide:aide,
+    questions:questions
+  });
+}
+
+/* ═══ INITIALISATION ════════════════════════════════════════════════════ */
+calcTri();
+calcPap();
+calcRec();
+nextDefi();
+</script>
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio collège</a> &nbsp;·&nbsp;
+  Licence MIT · © 2026 Moïse Muller &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
+</footer>
+</body>
+</html>
