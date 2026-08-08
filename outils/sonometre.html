@@ -933,13 +933,22 @@ function svgDistance(L1,d1,d2){
      + `<path d="M43 96 a10 10 0 0 1 0 14" fill="none" stroke="#993C1D" stroke-width="2" stroke-linecap="round"/>`
      + `<path d="M50 89 a18 18 0 0 1 0 28" fill="none" stroke="#993C1D" stroke-width="2" stroke-linecap="round"/>`
      + `<text x="28" y="80" text-anchor="middle" font-size="10" fill="#5F5E5A">machine</text>`;
-  s += perso(96) + perso(168);
-  s += `<text x="96" y="70" text-anchor="middle" font-size="13" font-weight="700" fill="#B3261E">${L1} dB</text>`
-     + `<text x="168" y="70" text-anchor="middle" font-size="13" font-weight="700" fill="#185FA5">? dB</text>`;
-  s += `<line x1="23" y1="132" x2="96" y2="132" stroke="#5F5E5A" stroke-width="1" stroke-dasharray="3,2"/>`
-     + `<text x="60" y="129" text-anchor="middle" font-size="11" font-weight="700" fill="#5F5E5A">${d1} m</text>`;
-  s += `<line x1="23" y1="150" x2="168" y2="150" stroke="#5F5E5A" stroke-width="1" stroke-dasharray="3,2"/>`
-     + `<text x="96" y="147" text-anchor="middle" font-size="11" font-weight="700" fill="#5F5E5A">${d2} m</text>`;
+  /* Le croquis doit rester à l échelle du raisonnement : la plus petite des
+     deux distances est TOUJOURS dessinée le plus près de la machine, que la
+     question aille du proche vers le loin ou l inverse. */
+  const XPRES = 96, XLOIN = 168;
+  const versLeLoin = (d1 < d2);
+  const xMesure  = versLeLoin ? XPRES : XLOIN;
+  const xInconnu = versLeLoin ? XLOIN : XPRES;
+  const dPres = versLeLoin ? d1 : d2;
+  const dLoin = versLeLoin ? d2 : d1;
+  s += perso(XPRES) + perso(XLOIN);
+  s += `<text x="${xMesure}" y="70" text-anchor="middle" font-size="13" font-weight="700" fill="#B3261E">${L1} dB</text>`
+     + `<text x="${xInconnu}" y="70" text-anchor="middle" font-size="13" font-weight="700" fill="#185FA5">? dB</text>`;
+  s += `<line x1="23" y1="132" x2="${XPRES}" y2="132" stroke="#5F5E5A" stroke-width="1" stroke-dasharray="3,2"/>`
+     + `<text x="60" y="129" text-anchor="middle" font-size="11" font-weight="700" fill="#5F5E5A">${dPres} m</text>`;
+  s += `<line x1="23" y1="150" x2="${XLOIN}" y2="150" stroke="#5F5E5A" stroke-width="1" stroke-dasharray="3,2"/>`
+     + `<text x="${XLOIN-40}" y="147" text-anchor="middle" font-size="11" font-weight="700" fill="#5F5E5A">${dLoin} m</text>`;
   return s;
 }
 
