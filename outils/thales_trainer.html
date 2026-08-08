@@ -389,13 +389,15 @@ function val(id){ var n = parseFloat(document.getElementById(id).value.replace('
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* Écriture française : virgule décimale, 2 décimales au plus */
-function nb(x){
-  var r = Math.round(x*100)/100;
-  /* deux décimales au plus, sans zéro inutile : 6 · 5,5 · 4,67 */
-  var s = r.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+function nb(x, d){
+  var p = (d === undefined) ? 2 : d;
+  var f = Math.pow(10, p);
+  /* d décimales au plus, sans zéro inutile : 6 · 5,5 · 4,67 */
+  var s = (Math.round(x * f) / f).toFixed(p);
+  s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
   return s.replace('.', ',');
 }
-function nb2(x){ return (Math.round(x*100)/100).toFixed(2).replace('.', ','); }
+function nb2(x){ return nb(x, 2); }
 function entier(x){ return Math.abs(x - Math.round(x)) < 1e-9; }
 /* La valeur affichée par nb() est-elle la valeur exacte, ou un arrondi ? */
 function exact2(x){ return Math.abs(x - Math.round(x*100)/100) < 1e-9; }

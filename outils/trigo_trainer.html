@@ -436,9 +436,17 @@ function shuffle(a){
 function val(id){ var n = parseFloat(String(document.getElementById(id).value).replace(',','.')); return isNaN(n) ? 0 : n; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function arr(x, d){ var p = Math.pow(10,d); return Math.round(x*p)/p; }
-function fr(x){ return String(x).replace('.', ','); }
-function nb1(x){ return fr(arr(x,1).toFixed(1)); }
-function nb2(x){ return fr(arr(x,2).toFixed(2)); }
+/* Écriture française : virgule décimale, d décimales AU PLUS, sans zéro inutile.
+   nb(6) : "6"   nb(5.5) : "5,5"   nb(4.666) : "4,67"   nb(12, 1) : "12" */
+function nb(x, d){
+  var p = (d === undefined) ? 2 : d;
+  var f = Math.pow(10, p);
+  var s = (Math.round(x * f) / f).toFixed(p);
+  s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  return s.replace('.', ',');
+}
+function nb1(x){ return nb(x, 1); }
+function nb2(x){ return nb(x, 2); }
 
 var COUL = { hyp:'#7C4DBF', opp:'#B25A00', adj:'#185FA5' };
 var NOM_REL = { hyp:'hypoténuse', opp:'côté opposé', adj:'côté adjacent' };
@@ -613,7 +621,7 @@ function genCote(){
   var cotes = ['adj','opp','hyp'].map(function(r){
     return {
       de:paire[r][0], a:paire[r][1], rel:r,
-      texte:(r === relVu ? nb1(valeurs[r]).replace(',0','') + ' cm' : (r === relCible ? '?' : '')),
+      texte:(r === relVu ? nb1(valeurs[r]) + ' cm' : (r === relCible ? '?' : '')),
       inconnu:(r === relCible)
     };
   });
@@ -787,7 +795,7 @@ function calcRec(){
     pts:pts, noms:noms, ref:refIdx, droit:1,
     angleTexte:arr(angleVu,0) + '°',
     cotes:[
-      { de:0, a:1, rel:rel.AB, texte:'AB = ' + nb1(adjLong).replace(',0','') + ' cm' },
+      { de:0, a:1, rel:rel.AB, texte:'AB = ' + nb1(adjLong) + ' cm' },
       { de:1, a:2, rel:rel.BC, texte:'BC = ' + nb1(oppLong) + ' cm' },
       { de:0, a:2, rel:rel.AC, texte:'AC = ' + nb1(hypLong) + ' cm' }
     ]
@@ -850,9 +858,9 @@ function calcCot(){
     pts:[{x:0,y:0},{x:adj,y:0},{x:adj,y:opp}], noms:noms, ref:0, droit:1,
     angleTexte:arr(a,0) + '°',
     cotes:[
-      { de:0, a:1, rel:'adj', texte:(relVu === 'adj' ? 'AB = ' + nb1(L).replace(',0','') + ' cm' : (relCible === 'adj' ? 'AB = ?' : '')) },
-      { de:1, a:2, rel:'opp', texte:(relVu === 'opp' ? 'BC = ' + nb1(L).replace(',0','') + ' cm' : (relCible === 'opp' ? 'BC = ?' : '')) },
-      { de:0, a:2, rel:'hyp', texte:(relVu === 'hyp' ? 'AC = ' + nb1(L).replace(',0','') + ' cm' : (relCible === 'hyp' ? 'AC = ?' : '')) }
+      { de:0, a:1, rel:'adj', texte:(relVu === 'adj' ? 'AB = ' + nb1(L) + ' cm' : (relCible === 'adj' ? 'AB = ?' : '')) },
+      { de:1, a:2, rel:'opp', texte:(relVu === 'opp' ? 'BC = ' + nb1(L) + ' cm' : (relCible === 'opp' ? 'BC = ?' : '')) },
+      { de:0, a:2, rel:'hyp', texte:(relVu === 'hyp' ? 'AC = ' + nb1(L) + ' cm' : (relCible === 'hyp' ? 'AC = ?' : '')) }
     ]
   };
   document.getElementById('co-svg').innerHTML = dessin(ex, 320, 250, { haut:[relVu, relCible] });
@@ -860,8 +868,8 @@ function calcCot(){
   var nomDe = { adj:'AB', opp:'BC', hyp:'AC' };
   document.getElementById('co-code').textContent = fn + '(' + arr(a,0) + '°) = ' + nomDe[num] + ' ÷ ' + nomDe[den];
   document.getElementById('co-detail').textContent = cibleAuNum
-    ? nomDe[relCible] + ' est au numérateur : on multiplie. ' + nomDe[relCible] + ' = ' + nb1(L).replace(',0','') + ' × ' + fn + '(' + arr(a,0) + '°)'
-    : nomDe[relCible] + ' est au dénominateur : on divise. ' + nomDe[relCible] + ' = ' + nb1(L).replace(',0','') + ' ÷ ' + fn + '(' + arr(a,0) + '°)';
+    ? nomDe[relCible] + ' est au numérateur : on multiplie. ' + nomDe[relCible] + ' = ' + nb1(L) + ' × ' + fn + '(' + arr(a,0) + '°)'
+    : nomDe[relCible] + ' est au dénominateur : on divise. ' + nomDe[relCible] + ' = ' + nb1(L) + ' ÷ ' + fn + '(' + arr(a,0) + '°)';
   document.getElementById('co-label').textContent = NOM_REL[relCible] + ' ' + nomDe[relCible];
   res.innerHTML = nb1(valeurs[relCible]) + '<span class="result-unit">cm</span>';
   document.getElementById('co-sub').textContent =
@@ -908,17 +916,17 @@ function calcAng(){
     pts:[{x:0,y:0},{x:adj,y:0},{x:adj,y:opp}], noms:noms, ref:0, droit:1,
     angleTexte:'?',
     cotes:[
-      { de:0, a:1, rel:'adj', texte:([num,den].indexOf('adj') !== -1 ? 'AB = ' + nb1(valeurs.adj).replace(',0','') + ' cm' : '') },
-      { de:1, a:2, rel:'opp', texte:([num,den].indexOf('opp') !== -1 ? 'BC = ' + nb1(valeurs.opp).replace(',0','') + ' cm' : '') },
-      { de:0, a:2, rel:'hyp', texte:([num,den].indexOf('hyp') !== -1 ? 'AC = ' + nb1(valeurs.hyp).replace(',0','') + ' cm' : '') }
+      { de:0, a:1, rel:'adj', texte:([num,den].indexOf('adj') !== -1 ? 'AB = ' + nb1(valeurs.adj) + ' cm' : '') },
+      { de:1, a:2, rel:'opp', texte:([num,den].indexOf('opp') !== -1 ? 'BC = ' + nb1(valeurs.opp) + ' cm' : '') },
+      { de:0, a:2, rel:'hyp', texte:([num,den].indexOf('hyp') !== -1 ? 'AC = ' + nb1(valeurs.hyp) + ' cm' : '') }
     ]
   };
   document.getElementById('an-svg').innerHTML = dessin(ex, 320, 250, { haut:[num, den] });
 
   var nomDe = { adj:'AB', opp:'BC', hyp:'AC' };
-  document.getElementById('an-code').textContent = fn + '(∠A) = ' + nomDe[num] + ' ÷ ' + nomDe[den] + ' = ' + nb1(n).replace(',0','') + ' ÷ ' + nb1(d).replace(',0','') + ' ≈ ' + nb2(rapport);
+  document.getElementById('an-code').textContent = fn + '(∠A) = ' + nomDe[num] + ' ÷ ' + nomDe[den] + ' = ' + nb1(n) + ' ÷ ' + nb1(d) + ' ≈ ' + nb2(rapport);
   document.getElementById('an-detail').textContent = 'On applique ensuite la touche ' + fn + '⁻¹ au rapport obtenu.';
-  res.innerHTML = arr(angle,1).toString().replace('.',',') + '<span class="result-unit">°</span>';
+  res.innerHTML = nb1(angle) + '<span class="result-unit">°</span>';
   sub.textContent = 'Arrondi au degré : ' + Math.round(angle) + '°. Sur la calculatrice : ' + fn + '⁻¹ puis ' + nb2(rapport) + ', en mode degrés.';
 }
 
