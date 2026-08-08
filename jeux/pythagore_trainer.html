@@ -354,13 +354,16 @@ function shuffle(a){
 function val(id){ var n = parseFloat(document.getElementById(id).value.replace(',','.')); return isNaN(n) ? 0 : n; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-/* Écriture française : virgule décimale, 2 décimales au plus */
-function nb(x){
-  var r = Math.round(x*100)/100;
-  var s = (Math.abs(r - Math.round(r)) < 1e-9) ? String(Math.round(r)) : r.toFixed(2);
+/* Écriture française : virgule décimale, d décimales AU PLUS, sans zéro inutile.
+   nb(6) : "6"   nb(5.5) : "5,5"   nb(4.666) : "4,67"   nb(0.5, 1) : "0,5" */
+function nb(x, d){
+  var p = (d === undefined) ? 2 : d;
+  var f = Math.pow(10, p);
+  var s = (Math.round(x * f) / f).toFixed(p);
+  s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
   return s.replace('.', ',');
 }
-function nb2(x){ return (Math.round(x*100)/100).toFixed(2).replace('.', ','); }
+function nb2(x){ return nb(x, 2); }
 
 /* ═══ GÉOMÉTRIE ═════════════════════════════════════════════════════════ */
 function tourner(pts, k){
