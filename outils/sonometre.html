@@ -1,433 +1,1534 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mesureur de Niveau Sonore</title>
+<title>Sonomètre de classe — niveau sonore et risque auditif</title>
+<!--
+  Sonomètre de classe · outilslp.netlify.app
+  Licence MIT — Copyright (c) 2026 Moïse · lessavoirfairepartager@gmail.com
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, subject to the following conditions: the above
+  copyright notice and this permission notice shall be included in all copies.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+-->
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
 <style>
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-  color: #333;
-  min-height: 100vh;
-  margin: 0; padding: 0;
-  display: flex; align-items: center; justify-content: center;
-}
-.wrap {
-  display: flex; flex-wrap: wrap;
-  gap: 25px; align-items: flex-start; justify-content: center;
-  width: 99vw; max-width: 1400px;
-}
-.container {
-  background: #fff;
-  border-radius: 20px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-  padding: 30px;
-  max-width: 600px;
-  width: 95vw;
-  min-width: 320px;
-  text-align: center;
-  margin-bottom: 12px;
-}
-.legend {
-  background: rgba(255,255,255,0.95);
-  border-radius: 16px;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.10);
-  max-width: 320px;
-  min-width: 220px;
-  padding: 24px 20px 14px 26px;
-  font-size: 1em;
-  margin-top: 20px;
-  margin-bottom: 10px;
-  align-self: stretch;
-  box-sizing: border-box;
-}
-.legend h2 {
-  margin-top: 0; font-size: 1.14em; font-weight: 600; color: #444;
-  margin-bottom: 16px;
-}
-.level {
-  display: flex; align-items:center; gap: 13px; margin-bottom: 12px;
-}
-.level:last-child { margin-bottom: 0; }
-.level-icon {
-  width:25px; height:25px; border-radius:50%;
-  border: 2px solid #ddd;
-  flex-shrink:0;
-  display:inline-block;
-}
-.level-vert   {background:#48bb78;}
-.level-bleu   {background:#63b3ed;}
-.level-jaune  {background:#f6e05e;}
-.level-orange {background:#ed8936;}
-.level-rouge  {background:#e53e3e;}
-.level span {
-  font-weight:500; font-size:1em; color: #333;
-}
-.level-desc { font-weight:400; font-size:0.97em; color:#444; margin-left: 4px;}
-h1 {color: #2d5a2d;}
-.gauge {position: relative; width: 260px; height: 130px; margin: 22px auto 2px auto; display: block;}
-.gauge svg { width:100%; height:100%; }
-.gauge .needle { transform-origin: 50% 100%; transition: none; }
-.gauge .minmaxlbl { font-size:13.5px; fill:#222; font-family:inherit; font-weight:600; }
-#dBValue { font-size: 2.2em; font-weight: bold; margin-top: 11px; transition: color 0.4s, filter 0.3s; }
-#historyCanvas { width: 100%; height: 120px; background: #f8f9fa; border-radius: 10px; margin-top: 27px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.08); display: block;}
-.alertbar {
-  margin-bottom: 17px;
-  text-align: left;
-  background: #f8f9fa;
-  border-radius: 11px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.04);
-  padding: 16px 24px 9px 16px;
-}
-.alertbar label {margin-right:10px;font-weight:500;}
-.alertbar input[type=number] {
-  width: 60px; border-radius: 7px; border: 1.5px solid #63b3ed; padding: 3px 8px; font-size: 1em; margin-right: 16px;
-}
-@media (max-width: 900px) {
-  .wrap {flex-direction:column;align-items:center;}
-  .legend {max-width:95vw;}
-}
-@media (max-width: 480px) {
-  .container, .legend {padding: 8vw 3vw;}
-  h1 {font-size: 1.2em;}
-  .legend h2{font-size:1em;}
-  .alertbar{padding:7vw 1vw;}
-}
-#alertBtn {
-  display: none;
-  background: #e53e3e;
-  color: #fff;
-  font-size: 1.35em;
-  font-weight: bold;
-  border: none;
-  border-radius: 14px;
-  padding: 16px 60px;
-  box-shadow: 0 0 20px #e53e3e88;
-  position: fixed;
-  top: 20px; right: 40px;
-  z-index: 99;
-  animation: none;
-}
-@keyframes blinkAlert {
-  0%, 100% { opacity:1; filter:brightness(1.2);}
-  50% { opacity:0.45; filter:brightness(2);}
-}
+  :root { --accent: var(--coral); --accent-bg: var(--coral-bg); }
+
+  /* ── Bascule des trois modes ─────────────────────────────────────────── */
+  #mode-reperes { display: none; }
+  #mode-reperes.active { display: block; }
+
+  /* ── Onglet sonomètre ────────────────────────────────────────────────── */
+  .son-readout {
+    font-size: var(--fs-xxl);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -.01em;
+  }
+  .son-readout .son-unit {
+    font-size: var(--fs-md);
+    font-weight: 400;
+    color: var(--text2);
+    margin-left: 6px;
+  }
+  .son-stats {
+    display: flex; flex-wrap: wrap;
+    justify-content: center; gap: 8px 22px;
+    width: 100%;
+  }
+  .son-stats > div { display: flex; flex-direction: column; align-items: center; }
+  .son-stat-lab { font-size: var(--fs-xs); color: var(--text3); }
+  .son-stat-val { font-size: var(--fs-md); font-weight: 700; color: var(--text); }
+
+  #son-hist { width: 100%; height: auto; background: var(--sketch-bg); border-radius: var(--radius); }
+
+  .son-alert {
+    position: fixed; left: 12px; right: 12px; bottom: 12px;
+    z-index: 9998;
+    padding: 16px 20px;
+    border-radius: var(--radius-lg);
+    background: #C0271F; color: #fff;
+    font-size: var(--fs-lg); font-weight: 700;
+    text-align: center;
+    box-shadow: 0 6px 26px rgba(0,0,0,.35);
+    animation: son-flash 0.8s steps(1) infinite;
+  }
+  @keyframes son-flash {
+    0%, 49%  { background: #C0271F; }
+    50%,100% { background: #6E120D; }
+  }
+
+  /* ── Onglet repères ──────────────────────────────────────────────────── */
+  .rep-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--gap);
+    align-items: start;
+  }
+  .rep-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--pad-card);
+    display: flex; flex-direction: column; gap: .8rem;
+  }
+  .rep-card.large { grid-column: 1 / -1; }
+
+  .rep-table { width: 100%; border-collapse: collapse; font-size: var(--fs-xs); }
+  .rep-table th {
+    text-align: left; font-weight: 700; color: var(--text3);
+    text-transform: uppercase; letter-spacing: .05em;
+    font-size: var(--fs-xs); padding: 4px 8px;
+    border-bottom: 2px solid var(--border2);
+  }
+  .rep-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .rep-table tr:last-child td { border-bottom: none; }
+  .rep-db { font-weight: 700; font-size: var(--fs-sm); white-space: nowrap; }
+  .rep-puce {
+    display: inline-block; width: 12px; height: 12px;
+    border-radius: 3px; margin-right: 7px; vertical-align: -1px;
+  }
+  .rep-note { font-size: var(--fs-xs); color: var(--text3); line-height: 1.5; }
+
+  .rep-chaine { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; }
+  .rep-maillon {
+    flex: 1 1 78px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 6px; text-align: center;
+  }
+  .rep-maillon b { display: block; font-size: var(--fs-sm); color: var(--text); }
+  .rep-maillon span { display: block; font-size: var(--fs-xs); color: var(--text2); font-weight: 700; }
+  .rep-maillon i { display: block; font-size: var(--fs-xs); color: var(--text3); font-style: normal; }
+
+  .mini-calc { display: flex; flex-direction: column; gap: .7rem; }
+  .mini-calc .fields-grid { gap: 10px; }
+  .mini-res {
+    background: var(--accent-bg);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: var(--fs-md); font-weight: 700; color: var(--accent);
+  }
+  .mini-res small { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--text2); margin-top: 2px; }
+
+  /* ── Onglet défi ─────────────────────────────────────────────────────── */
+  .comp-row {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 10px; margin-bottom: var(--gap);
+  }
+  .comp-legende { font-size: var(--fs-xs); color: var(--text3); }
+
+  .defi-enonce {
+    font-size: var(--fs-base);
+    line-height: 1.6;
+    color: var(--text);
+    font-weight: 500;
+    text-align: center;
+  }
+  .defi-aide {
+    display: block; margin-top: 8px;
+    font-size: var(--fs-xs); color: var(--text3); font-weight: 400;
+  }
+  .comp-badge {
+    display: inline-block;
+    font-size: var(--fs-xs); font-weight: 700;
+    padding: 3px 11px; border-radius: 999px;
+    letter-spacing: .03em;
+  }
+  .qcm { display: grid; gap: 9px; margin-bottom: 1rem; }
+  .qcm-btn {
+    display: flex; align-items: center; gap: 12px;
+    text-align: left; width: 100%;
+    padding: 11px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface); color: var(--text);
+    font-family: inherit; font-size: var(--fs-sm); font-weight: 600;
+    line-height: 1.4; cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+  }
+  .qcm-btn:hover:not([disabled]) { border-color: var(--accent); background: var(--accent-bg); }
+  .qcm-btn .lettre {
+    flex-shrink: 0;
+    width: 27px; height: 27px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface2); border: 1px solid var(--border2);
+    font-size: var(--fs-xs); font-weight: 700; color: var(--text2);
+  }
+  .qcm-btn.bon    { border-color: var(--teal); background: var(--teal-bg); color: var(--teal); }
+  .qcm-btn.bon .lettre    { background: var(--teal); border-color: var(--teal); color: #fff; }
+  .qcm-btn.faux   { border-color: var(--red);  background: var(--red-bg);  color: var(--red); }
+  .qcm-btn.faux .lettre   { background: var(--red);  border-color: var(--red);  color: #fff; }
+  .qcm-btn[disabled] { cursor: default; }
+
+  .fiche-info { font-size: var(--fs-xs); color: var(--text3); margin-bottom: .6rem; text-align: center; }
+
+  @media print { .son-alert { display: none !important; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="container">
-    <div class="alertbar">
-      <label>Seuil MAX (<b>dB</b>): <input type="number" id="maxInput" value="80" min="1" max="120"></label>
-      <label>Durée X (<b>s</b>): <input type="number" id="durInput" value="4" min="1" max="120"></label>
-      <label>Fréquence FZ (<b>Hz</b>): <input type="number" id="freqInput" value="1200" min="100" max="6000"></label>
-    </div>
-    <h1>Niveau Sonore en Classe</h1>
-    <div class="gauge">
-      <svg id="vumetre" viewBox="0 0 200 110"></svg>
-    </div>
-    <div id="dBValue">-- dB</div>
-    <canvas id="historyCanvas"></canvas>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <path d="M7 16h5.5L21 9.5v21L12.5 24H7z" fill="var(--coral)"/>
+      <path d="M25.5 15.2a7 7 0 0 1 0 9.6" stroke="var(--coral)" stroke-width="2.6"
+            stroke-linecap="round" class="lp-beat"/>
+      <path d="M29.8 11a13 13 0 0 1 0 18" stroke="var(--coral)" stroke-width="2.6"
+            stroke-linecap="round" class="lp-beat"/>
+    </svg></div>
+  <div>
+    <h1>Sonomètre de classe</h1>
+    <p>Niveau sonore · risque auditif · Physique-chimie · CAP · Bac Pro · 3ᵉ prépa-métiers</p>
   </div>
-  <div class="legend">
-    <h2>Légende des niveaux :</h2>
-    <div class="level"><span class="level-icon level-vert"></span> 
-      <span>0–45 dB</span> <span class="level-desc">Zone calme : aucune fatigue auditive</span>
+</header>
+
+<div class="main">
+
+  <!-- ═══ SÉLECTEUR DE MODE ═══════════════════════════════════════════════ -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('mesure',this)">Sonomètre</button>
+    <button class="mode-tab" onclick="setMode('reperes',this)">Repères &amp; calculs</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+  </div>
+
+  <!-- ═══ 1. SONOMÈTRE ════════════════════════════════════════════════════ -->
+  <div id="mode-mesure">
+
+    <div class="panel active">
+
+      <div class="sketch-card">
+        <span class="shape-badge" id="son-zone" style="background:var(--surface2);color:var(--text2)">Micro à l’arrêt</span>
+        <svg id="son-gauge" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:340px"></svg>
+        <div class="son-readout"><span id="son-db">—</span><span class="son-unit">dB</span></div>
+        <div class="son-stats">
+          <div><span class="son-stat-lab">Niveau moyen</span><span class="son-stat-val" id="son-leq">—</span></div>
+          <div><span class="son-stat-lab">Maximum</span><span class="son-stat-val" id="son-lmax">—</span></div>
+          <div><span class="son-stat-lab">Durée</span><span class="son-stat-val" id="son-duree">0 : 00</span></div>
+        </div>
+        <button class="btn-check" id="son-start" onclick="toggleMesure()">Démarrer la mesure</button>
+        <div class="context-label" id="son-msg">Le microphone n’est utilisé que dans cet onglet,
+          et seulement après un clic sur ce bouton. Rien n’est enregistré ni envoyé.</div>
+      </div>
+
+      <div class="controls-card">
+        <p class="section-label">Alerte bruit</p>
+        <div class="fields-grid">
+          <div class="field">
+            <label>Seuil d’alerte</label>
+            <div class="field-row"><input type="number" id="son-seuil" value="75" min="30" max="120" step="1"><span class="unit">dB</span></div>
+          </div>
+          <div class="field">
+            <label>Pendant au moins</label>
+            <div class="field-row"><input type="number" id="son-duree-seuil" value="5" min="1" max="120" step="1"><span class="unit">s</span></div>
+          </div>
+          <div class="field">
+            <label>Son de l’alerte</label>
+            <div class="field-row"><input type="number" id="son-freq" value="900" min="200" max="4000" step="50"><span class="unit">Hz</span></div>
+          </div>
+          <div class="field">
+            <label>Volume de l’alerte</label>
+            <div class="field-row"><input type="number" id="son-vol" value="20" min="0" max="100" step="5"><span class="unit">%</span></div>
+          </div>
+        </div>
+        <div class="rep-note">Volume à 0 % : alerte visuelle uniquement. Une alerte ne peut pas
+          se redéclencher avant 30 s.</div>
+        <button class="btn-rnd" onclick="testerAlerte()">Tester l’alerte</button>
+
+        <p class="section-label">Étalonnage</p>
+        <div class="field">
+          <label>Correction appliquée à la mesure</label>
+          <div class="field-row"><input type="number" id="son-cal" value="0" min="-30" max="30" step="1"><span class="unit">dB</span></div>
+        </div>
+        <div class="rep-note">Pour caler l’affichage sur un vrai sonomètre ou une application
+          de téléphone : mesurer la même source avec les deux, puis ajouter ici l’écart constaté.</div>
+
+        <p class="section-label">Session</p>
+        <button class="btn-rnd" onclick="resetSession()">Remettre les statistiques à zéro</button>
+
+        <div class="error-box"><strong>Ce n’est pas un sonomètre réglementaire :</strong>
+          le micro d’un ordinateur ou d’une tablette n’est ni étalonné ni pondéré en dB(A).
+          Les valeurs servent à comparer et à faire prendre conscience du niveau, pas à
+          établir une mesure officielle.</div>
+      </div>
+
     </div>
-    <div class="level"><span class="level-icon level-bleu"></span> 
-      <span>45–60 dB</span> <span class="level-desc">Confort acceptable, attention au cumul</span>
+
+    <div class="controls-card" style="margin-top:var(--gap)">
+      <p class="section-label">Les 3 dernières minutes</p>
+      <svg id="son-hist" viewBox="0 0 640 180" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
-    <div class="level"><span class="level-icon level-jaune"></span> 
-      <span>60–75 dB</span> <span class="level-desc">Fatigue progressive sur la durée</span>
+
+  </div>
+
+  <!-- ═══ 2. REPÈRES & CALCULS ════════════════════════════════════════════ -->
+  <div id="mode-reperes">
+    <div class="rep-grid">
+
+      <!-- Échelle des niveaux -->
+      <div class="rep-card">
+        <p class="section-label">Échelle des niveaux sonores</p>
+        <table class="rep-table">
+          <thead><tr><th>Niveau</th><th>Exemple</th></tr></thead>
+          <tbody>
+            <tr><td class="rep-db" style="color:#2E7D32">0 dB</td><td><span class="rep-puce" style="background:#4CAF50"></span>Seuil d’audibilité</td></tr>
+            <tr><td class="rep-db" style="color:#2E7D32">30 dB</td><td><span class="rep-puce" style="background:#4CAF50"></span>Chuchotement, bibliothèque</td></tr>
+            <tr><td class="rep-db" style="color:#2E7D32">60 dB</td><td><span class="rep-puce" style="background:#42A5F5"></span>Conversation, classe au calme</td></tr>
+            <tr><td class="rep-db" style="color:#7A5B00">70 dB</td><td><span class="rep-puce" style="background:#FDD835"></span>Classe agitée, aspirateur</td></tr>
+            <tr><td class="rep-db" style="color:#7A5B00">80 dB</td><td><span class="rep-puce" style="background:#FB8C00"></span>Rue passante, atelier bruyant</td></tr>
+            <tr><td class="rep-db" style="color:#B3261E">85 dB</td><td><span class="rep-puce" style="background:#E53935"></span>Tour en usinage, tronçonneuse légère</td></tr>
+            <tr><td class="rep-db" style="color:#B3261E">90 dB</td><td><span class="rep-puce" style="background:#E53935"></span>Tondeuse, presse mécanique</td></tr>
+            <tr><td class="rep-db" style="color:#B3261E">100 dB</td><td><span class="rep-puce" style="background:#E53935"></span>Meuleuse d’angle, concert</td></tr>
+            <tr><td class="rep-db" style="color:#B3261E">110 dB</td><td><span class="rep-puce" style="background:#E53935"></span>Marteau piqueur, sirène</td></tr>
+            <tr><td class="rep-db" style="color:#6E120D">120 dB</td><td><span class="rep-puce" style="background:#8E1B14"></span>Seuil de douleur, sablage</td></tr>
+            <tr><td class="rep-db" style="color:#6E120D">140 dB</td><td><span class="rep-puce" style="background:#8E1B14"></span>Avion à réaction, explosion</td></tr>
+          </tbody>
+        </table>
+        <div class="rep-note">Les décibels ne s’additionnent pas comme des longueurs :
+          l’échelle est logarithmique. +10 dB, c’est un son perçu environ deux fois plus fort.</div>
+      </div>
+
+      <!-- Durées maximales -->
+      <div class="rep-card">
+        <p class="section-label">Durée maximale d’exposition</p>
+        <table class="rep-table">
+          <thead><tr><th>Niveau</th><th>Durée par jour</th></tr></thead>
+          <tbody>
+            <tr><td class="rep-db">80 dB</td><td>Sans limite réglementaire</td></tr>
+            <tr><td class="rep-db">85 dB</td><td><strong>8 h</strong> — valeur limite d’action</td></tr>
+            <tr><td class="rep-db">88 dB</td><td><strong>4 h</strong></td></tr>
+            <tr><td class="rep-db">91 dB</td><td><strong>2 h</strong></td></tr>
+            <tr><td class="rep-db">94 dB</td><td><strong>1 h</strong></td></tr>
+            <tr><td class="rep-db">97 dB</td><td><strong>30 min</strong></td></tr>
+            <tr><td class="rep-db">100 dB</td><td><strong>15 min</strong></td></tr>
+            <tr><td class="rep-db">103 dB</td><td><strong>7 min 30 s</strong></td></tr>
+          </tbody>
+        </table>
+        <div class="rep-note">Ces durées supposent une exposition continue, sans protection.
+          Elles se lisent aussi dans l’autre sens : plus le poste est bruyant, moins on peut
+          y rester longtemps.</div>
+      </div>
+
+      <!-- Règle des 3 dB -->
+      <div class="rep-card large">
+        <p class="section-label">Règle des 3 dB : +3 dB = deux fois moins de temps</p>
+        <div class="rep-chaine">
+          <div class="rep-maillon"><b>85 dB</b><span>8 h</span><i>référence</i></div>
+          <div class="rep-maillon"><b>88 dB</b><span>4 h</span><i>+3 dB</i></div>
+          <div class="rep-maillon"><b>91 dB</b><span>2 h</span><i>+6 dB</i></div>
+          <div class="rep-maillon"><b>94 dB</b><span>1 h</span><i>+9 dB</i></div>
+          <div class="rep-maillon"><b>97 dB</b><span>30 min</span><i>+12 dB</i></div>
+          <div class="rep-maillon"><b>100 dB</b><span>15 min</span><i>+15 dB</i></div>
+          <div class="rep-maillon"><b>103 dB</b><span>7 min 30 s</span><i>+18 dB</i></div>
+        </div>
+        <div class="rep-note">Chaque tranche de +3 dB double l’énergie sonore reçue par l’oreille.
+          Pour recevoir la même dose de bruit dans la journée, il faut donc diviser le temps par 2.</div>
+      </div>
+
+      <!-- Calcul : distance -->
+      <div class="rep-card">
+        <p class="section-label">Effet de la distance</p>
+        <div class="formula-box">
+          <code>doubler la distance → −6 dB</code>
+          <div class="formula-detail">En champ libre : L₂ = L₁ − 20 × log(d₂ ÷ d₁)</div>
+        </div>
+        <div class="mini-calc">
+          <div class="fields-grid">
+            <div class="field">
+              <label>Niveau mesuré L₁</label>
+              <div class="field-row"><input type="number" id="cd-L1" value="100" min="0" max="160" step="1" oninput="calcDistance()"><span class="unit">dB</span></div>
+            </div>
+            <div class="field">
+              <label>à la distance d₁</label>
+              <div class="field-row"><input type="number" id="cd-d1" value="1" min="0.1" max="200" step="0.1" oninput="calcDistance()"><span class="unit">m</span></div>
+            </div>
+            <div class="field">
+              <label>Nouvelle distance d₂</label>
+              <div class="field-row"><input type="number" id="cd-d2" value="4" min="0.1" max="200" step="0.1" oninput="calcDistance()"><span class="unit">m</span></div>
+            </div>
+          </div>
+          <div class="mini-res" id="cd-res">—</div>
+        </div>
+        <div class="rep-note">Vrai en champ libre (extérieur, loin des murs). Dans un atelier
+          fermé, les réflexions sur les parois font baisser le niveau beaucoup moins vite.</div>
+      </div>
+
+      <!-- Calcul : plusieurs sources -->
+      <div class="rep-card">
+        <p class="section-label">Plusieurs machines en marche</p>
+        <div class="formula-box">
+          <code>2 machines identiques → +3 dB</code>
+          <div class="formula-detail">L<sub>total</sub> = L + 10 × log(n) &nbsp;·&nbsp; 4 → +6 dB &nbsp;·&nbsp; 10 → +10 dB</div>
+        </div>
+        <div class="mini-calc">
+          <div class="fields-grid">
+            <div class="field">
+              <label>Niveau d’une machine</label>
+              <div class="field-row"><input type="number" id="cs-L" value="85" min="0" max="160" step="1" oninput="calcSources()"><span class="unit">dB</span></div>
+            </div>
+            <div class="field">
+              <label>Nombre de machines</label>
+              <div class="field-row"><input type="number" id="cs-n" value="4" min="1" max="50" step="1" oninput="calcSources()"><span class="unit">machines</span></div>
+            </div>
+          </div>
+          <div class="mini-res" id="cs-res">—</div>
+        </div>
+        <div class="rep-note">Deux machines de 85 dB ne font pas 170 dB : elles font 88 dB.
+          C’est l’énergie sonore qui double, pas le nombre de décibels.</div>
+      </div>
+
+      <!-- Calcul : protections -->
+      <div class="rep-card">
+        <p class="section-label">Protections auditives</p>
+        <div class="formula-box">
+          <code>niveau reçu = niveau ambiant − atténuation</code>
+          <div class="formula-detail">Bouchons ou casque : 15 à 35 dB selon le modèle</div>
+        </div>
+        <div class="mini-calc">
+          <div class="fields-grid">
+            <div class="field">
+              <label>Niveau de l’atelier</label>
+              <div class="field-row"><input type="number" id="ce-L" value="100" min="0" max="160" step="1" oninput="calcEPI()"><span class="unit">dB</span></div>
+            </div>
+            <div class="field">
+              <label>Atténuation du casque</label>
+              <div class="field-row"><input type="number" id="ce-a" value="25" min="0" max="40" step="1" oninput="calcEPI()"><span class="unit">dB</span></div>
+            </div>
+          </div>
+          <div class="mini-res" id="ce-res">—</div>
+        </div>
+        <div class="rep-note">Le casque ne dispense pas de limiter le temps d’exposition :
+          il ne protège que s’il est porté en permanence, y compris pour « juste une minute ».</div>
+      </div>
+
+      <!-- Calcul : durée maximale -->
+      <div class="rep-card">
+        <p class="section-label">Durée maximale à un niveau donné</p>
+        <div class="formula-box">
+          <code>durée = 8 h ÷ 2^((L − 85) ÷ 3)</code>
+          <div class="formula-detail">C’est la règle des 3 dB écrite en une seule ligne</div>
+        </div>
+        <div class="mini-calc">
+          <div class="field">
+            <label>Niveau du poste</label>
+            <div class="field-row"><input type="number" id="ct-L" value="94" min="60" max="140" step="1" oninput="calcTemps()"><span class="unit">dB</span></div>
+          </div>
+          <div class="mini-res" id="ct-res">—</div>
+        </div>
+        <div class="rep-note">En dessous de 80 dB, aucune durée limite n’est fixée.
+          À partir de 120 dB, la douleur est immédiate et le dommage peut être instantané.</div>
+      </div>
+
+      <!-- Obligations -->
+      <div class="rep-card">
+        <p class="section-label">Ce que dit le Code du travail</p>
+        <table class="rep-table">
+          <tbody>
+            <tr><td class="rep-db">80 dB</td><td>Information et formation des salariés · protections mises à disposition · examen audiométrique proposé</td></tr>
+            <tr><td class="rep-db">85 dB</td><td>Port des protections <strong>obligatoire</strong> · signalisation de la zone · programme de réduction du bruit · suivi audiométrique</td></tr>
+            <tr><td class="rep-db">87 dB</td><td><strong>Valeur limite</strong> à ne jamais dépasser, mesurée <em>en tenant compte</em> de l’atténuation des protections</td></tr>
+          </tbody>
+        </table>
+        <div class="rep-note">Niveaux moyens sur une journée de 8 h. La surdité professionnelle
+          est reconnue comme maladie professionnelle (tableau 42).</div>
+      </div>
+
+      <!-- Effets -->
+      <div class="rep-card">
+        <p class="section-label">Pourquoi c’est irréversible</p>
+        <div class="rep-note" style="font-size:var(--fs-xs);color:var(--text2);line-height:1.65">
+          Les <strong>cellules ciliées</strong> de la cochlée transforment les vibrations en signal
+          nerveux. On en possède environ 16 000, et elles <strong>ne repoussent jamais</strong>.
+          Un bruit intense les couche, les tord ou les détruit définitivement.<br><br>
+          La perte commence vers <strong>4 000 Hz</strong>, une zone de fréquences qui ne sert
+          presque pas à comprendre la parole : on ne s’aperçoit de rien pendant des années.
+          Les <strong>acouphènes</strong> — sifflements permanents — sont irréversibles dans la
+          grande majorité des cas.<br><br>
+          Autres effets : fatigue et stress, troubles du sommeil, risque cardiovasculaire accru,
+          et surtout <strong>masquage des alarmes</strong> et des consignes en atelier, donc
+          risque d’accident.
+        </div>
+        <a href="/outils/infographie_nuisances%20sonores.html" class="btn-fiche" style="display:block;text-align:center;text-decoration:none">
+          Voir l’infographie complète</a>
+      </div>
+
     </div>
-    <div class="level"><span class="level-icon level-orange"></span> 
-      <span>75–85 dB</span> <span class="level-desc">Risques sur la concentration, fatigue rapide</span>
-    </div>
-    <div class="level"><span class="level-icon level-rouge"></span> 
-      <span>85–120 dB</span> <span class="level-desc">Risque auditif, niveau dangereux</span>
+
+    <div class="rep-note" style="margin-top:1rem;text-align:center">
+      <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">
+        Calculatrice Casio fx-92 Collège (émulateur)</a>
     </div>
   </div>
-</div>
-<footer class="footer">
-    <p>© 2026 - Ressources Pédagogiques | Lycée Professionnel</p>
-    <p>Site conçu pour l'enseignement des mathématiques et des sciences</p>
-    <p style="margin-top: 15px; font-size: 0.8em; color: #a0aec0;">
-        <strong>Licence MIT</strong> - Créé par <a href="mailto:lessavoirfaire.partager@gmail.com" style="color: #667eea;">lessavoirfaire.partager@gmail.com</a><br>
-        Ce projet est sous licence libre. 
-        <a href="#" onclick="alert('MIT License\n\nCopyright (c) 2025 lessavoirfaire.partager@gmail.com\n\nPermission is hereby granted, free of charge...')" style="color: #667eea;">Voir licence complète</a>
-    </p>
-</footer>
-<button id="alertBtn">ALERTE BRUIT !</button>
+
+  <!-- ═══ 3. MODE DÉFI ════════════════════════════════════════════════════ -->
+  <div id="mode-defi">
+
+    <div class="comp-row">
+      <div class="shape-tabs" id="comp-tabs">
+        <button class="shape-tab active" data-color="blue"   data-comp="C1" onclick="toggleComp(this)"><span class="dot" style="background:var(--blue)"></span>C1 S’approprier</button>
+        <button class="shape-tab active" data-color="purple" data-comp="C2" onclick="toggleComp(this)"><span class="dot" style="background:var(--purple)"></span>C2 Analyser / Raisonner</button>
+        <button class="shape-tab active" data-color="teal"   data-comp="C4" onclick="toggleComp(this)"><span class="dot" style="background:var(--teal)"></span>C4 Valider</button>
+        <button class="shape-tab active" data-color="amber"  data-comp="C5" onclick="toggleComp(this)"><span class="dot" style="background:var(--amber)"></span>C5 Communiquer</button>
+      </div>
+      <span class="comp-legende" id="comp-info"></span>
+    </div>
+
+    <div class="defi-card">
+      <div class="defi-header">
+        <div class="defi-title" id="defi-titre">Question 1</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
+
+      <div class="defi-shape-display">
+        <span class="comp-badge" id="defi-badge">C1 · S’approprier</span>
+        <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:230px;width:100%"></svg>
+        <div class="defi-enonce" id="defi-enonce"></div>
+      </div>
+
+      <!-- Réponse : QCM -->
+      <div class="qcm" id="defi-qcm"></div>
+
+      <!-- Réponse : valeur numérique -->
+      <div id="defi-num" style="display:none">
+        <div class="defi-input-row">
+          <label id="defi-num-label">Réponse =</label>
+          <input type="number" id="defi-input" placeholder="?" step="0.1">
+          <span class="unit" id="defi-num-unit">dB</span>
+        </div>
+        <button class="btn-check" onclick="verifierNum()">Vérifier ma réponse</button>
+      </div>
+
+      <div class="feedback-box" id="defi-feedback"></div>
+      <button class="btn-next" id="btn-next" onclick="questionSuivante()" style="display:none">Question suivante →</button>
+
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <div class="fiche-info" id="fiche-info"></div>
+        <button class="btn-fiche" onclick="genererFiche()">Générer une fiche d’exercices (10 questions)</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<div id="son-alert" class="son-alert no-print" hidden>Trop de bruit — on baisse d’un ton</div>
+
+<script src="/assets/lp-fiche.js"></script>
 <script>
-const sectorDefs = [
-  { from: 0,   to: 45,  color: "#48bb78"},
-  { from: 45,  to: 60,  color: "#63b3ed"},
-  { from: 60,  to: 75,  color: "#f6e05e"},
-  { from: 75,  to: 85,  color: "#ed8936"},
-  { from: 85,  to: 120, color: "#e53e3e"}
+/* ═══════════════════════════════════════════════════════════════════════════
+   Sonomètre de classe — logique
+   Apostrophes DROITES interdites dans ce fichier : tout le texte français
+   utilise l apostrophe typographique et des gabarits entre accents graves.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── UTILITAIRES ─────────────────────────────────────────────────────────── */
+function el(id){ return document.getElementById(id); }
+function v(id){ const x = parseFloat(el(id).value); return isNaN(x) ? 0 : x; }
+function n1(x){ return Math.round(x*10)/10; }
+function fmt(x){ return String(n1(x)).replace(`.`, `,`); }
+function rnd(min,max){ return Math.floor(min + Math.random()*(max-min+1)); }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function melange(a){
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+
+/* Durée en heures → texte lisible (8 h · 30 min · 7 min 30 s) */
+function fmtDuree(h){
+  const s = Math.round(h*3600);
+  if(s >= 3600){
+    const hh = Math.floor(s/3600), mm = Math.round((s-hh*3600)/60);
+    return mm ? hh+` h `+mm+` min` : hh+` h`;
+  }
+  if(s >= 60){
+    const mm = Math.floor(s/60), ss = s-mm*60;
+    return ss ? mm+` min `+ss+` s` : mm+` min`;
+  }
+  return s+` s`;
+}
+/* Durée maximale réglementaire à un niveau donné (règle des 3 dB) */
+function dureeMax(L){ return 8 / Math.pow(2,(L-85)/3); }
+
+/* ─── CADRAN (partagé écran + fiche, viewBox 0 0 200 160) ─────────────────── */
+const CX = 100, CY = 124, R1 = 46, R2 = 70, RLAB = 84, RAIG = 64, DBMAX = 120;
+
+const ZONES_CADRAN = [
+  { de:0,  a:45,  c:`#93D3A2` },
+  { de:45, a:60,  c:`#9FC9EE` },
+  { de:60, a:80,  c:`#F2DC85` },
+  { de:80, a:85,  c:`#F1B078` },
+  { de:85, a:120, c:`#EC9490` }
 ];
-let dbCurrent = 0, dbDisplay = 0;
-let needleDb = 0;
-let lastUpdateValue = Date.now();
 
-// Pour l'alerte
-let max_db = 80, dur_sec = 4, freq_hz = 1200;
-let alertActive = false, alertCooldown = 0;
+function angle(db){ return -180 + (Math.max(0,Math.min(DBMAX,db))/DBMAX)*180; }
+function pol(r,deg){ const a = deg*Math.PI/180; return [CX+r*Math.cos(a), CY+r*Math.sin(a)]; }
 
-function updateParams() {
-  max_db = Number(document.getElementById('maxInput').value)||80;
-  dur_sec = Number(document.getElementById('durInput').value)||4;
-  freq_hz = Number(document.getElementById('freqInput').value)||1200;
+function secteur(v1,v2,fill){
+  const a1 = angle(v1), a2 = angle(v2);
+  const p1 = pol(R2,a1), p2 = pol(R2,a2), p3 = pol(R1,a2), p4 = pol(R1,a1);
+  return `<path d="M ${n1(p1[0])} ${n1(p1[1])} A ${R2} ${R2} 0 0 1 ${n1(p2[0])} ${n1(p2[1])}`
+       + ` L ${n1(p3[0])} ${n1(p3[1])} A ${R1} ${R1} 0 0 0 ${n1(p4[0])} ${n1(p4[1])} Z"`
+       + ` fill="${fill}" stroke="#ffffff" stroke-width="1"/>`;
 }
-document.getElementById('maxInput').addEventListener('input',updateParams);
-document.getElementById('durInput').addEventListener('input',updateParams);
-document.getElementById('freqInput').addEventListener('input',updateParams);
 
-function polarToXY(cx, cy, r, angle) {
-  const rad = angle * Math.PI / 180;
-  return [
-    cx + r * Math.cos(rad),
-    cy + r * Math.sin(rad)
-  ];
+function cadranSVG(){
+  let s = ``;
+  for(let i=0;i<ZONES_CADRAN.length;i++){
+    s += secteur(ZONES_CADRAN[i].de, ZONES_CADRAN[i].a, ZONES_CADRAN[i].c);
+  }
+  const grads = [0,20,40,60,80,100,120];
+  for(let i=0;i<grads.length;i++){
+    const g = grads[i], a = angle(g);
+    const q1 = pol(R2+2,a), q2 = pol(R2+8,a), lb = pol(RLAB,a);
+    const anc = a < -140 ? `start` : (a > -40 ? `end` : `middle`);
+    s += `<line x1="${n1(q1[0])}" y1="${n1(q1[1])}" x2="${n1(q2[0])}" y2="${n1(q2[1])}" stroke="#5F5E5A" stroke-width="1.6"/>`
+       + `<text x="${n1(lb[0])}" y="${n1(lb[1]+4)}" text-anchor="${anc}" font-size="11" fill="#5F5E5A" font-weight="600">${g}</text>`;
+  }
+  const a85 = angle(85), m1 = pol(R1,a85), m2 = pol(R2,a85);
+  s += `<line x1="${n1(m1[0])}" y1="${n1(m1[1])}" x2="${n1(m2[0])}" y2="${n1(m2[1])}" stroke="#7A1F1A" stroke-width="2"/>`;
+  s += `<text x="100" y="150" text-anchor="middle" font-size="10" fill="#7D7A73">décibels (dB)</text>`;
+  return s;
 }
-function drawSectors(svg, cx, cy, r1, r2, fromAngle, toAngle) {
-  let totalAngle = toAngle - fromAngle;
-  let full = 120;
-  sectorDefs.forEach(sector => {
-    let ang1 = fromAngle + (sector.from/full) * totalAngle;
-    let ang2 = fromAngle + (sector.to/full) * totalAngle;
-    let [x1, y1] = polarToXY(cx, cy, r2, ang1);
-    let [x2, y2] = polarToXY(cx, cy, r2, ang2);
-    let [ix1, iy1] = polarToXY(cx, cy, r1, ang1);
-    let [ix2, iy2] = polarToXY(cx, cy, r1, ang2);
-    let largeArcFlag = (ang2 - ang1) > 180 ? 1 : 0;
-    let path = [
-      `M ${ix1} ${iy1}`,
-      `L ${x1} ${y1}`,
-      `A ${r2} ${r2} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
-      `L ${ix2} ${iy2}`,
-      `A ${r1} ${r1} 0 ${largeArcFlag} 0 ${ix1} ${iy1}`,
-      'Z'
-    ].join(' ');
-    let el = document.createElementNS("http://www.w3.org/2000/svg","path");
-    el.setAttribute("d", path);
-    el.setAttribute("fill", sector.color);
-    el.setAttribute("stroke","#fff");
-    el.setAttribute("stroke-width","2");
-    svg.appendChild(el);
+
+function aiguilleSVG(){
+  return `<line x1="${CX}" y1="${CY}" x2="${CX-RAIG}" y2="${CY}" stroke="#7A1F1A" stroke-width="3.4" stroke-linecap="round"/>`
+       + `<circle cx="${CX}" cy="${CY}" r="6" fill="#7A1F1A"/>`
+       + `<circle cx="${CX}" cy="${CY}" r="2.4" fill="#ffffff"/>`;
+}
+function rotAiguille(db){ return (Math.max(0,Math.min(DBMAX,db))/DBMAX*180).toFixed(2); }
+
+/* Cadran complet, aiguille comprise — utilisé par le défi et par la fiche */
+function cadranAvecAiguille(db){
+  return cadranSVG() + `<g transform="rotate(${rotAiguille(db)},${CX},${CY})">` + aiguilleSVG() + `</g>`;
+}
+
+/* Zone de lecture en classe */
+function zoneClasse(db){
+  if(db < 45) return { nom:`Très calme`, fg:`#2E7D32`, bg:`#E6F4EA` };
+  if(db < 60) return { nom:`Calme — on peut travailler`, fg:`#1565A0`, bg:`#E6F1FB` };
+  if(db < 80) return { nom:`Classe agitée`, fg:`#7A5B00`, bg:`#FAEEDA` };
+  if(db < 85) return { nom:`Trop fort — vigilance`, fg:`#A65200`, bg:`#FAECE7` };
+  return { nom:`Niveau dangereux`, fg:`#B3261E`, bg:`#FCEBEB` };
+}
+
+/* ─── ONGLET SONOMÈTRE ────────────────────────────────────────────────────── */
+const PAS = 350;                    /* ms entre deux points d historique      */
+const HIST_MAX = Math.round(3*60*1000/PAS);
+const HX0 = 44, HX1 = 628, HY0 = 16, HY1 = 156;
+
+let audioCtx = null, analyser = null, tampon = null, fluxMicro = null;
+let mesureActive = false;
+let dbInstant = 0, dbAiguilleCourante = 0, dernierPas = 0, rafId = null;
+let hist = [], sommeEnergie = 0, nEnergie = 0, lmax = 0, tDebut = 0;
+let pasAuDessus = 0, alerteJusqua = 0, prochaineAlerte = 0;
+
+function initCadranEcran(){
+  el(`son-gauge`).innerHTML = cadranSVG()
+    + `<g id="son-aiguille" transform="rotate(0,${CX},${CY})">` + aiguilleSVG() + `</g>`;
+}
+
+function majAiguille(db){
+  const g = el(`son-aiguille`);
+  if(g) g.setAttribute(`transform`, `rotate(${rotAiguille(db)},${CX},${CY})`);
+}
+
+function histSVG(){
+  const seuil = v(`son-seuil`);
+  const y = function(db){ return HY1 - (Math.max(0,Math.min(120,db))/120)*(HY1-HY0); };
+  let s = `<rect x="${HX0}" y="${HY0}" width="${HX1-HX0}" height="${HY1-HY0}" fill="#ffffff" stroke="#D8D6CE" stroke-width="1"/>`;
+  const reperes = [0,40,80,120];
+  for(let i=0;i<reperes.length;i++){
+    const r = reperes[i];
+    s += `<line x1="${HX0}" y1="${n1(y(r))}" x2="${HX1}" y2="${n1(y(r))}" stroke="#EAE8E1" stroke-width="1"/>`
+       + `<text x="${HX0-6}" y="${n1(y(r)+4)}" text-anchor="end" font-size="11" fill="#7D7A73">${r}</text>`;
+  }
+  s += `<line x1="${HX0}" y1="${n1(y(85))}" x2="${HX1}" y2="${n1(y(85))}" stroke="#B3261E" stroke-width="1.2" stroke-dasharray="5,4"/>`
+     + `<text x="${HX1-4}" y="${n1(y(85)-5)}" text-anchor="end" font-size="11" fill="#B3261E" font-weight="700">85 dB · danger</text>`;
+  if(seuil > 0 && Math.abs(seuil-85) > 3){
+    s += `<line x1="${HX0}" y1="${n1(y(seuil))}" x2="${HX1}" y2="${n1(y(seuil))}" stroke="#854F0B" stroke-width="1.2" stroke-dasharray="3,3"/>`
+       + `<text x="${HX0+5}" y="${n1(y(seuil)-5)}" font-size="11" fill="#854F0B" font-weight="700">${seuil} dB · alerte</text>`;
+  }
+  if(hist.length > 1){
+    const dx = (HX1-HX0)/HIST_MAX;
+    const dernier = hist.length-1;
+    let pts = ``;
+    for(let i=0;i<hist.length;i++){ pts += n1(HX1-(dernier-i)*dx)+`,`+n1(y(hist[i]))+` `; }
+    s += `<polyline points="${pts.trim()}" fill="none" stroke="#993C1D" stroke-width="1.8" stroke-linejoin="round"/>`;
+  }
+  s += `<text x="${HX0}" y="174" font-size="11" fill="#7D7A73">il y a 3 min</text>`
+     + `<text x="${HX1}" y="174" text-anchor="end" font-size="11" fill="#7D7A73">maintenant</text>`;
+  return s;
+}
+
+function majHist(){ el(`son-hist`).innerHTML = histSVG(); }
+
+function lireNiveau(){
+  let rms = 0;
+  if(tampon instanceof Float32Array){
+    analyser.getFloatTimeDomainData(tampon);
+    let s = 0;
+    for(let i=0;i<tampon.length;i++){ s += tampon[i]*tampon[i]; }
+    rms = Math.sqrt(s/tampon.length);
+  } else {
+    analyser.getByteTimeDomainData(tampon);
+    let s = 0;
+    for(let i=0;i<tampon.length;i++){ const x = (tampon[i]-128)/128; s += x*x; }
+    rms = Math.sqrt(s/tampon.length);
+  }
+  if(rms < 1e-7) rms = 1e-7;
+  const db = 20*Math.log10(rms) + 100 + v(`son-cal`);
+  return Math.max(0, Math.min(120, db));
+}
+
+function boucle(){
+  if(!mesureActive) return;
+  dbInstant = lireNiveau();
+  dbAiguilleCourante += (dbInstant - dbAiguilleCourante)*0.18;
+  majAiguille(dbAiguilleCourante);
+  const t = performance.now();
+  if(t - dernierPas >= PAS){ dernierPas = t; unPas(); }
+  rafId = requestAnimationFrame(boucle);
+}
+
+function unPas(){
+  const db = dbInstant;
+  hist.push(db);
+  if(hist.length > HIST_MAX) hist.shift();
+  sommeEnergie += Math.pow(10, db/10);
+  nEnergie++;
+  if(db > lmax) lmax = db;
+
+  const z = zoneClasse(db);
+  el(`son-db`).textContent = fmt(db);
+  el(`son-db`).style.color = z.fg;
+  const badge = el(`son-zone`);
+  badge.textContent = z.nom;
+  badge.style.background = z.bg;
+  badge.style.color = z.fg;
+
+  const leq = 10*Math.log10(sommeEnergie/nEnergie);
+  el(`son-leq`).textContent = fmt(leq)+` dB`;
+  el(`son-lmax`).textContent = fmt(lmax)+` dB`;
+  const sec = Math.floor((Date.now()-tDebut)/1000);
+  el(`son-duree`).textContent = Math.floor(sec/60)+` : `+String(sec%60).padStart(2,`0`);
+
+  verifierAlerte(db);
+  majHist();
+}
+
+function verifierAlerte(db){
+  const seuil = v(`son-seuil`), duree = Math.max(1, v(`son-duree-seuil`));
+  if(db > seuil) pasAuDessus++; else pasAuDessus = 0;
+  const t = Date.now();
+  if(pasAuDessus*PAS >= duree*1000 && t > prochaineAlerte){
+    pasAuDessus = 0;
+    prochaineAlerte = t + 30000;
+    declencherAlerte();
+  }
+  if(alerteJusqua && t > alerteJusqua){ alerteJusqua = 0; el(`son-alert`).hidden = true; }
+}
+
+function declencherAlerte(){
+  alerteJusqua = Date.now() + 8000;
+  el(`son-alert`).hidden = false;
+  setTimeout(function(){
+    if(Date.now() >= alerteJusqua){ el(`son-alert`).hidden = true; alerteJusqua = 0; }
+  }, 8200);
+  jouerAlerte();
+}
+
+function jouerAlerte(){
+  const vol = v(`son-vol`)/100 * 0.45;
+  if(vol <= 0) return;
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === `suspended`) audioCtx.resume();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = `sine`;
+    o.frequency.value = Math.max(200, Math.min(4000, v(`son-freq`)));
+    const t0 = audioCtx.currentTime;
+    g.gain.setValueAtTime(0.0001, t0);
+    for(let k=0;k<4;k++){
+      const d = t0 + k*0.55;
+      g.gain.exponentialRampToValueAtTime(vol, d+0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, d+0.35);
+    }
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t0); o.stop(t0+2.3);
+  } catch(e){ /* pas de son : l alerte visuelle suffit */ }
+}
+
+function testerAlerte(){ declencherAlerte(); }
+
+function resetSession(){
+  hist = []; sommeEnergie = 0; nEnergie = 0; lmax = 0; tDebut = Date.now();
+  pasAuDessus = 0; prochaineAlerte = 0;
+  el(`son-leq`).textContent = `—`;
+  el(`son-lmax`).textContent = `—`;
+  el(`son-duree`).textContent = `0 : 00`;
+  majHist();
+}
+
+function toggleMesure(){
+  if(mesureActive){ arreterMesure(); return; }
+  demarrerMesure();
+}
+
+function demarrerMesure(){
+  const msg = el(`son-msg`);
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    msg.innerHTML = `<strong>Ce navigateur ne donne pas accès au microphone.</strong>
+      Les onglets Repères et Défi fonctionnent quand même.`;
+    return;
+  }
+  msg.textContent = `Autorisation du microphone en cours…`;
+  navigator.mediaDevices.getUserMedia({ audio:{
+      echoCancellation:false, noiseSuppression:false, autoGainControl:false
+    }}).then(function(flux){
+    fluxMicro = flux;
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === `suspended`) audioCtx.resume();
+    const src = audioCtx.createMediaStreamSource(flux);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    tampon = analyser.getFloatTimeDomainData
+      ? new Float32Array(analyser.fftSize)
+      : new Uint8Array(analyser.fftSize);
+    src.connect(analyser);
+    mesureActive = true;
+    tDebut = Date.now();
+    dernierPas = 0;
+    el(`son-start`).textContent = `Arrêter la mesure`;
+    msg.textContent = `Mesure en cours. Le son n est ni enregistré ni transmis : il est analysé puis oublié.`;
+    boucle();
+  }).catch(function(){
+    msg.innerHTML = `<strong>Microphone indisponible.</strong> Il a été refusé, ou aucun micro
+      n est branché. Vérifier l autorisation dans la barre d adresse du navigateur.`;
   });
 }
-function drawNeedle(svg, cx, cy, r, angle) {
-  let [x, y] = polarToXY(cx, cy, r, angle);
-  let n = document.getElementById('needle');
-  if (!n) {
-    n = document.createElementNS("http://www.w3.org/2000/svg","line");
-    n.setAttribute("id","needle");
-    n.setAttribute("x1",cx); n.setAttribute("y1",cy);
-    n.setAttribute("stroke","#bc2424");
-    n.setAttribute("stroke-width","5"); n.setAttribute("stroke-linecap","round");
-    svg.appendChild(n);
-  }
-  n.setAttribute("x2",x);
-  n.setAttribute("y2",y);
-}
-function drawMarks(svg, cx, cy, r, fromAngle, toAngle) {
-  let maxdB = 120, minAngle = fromAngle, maxAngle = toAngle;
-  let steps = [0, 45, 60, 75, 85, 100, 110, 120];
-  steps.forEach(dB => {
-    let angle = minAngle + (dB/maxdB)*(maxAngle-minAngle);
-    let [x,y] = polarToXY(cx, cy, r, angle);
-    let [tx,ty] = polarToXY(cx, cy, r-10, angle);
-    let line = document.createElementNS("http://www.w3.org/2000/svg","line");
-    line.setAttribute('x1',x); line.setAttribute('y1',y);
-    line.setAttribute('x2',tx); line.setAttribute('y2',ty);
-    line.setAttribute("stroke","#444");
-    line.setAttribute("stroke-width","2");
-    svg.appendChild(line);
 
-    let text = document.createElementNS("http://www.w3.org/2000/svg","text");
-    let [lx, ly] = polarToXY(cx, cy, r-18, angle);
-    text.setAttribute("x",lx); text.setAttribute("y",ly+5);
-    text.setAttribute("font-size","13");
-    text.setAttribute("fill","#444");
-    text.setAttribute("font-family","inherit");
-    text.setAttribute("text-anchor","middle");
-    text.textContent = String(dB);
-    svg.appendChild(text);
-  });
-  let [x_min, y_min]=polarToXY(cx, cy, r+12, minAngle-4);
-  let [x_max, y_max]=polarToXY(cx, cy, r+12, maxAngle+4);
-  let tmin=document.createElementNS("http://www.w3.org/2000/svg","text");
-  tmin.setAttribute("x",x_min);tmin.setAttribute("y",y_min+7);
-  tmin.setAttribute("class","minmaxlbl");tmin.textContent="min";
-  let tmax=document.createElementNS("http://www.w3.org/2000/svg","text");
-  tmax.setAttribute("x",x_max);tmax.setAttribute("y",y_max+7);
-  tmax.setAttribute("class","minmaxlbl");tmax.textContent="max";
-  svg.appendChild(tmin);svg.appendChild(tmax);
+function arreterMesure(){
+  mesureActive = false;
+  if(rafId) cancelAnimationFrame(rafId);
+  if(fluxMicro){ fluxMicro.getTracks().forEach(function(t){ t.stop(); }); fluxMicro = null; }
+  el(`son-start`).textContent = `Démarrer la mesure`;
+  el(`son-msg`).textContent = `Mesure arrêtée. Les statistiques de la session sont conservées.`;
+  majAiguille(0);
+  el(`son-db`).textContent = `—`;
+  const badge = el(`son-zone`);
+  badge.textContent = `Micro à l arrêt`;
+  badge.style.background = `var(--surface2)`;
+  badge.style.color = `var(--text2)`;
 }
-function renderGauge(db) {
-  let svg = document.getElementById('vumetre');
-  svg.innerHTML = '';
-  let cx = 100, cy = 100, r1 = 45, r2 = 90;
-  let fromAngle = -180, toAngle = 0;
-  drawSectors(svg, cx, cy, r1, r2, fromAngle, toAngle);
-  drawMarks(svg, cx, cy, r2+4, fromAngle, toAngle);
-  let dbClamped = Math.max(0, Math.min(120, needleDb));
-  let angle = fromAngle + (dbClamped/120)*(toAngle-fromAngle);
-  drawNeedle(svg, cx, cy, r1-9, angle);
-}
-let audioContext, analyser, dataArray, source;
-let historyData = [];
-let canvas = document.getElementById('historyCanvas'), ctx = canvas.getContext('2d');
-canvas.width = canvas.clientWidth;
-canvas.height = 120;
-const graphMinutes = 3, refreshMs = 350;
-const maxPoints = Math.round((60*1000*graphMinutes) / refreshMs);
 
-function getColorForDB(db) {
-  if (db < 45) return '#48bb78';
-  if (db < 60) return '#63b3ed';
-  if (db < 75) return '#f6e05e';
-  if (db < 85) return '#ed8936';
-  return '#e53e3e';
+/* ─── CALCULS DE L ONGLET REPÈRES ─────────────────────────────────────────── */
+function calcDistance(){
+  const L1 = v(`cd-L1`), d1 = v(`cd-d1`), d2 = v(`cd-d2`);
+  const box = el(`cd-res`);
+  if(d1 <= 0 || d2 <= 0){ box.innerHTML = `Les distances doivent être supérieures à 0.`; return; }
+  const L2 = L1 - 20*Math.log10(d2/d1);
+  const ecart = L2 - L1;
+  const rapport = d2/d1;
+  const sens = ecart < 0 ? `de moins` : `de plus`;
+  box.innerHTML = `L₂ = ${fmt(L2)} dB`
+    + `<small>La distance est multipliée par ${fmt(rapport)} → ${fmt(Math.abs(ecart))} dB ${sens}.`
+    + ` Chaque doublement de la distance retire 6 dB.</small>`;
 }
-async function startAudio() {
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  source = audioContext.createMediaStreamSource(stream);
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 512;
-  dataArray = new Uint8Array(analyser.fftSize);
-  source.connect(analyser);
-  measureLevel();
+
+function calcSources(){
+  const L = v(`cs-L`), n = Math.max(1, Math.round(v(`cs-n`)));
+  const Lt = L + 10*Math.log10(n);
+  el(`cs-res`).innerHTML = `L total = ${fmt(Lt)} dB`
+    + `<small>${n} machine${n>1?`s`:``} de ${fmt(L)} dB → ${fmt(Lt-L)} dB de plus, pas ${fmt(L*n)} dB.</small>`;
 }
-function measureLevel() {
-  analyser.getByteTimeDomainData(dataArray);
-  let sum = 0;
-  for (let i = 0; i < dataArray.length; i++) {
-    let v = (dataArray[i] - 128) / 128;
-    sum += v * v;
+
+function calcEPI(){
+  const L = v(`ce-L`), a = v(`ce-a`);
+  const Lp = Math.max(0, L - a);
+  let s = `Niveau reçu = ${fmt(Lp)} dB`;
+  if(Lp < 80){
+    s += `<small>Sous 80 dB : aucune durée limite réglementaire, à condition de garder la protection en permanence.</small>`;
+  } else {
+    s += `<small>Toujours au-dessus de 80 dB : durée maximale d exposition ${fmtDuree(dureeMax(Lp))} par jour.</small>`;
   }
-  let rms = Math.sqrt(sum / dataArray.length);
-  let db = Math.min(120, Math.max(0, 20 * Math.log10(rms) + 100));
-  dbCurrent = db;
-  requestAnimationFrame(animateNeedle);
-  if ((Date.now() - lastUpdateValue) > refreshMs) {
-    dbDisplay = dbCurrent;
-    lastUpdateValue = Date.now();
-    updateGauge(dbDisplay);
+  el(`ce-res`).innerHTML = s;
+}
+
+function calcTemps(){
+  const L = v(`ct-L`);
+  let s;
+  if(L < 80){
+    s = `Aucune limite réglementaire<small>En dessous de 80 dB, le Code du travail ne fixe pas de durée maximale.</small>`;
+  } else if(L >= 120){
+    s = `Danger immédiat<small>À partir de 120 dB, la douleur est immédiate et les dégâts peuvent survenir en quelques secondes.</small>`;
+  } else {
+    s = `${fmtDuree(dureeMax(L))} par jour`
+      + `<small>Soit ${fmt(L-85)} dB au-dessus des 85 dB de référence : la durée de 8 h est divisée par 2 tous les 3 dB.</small>`;
   }
-  historyData.push(dbCurrent);
-  if (historyData.length > maxPoints) historyData.shift();
-  // Détection Alerte
-  checkAlert();
-  drawHistory();
-  setTimeout(measureLevel, 50);
+  el(`ct-res`).innerHTML = s;
 }
-function animateNeedle() {
-  let inertia = 0.13;
-  needleDb += (dbCurrent - needleDb) * inertia;
-  renderGauge(needleDb);
+
+/* ═══ CROQUIS DES QUESTIONS (viewBox 0 0 200 160, réutilisés par la fiche) ═══ */
+
+function cap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function svgEchelle(marque){
+  const y = function(db){ return 148 - (db/140)*136; };
+  const seg = function(a,b,c){
+    return `<rect x="62" y="${n1(y(b))}" width="30" height="${n1(y(a)-y(b))}" fill="${c}"/>`;
+  };
+  let s = seg(0,80,`#93D3A2`) + seg(80,85,`#F1B078`) + seg(85,120,`#EC9490`) + seg(120,140,`#B4514C`);
+  s += `<rect x="62" y="${n1(y(140))}" width="30" height="${n1(y(0)-y(140))}" fill="none" stroke="#5F5E5A" stroke-width="1.4"/>`;
+  const grads = [0,40,85,120,140];
+  for(let i=0;i<grads.length;i++){
+    const g = grads[i];
+    const fort = (g===85);
+    s += `<line x1="56" y1="${n1(y(g))}" x2="62" y2="${n1(y(g))}" stroke="#5F5E5A" stroke-width="1.4"/>`
+       + `<text x="53" y="${n1(y(g)+4)}" text-anchor="end" font-size="10" fill="${fort?`#7A1F1A`:`#5F5E5A`}" font-weight="${fort?`700`:`400`}">${g}</text>`;
+  }
+  s += `<text x="77" y="10" text-anchor="middle" font-size="11" fill="#7D7A73">dB</text>`;
+  if(marque !== null && marque !== undefined){
+    const ym = n1(y(marque));
+    s += `<line x1="62" y1="${ym}" x2="104" y2="${ym}" stroke="#7A1F1A" stroke-width="1.8"/>`
+       + `<polygon points="96,${ym} 106,${n1(ym-5)} 106,${n1(ym+5)}" fill="#7A1F1A"/>`
+       + `<text x="110" y="${n1(ym+4)}" font-size="13" font-weight="700" fill="#7A1F1A">${marque} dB</text>`;
+  }
+  return s;
 }
-function updateGauge(db) {
-  const dBValue = document.getElementById('dBValue');
-  dBValue.style.color = getColorForDB(db);
-  dBValue.innerHTML = db.toFixed(1) + " dB";
-  dBValue.animate([{filter: 'brightness(1.5)', transform:'scale(1.12)'},{filter: 'brightness(1)', transform:'scale(1)'}],{duration: 300, easing: 'cubic-bezier(.6,1.5,.59,1.03)'});
+
+function svgHorloge(txt){
+  let s = `<circle cx="100" cy="70" r="46" fill="#F7F6F2" stroke="#5F5E5A" stroke-width="2.4"/>`;
+  for(let k=0;k<12;k++){
+    const a = (k*30-90)*Math.PI/180;
+    s += `<line x1="${n1(100+38*Math.cos(a))}" y1="${n1(70+38*Math.sin(a))}"`
+       + ` x2="${n1(100+43*Math.cos(a))}" y2="${n1(70+43*Math.sin(a))}"`
+       + ` stroke="#8D8981" stroke-width="${k%3===0?2.4:1.2}"/>`;
+  }
+  s += `<line x1="100" y1="70" x2="100" y2="42" stroke="#1A1917" stroke-width="3.2" stroke-linecap="round"/>`
+     + `<line x1="100" y1="70" x2="124" y2="82" stroke="#1A1917" stroke-width="2.4" stroke-linecap="round"/>`
+     + `<circle cx="100" cy="70" r="3.6" fill="#1A1917"/>`
+     + `<text x="100" y="142" text-anchor="middle" font-size="15" font-weight="700" fill="#993C1D">${txt}</text>`;
+  return s;
 }
-const seuils = [
-  {db:45, color:'#48bb78', label: "Calme"},
-  {db:60, color:'#63b3ed', label: "Confort"},
-  {db:75, color:'#f6e05e', label: "Fatigue"},
-  {db:85, color:'#ed8936', label: "Danger"},
+
+function perso(x){
+  return `<circle cx="${x}" cy="90" r="6.5" fill="#3A3833"/>`
+       + `<line x1="${x}" y1="97" x2="${x}" y2="110" stroke="#3A3833" stroke-width="2.6"/>`
+       + `<line x1="${x-7}" y1="102" x2="${x+7}" y2="102" stroke="#3A3833" stroke-width="2.2"/>`
+       + `<line x1="${x}" y1="110" x2="${x-6}" y2="118" stroke="#3A3833" stroke-width="2.2"/>`
+       + `<line x1="${x}" y1="110" x2="${x+6}" y2="118" stroke="#3A3833" stroke-width="2.2"/>`;
+}
+
+function svgDistance(L1,d1,d2){
+  let s = `<line x1="6" y1="118" x2="194" y2="118" stroke="#8D8981" stroke-width="1.6"/>`;
+  s += `<rect x="8" y="88" width="30" height="30" rx="2" fill="#D8D6CE" stroke="#5F5E5A" stroke-width="2"/>`
+     + `<circle cx="23" cy="103" r="7" fill="none" stroke="#7A1F1A" stroke-width="2"/>`
+     + `<path d="M43 96 a10 10 0 0 1 0 14" fill="none" stroke="#993C1D" stroke-width="2" stroke-linecap="round"/>`
+     + `<path d="M50 89 a18 18 0 0 1 0 28" fill="none" stroke="#993C1D" stroke-width="2" stroke-linecap="round"/>`
+     + `<text x="28" y="80" text-anchor="middle" font-size="10" fill="#5F5E5A">machine</text>`;
+  s += perso(96) + perso(168);
+  s += `<text x="96" y="70" text-anchor="middle" font-size="13" font-weight="700" fill="#B3261E">${L1} dB</text>`
+     + `<text x="168" y="70" text-anchor="middle" font-size="13" font-weight="700" fill="#185FA5">? dB</text>`;
+  s += `<line x1="23" y1="132" x2="96" y2="132" stroke="#5F5E5A" stroke-width="1" stroke-dasharray="3,2"/>`
+     + `<text x="60" y="129" text-anchor="middle" font-size="11" font-weight="700" fill="#5F5E5A">${d1} m</text>`;
+  s += `<line x1="23" y1="150" x2="168" y2="150" stroke="#5F5E5A" stroke-width="1" stroke-dasharray="3,2"/>`
+     + `<text x="96" y="147" text-anchor="middle" font-size="11" font-weight="700" fill="#5F5E5A">${d2} m</text>`;
+  return s;
+}
+
+function svgCasque(L,a){
+  return `<circle cx="100" cy="88" r="33" fill="#F3E2CE" stroke="#5F5E5A" stroke-width="2"/>`
+       + `<path d="M65 86 a35 35 0 0 1 70 0" fill="none" stroke="#3A3833" stroke-width="7" stroke-linecap="round"/>`
+       + `<rect x="55" y="82" width="17" height="28" rx="7" fill="#993C1D"/>`
+       + `<rect x="128" y="82" width="17" height="28" rx="7" fill="#993C1D"/>`
+       + `<text x="100" y="30" text-anchor="middle" font-size="14" font-weight="700" fill="#B3261E">${L} dB dans l’atelier</text>`
+       + `<text x="100" y="145" text-anchor="middle" font-size="14" font-weight="700" fill="#0F6E56">casque : −${a} dB</text>`;
+}
+
+function svgMachines(n,L){
+  let s = `<text x="100" y="20" text-anchor="middle" font-size="12" fill="#5F5E5A">${n} machines identiques</text>`;
+  const cols = Math.min(5,n), w = 26, h = 22, gx = 8, gy = 12;
+  const lignes = Math.ceil(n/5);
+  const largeur = cols*w + (cols-1)*gx;
+  const hauteur = lignes*h + (lignes-1)*gy;
+  const x0 = 100 - largeur/2, y0 = 86 - hauteur/2;
+  for(let i=0;i<n;i++){
+    const c = i%5, r = Math.floor(i/5);
+    const x = x0 + c*(w+gx), y = y0 + r*(h+gy);
+    s += `<rect x="${n1(x)}" y="${n1(y)}" width="${w}" height="${h}" rx="2" fill="#D8D6CE" stroke="#5F5E5A" stroke-width="1.6"/>`
+       + `<circle cx="${n1(x+w/2)}" cy="${n1(y+h/2)}" r="5" fill="none" stroke="#7A1F1A" stroke-width="1.6"/>`;
+  }
+  s += `<text x="100" y="146" text-anchor="middle" font-size="14" font-weight="700" fill="#993C1D">chacune ${L} dB</text>`;
+  return s;
+}
+
+function svgChaine3dB(L2){
+  const boite = function(x,l,t,c){
+    return `<rect x="${x}" y="52" width="58" height="58" rx="6" fill="${c}" stroke="#5F5E5A" stroke-width="1.6"/>`
+         + `<text x="${x+29}" y="78" text-anchor="middle" font-size="15" font-weight="700" fill="#1A1917">${l}</text>`
+         + `<text x="${x+29}" y="98" text-anchor="middle" font-size="13" fill="#55534E">${t}</text>`;
+  };
+  return `<text x="100" y="32" text-anchor="middle" font-size="12" fill="#7D7A73">règle des 3 dB</text>`
+       + boite(14,`85 dB`,`8 h`,`#E6F4EA`)
+       + `<text x="100" y="88" text-anchor="middle" font-size="22" fill="#993C1D">→</text>`
+       + boite(128,L2+` dB`,`?`,`#FCEBEB`)
+       + `<text x="100" y="128" text-anchor="middle" font-size="13" font-weight="700" fill="#993C1D">+${L2-85} dB</text>`;
+}
+
+function svgPanneau(txt){
+  return `<polygon points="100,20 168,130 32,130" fill="#FAEEDA" stroke="#B3261E" stroke-width="3" stroke-linejoin="round"/>`
+       + `<text x="100" y="112" text-anchor="middle" font-size="52" font-weight="700" fill="#B3261E">!</text>`
+       + `<text x="100" y="150" text-anchor="middle" font-size="12" fill="#5F5E5A">${txt}</text>`;
+}
+
+function svgBulle(){
+  return `<path d="M28 22 H172 A10 10 0 0 1 182 32 V98 A10 10 0 0 1 172 108 H86 L62 132 L66 108 H28`
+       + ` A10 10 0 0 1 18 98 V32 A10 10 0 0 1 28 22 Z" fill="#EEEDFE" stroke="#534AB7" stroke-width="2"/>`
+       + `<text x="100" y="80" text-anchor="middle" font-size="42" font-weight="700" fill="#534AB7">?</text>`
+       + `<text x="100" y="152" text-anchor="middle" font-size="12" fill="#5F5E5A">un élève affirme…</text>`;
+}
+
+function svgRapport(L,duree){
+  let s = `<rect x="42" y="14" width="116" height="132" rx="4" fill="#ffffff" stroke="#5F5E5A" stroke-width="2"/>`
+        + `<rect x="42" y="14" width="116" height="22" fill="#E6F1FB"/>`
+        + `<text x="100" y="30" text-anchor="middle" font-size="12" font-weight="700" fill="#185FA5">compte rendu</text>`;
+  const lignes = [52,66,80];
+  for(let i=0;i<lignes.length;i++){
+    s += `<line x1="54" y1="${lignes[i]}" x2="146" y2="${lignes[i]}" stroke="#D8D6CE" stroke-width="2.4"/>`;
+  }
+  s += `<line x1="54" y1="94" x2="112" y2="94" stroke="#D8D6CE" stroke-width="2.4"/>`
+     + `<text x="100" y="120" text-anchor="middle" font-size="15" font-weight="700" fill="#B3261E">${L} dB</text>`
+     + `<text x="100" y="138" text-anchor="middle" font-size="12" fill="#55534E">durée max : ${duree}</text>`;
+  return s;
+}
+
+function svgAtelier(L,duree){
+  let s = `<text x="100" y="18" text-anchor="middle" font-size="11" fill="#7D7A73">poste de travail</text>`;
+  s += perso(56);
+  s += `<text x="56" y="72" text-anchor="middle" font-size="15" font-weight="700" fill="#B3261E">${L} dB</text>`;
+  s += `<circle cx="146" cy="88" r="30" fill="#F7F6F2" stroke="#5F5E5A" stroke-width="2.2"/>`
+     + `<line x1="146" y1="88" x2="146" y2="68" stroke="#1A1917" stroke-width="2.8" stroke-linecap="round"/>`
+     + `<line x1="146" y1="88" x2="162" y2="96" stroke="#1A1917" stroke-width="2.2" stroke-linecap="round"/>`
+     + `<circle cx="146" cy="88" r="2.8" fill="#1A1917"/>`
+     + `<text x="146" y="138" text-anchor="middle" font-size="14" font-weight="700" fill="#185FA5">${duree}</text>`;
+  return s;
+}
+
+/* ═══ DONNÉES PARTAGÉES ════════════════════════════════════════════════════ */
+
+const TABLE_DUREES = [
+  { L:85,  t:`8 h` },        { L:88,  t:`4 h` },  { L:91, t:`2 h` },
+  { L:94,  t:`1 h` },        { L:97,  t:`30 min` },
+  { L:100, t:`15 min` },     { L:103, t:`7 min 30 s` }
 ];
-function drawHistory() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  const marginLeft = 20;
-  seuils.forEach(s=>{
-    let y = canvas.height - (s.db/120)*canvas.height;
-    ctx.beginPath();
-    ctx.strokeStyle = s.color;
-    ctx.setLineDash([4, 6]);
-    ctx.moveTo(marginLeft, y);
-    ctx.lineTo(canvas.width, y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.font = "12px Segoe UI";
-    ctx.fillStyle = s.color;
-    ctx.fillText(s.db+" dB", marginLeft+2, y-2);
+
+const DUREES_POSTE = [
+  { h:0.0833, t:`5 min` },  { h:0.1667, t:`10 min` }, { h:0.25, t:`15 min` },
+  { h:0.5, t:`30 min` },    { h:1, t:`1 h` },  { h:2, t:`2 h` },
+  { h:3, t:`3 h` },         { h:4, t:`4 h` },  { h:6, t:`6 h` },
+  { h:7, t:`7 h` },         { h:8, t:`8 h` }
+];
+
+const SOURCES = [
+  { n:`un chuchotement`, db:30 },        { n:`une salle de classe au calme`, db:55 },
+  { n:`une conversation`, db:60 },       { n:`une classe agitée`, db:70 },
+  { n:`un aspirateur`, db:75 },          { n:`une rue très passante`, db:82 },
+  { n:`un tour en usinage`, db:88 },     { n:`une tondeuse à gazon`, db:90 },
+  { n:`une meuleuse d’angle`, db:102 },  { n:`un marteau piqueur`, db:110 },
+  { n:`une opération de sablage`, db:118 }, { n:`un klaxon de train à 1 m`, db:125 },
+  { n:`un avion à réaction au décollage`, db:140 }
+];
+
+const ZONES_RISQUE = [
+  `Sans risque auditif : moins de 80 dB`,
+  `Vigilance : de 80 à 85 dB`,
+  `Zone dangereuse : de 85 à 120 dB`,
+  `Seuil de douleur : 120 dB et plus`
+];
+
+const REPERES_QCM = [
+  { q:`À partir de quel niveau moyen sur une journée de 8 h le port des protections auditives devient-il obligatoire ?`,
+    r:`85 dB`, d:[`60 dB`,`80 dB`,`100 dB`], dB:true },
+  { q:`À partir de quel niveau l’employeur doit-il informer et former les salariés au risque bruit ?`,
+    r:`80 dB`, d:[`60 dB`,`85 dB`,`120 dB`], dB:true },
+  { q:`Quelle est la valeur limite d’exposition à ne jamais dépasser, protections comprises ?`,
+    r:`87 dB`, d:[`80 dB`,`85 dB`,`120 dB`], dB:true },
+  { q:`À partir de quel niveau la douleur est-elle immédiate ?`,
+    r:`120 dB`, d:[`85 dB`,`100 dB`,`140 dB`], dB:true },
+  { q:`De combien de décibels un casque ou des bouchons anti-bruit réduisent-ils le niveau reçu ?`,
+    r:`de 15 à 35 dB`, d:[`de 2 à 5 dB`,`de 50 à 70 dB`,`ils suppriment tout le bruit`], dB:true },
+  { q:`Que deviennent les cellules ciliées de l’oreille interne détruites par le bruit ?`,
+    r:`elles ne repoussent jamais`,
+    d:[`elles repoussent en quelques jours`,`elles repoussent en quelques mois`,`elles se réparent pendant le sommeil`] },
+  { q:`À quelle fréquence la perte auditive due au bruit commence-t-elle, avant même d’être remarquée ?`,
+    r:`vers 4 000 Hz`, d:[`vers 100 Hz`,`vers 500 Hz`,`vers 20 000 Hz`] },
+  { q:`Comment appelle-t-on le sifflement permanent qui peut suivre une exposition au bruit ?`,
+    r:`un acouphène`, d:[`une otite`,`un vertige`,`une extinction de voix`] },
+  { q:`Combien de temps peut-on rester, sans protection, dans un atelier à 85 dB ?`,
+    r:`8 h par jour`, d:[`sans limite`,`2 h par jour`,`15 min par jour`] },
+  { q:`Dans un atelier bruyant, quel risque s’ajoute à la perte d’audition ?`,
+    r:`ne plus entendre les alarmes et les consignes`,
+    d:[`voir moins bien`,`perdre l’équilibre en permanence`,`aucun autre risque`] }
+];
+
+const ERREURS = [
+  { dit:`On est passé de 2 m à 4 m de la machine : le niveau est divisé par 2, donc 100 dB deviennent 50 dB.`,
+    r:`Faux : doubler la distance retire 6 dB. On passe de 100 dB à 94 dB.`,
+    d:[`Juste : deux fois plus loin, deux fois moins de décibels.`,
+       `Faux : doubler la distance retire 3 dB, on passe à 97 dB.`,
+       `Faux : la distance ne change rien au niveau sonore reçu.`] },
+  { dit:`Je porte un casque anti-bruit, je peux donc rester toute la journée à 100 dB.`,
+    r:`Faux : le casque abaisse le niveau reçu, mais il ne dispense pas de vérifier la durée et il doit être porté en permanence.`,
+    d:[`Juste : avec un casque, il n’y a plus aucune limite de durée.`,
+       `Faux : un casque ne sert plus à rien au-dessus de 90 dB.`,
+       `Faux : le casque augmente le niveau reçu par l’oreille.`] },
+  { dit:`Deux machines de 85 dB en marche ensemble, cela fait 170 dB.`,
+    r:`Faux : deux sources identiques ajoutent 3 dB. Le total est de 88 dB.`,
+    d:[`Juste : les décibels s’additionnent comme des longueurs.`,
+       `Faux : le total reste 85 dB, le bruit ne change pas du tout.`,
+       `Faux : deux sources identiques ajoutent 10 dB, soit 95 dB.`] },
+  { dit:`Mon oreille ne siffle plus le lendemain matin : il n’y a donc pas eu de dégâts.`,
+    r:`Faux : la perte commence vers 4 000 Hz sans être perçue, et les cellules détruites ne repoussent pas.`,
+    d:[`Juste : si le sifflement disparaît, l’oreille a totalement récupéré.`,
+       `Faux : le sifflement du lendemain est le seul signe fiable d’un dégât.`,
+       `Faux : les cellules ciliées repoussent en une nuit de sommeil.`] },
+  { dit:`85 dB au lieu de 80 dB, 5 dB d’écart, c’est négligeable.`,
+    r:`Faux : chaque tranche de 3 dB divise par 2 la durée autorisée, et 85 dB est le seuil qui rend les protections obligatoires.`,
+    d:[`Juste : 5 dB sur 85, cela fait moins de 6 % d’écart.`,
+       `Faux : c’est bien pire, 5 dB divisent la durée par 5.`,
+       `Faux : au contraire, plus le niveau est élevé, plus on peut rester longtemps.`] },
+  { dit:`Le sonomètre affiche 70 dB pendant le cours : la classe est donc au-dessus du seuil de danger auditif.`,
+    r:`Faux : le seuil de danger est à 85 dB. À 70 dB la classe est fatigante, mais pas dangereuse pour l’audition.`,
+    d:[`Juste : le seuil de danger auditif est fixé à 60 dB.`,
+       `Faux : le seuil de danger est à 50 dB, la classe est très largement au-dessus.`,
+       `Juste, et il faudrait distribuer des bouchons d’oreille à toute la classe.`] },
+  { dit:`Il n’y a que 3 dB d’écart entre 85 dB et 88 dB, donc on peut y rester presque aussi longtemps.`,
+    r:`Faux : +3 dB double l’énergie reçue. La durée maximale passe de 8 h à 4 h, soit deux fois moins.`,
+    d:[`Juste : 3 dB d’écart, cela ne change presque rien à la durée.`,
+       `Faux : la durée passe de 8 h à 7 h.`,
+       `Faux : la durée maximale est multipliée par 2, elle passe à 16 h.`] }
+];
+
+/* ═══ FAMILLES DE QUESTIONS ════════════════════════════════════════════════ */
+
+const COMPETENCES = {
+  C1: { nom:`S’approprier`,          fg:`var(--blue)`,   bg:`var(--blue-bg)` },
+  C2: { nom:`Analyser / Raisonner`,  fg:`var(--purple)`, bg:`var(--purple-bg)` },
+  C4: { nom:`Valider`,               fg:`var(--teal)`,   bg:`var(--teal-bg)` },
+  C5: { nom:`Communiquer`,           fg:`var(--amber)`,  bg:`var(--amber-bg)` }
+};
+
+const FAMILLES = [
+
+  { id:`cadran`, comp:`C1`, nom:`Lire le sonomètre`,
+    aide:`Repérer la graduation la plus proche de la pointe de l’aiguille.`,
+    gen:function(){
+      const db = 5*rnd(4,23);
+      const set = [db];
+      const ecarts = [-25,-20,-15,-10,10,15,20,25];
+      let garde = 0;
+      while(set.length < 4 && garde++ < 200){
+        const c = db + pick(ecarts);
+        if(c >= 0 && c <= 120 && set.indexOf(c) === -1) set.push(c);
+      }
+      const choix = melange(set.slice()).map(function(x){ return x+` dB`; });
+      return {
+        svg: cadranAvecAiguille(db),
+        enonce:`Le sonomètre de la classe affiche l’aiguille ci-dessus. Quel niveau sonore indique-t-il ?`,
+        ficheEnonce:`Quel niveau le sonomètre indique-t-il ?`,
+        type:`qcm`, choix:choix, bonne:choix.indexOf(db+` dB`), reponse:db+` dB`,
+        ficheReponse: db+` dB  (± 5 dB accepté)`
+      };
+    } },
+
+  { id:`zone`, comp:`C1`, nom:`Situer un niveau`,
+    aide:`Repères : 80 dB = information obligatoire · 85 dB = protections obligatoires · 120 dB = douleur.`,
+    gen:function(){
+      const s = pick(SOURCES);
+      const i = s.db < 80 ? 0 : (s.db < 85 ? 1 : (s.db < 120 ? 2 : 3));
+      return {
+        svg: svgEchelle(s.db),
+        enonce:`${cap(s.n)} produit environ ${s.db} dB. Dans quelle zone ce niveau se situe-t-il ?`,
+        ficheEnonce:`${cap(s.n)} produit environ ${s.db} dB. Dans quelle zone se situe ce niveau ?`,
+        type:`qcm`, choix:ZONES_RISQUE.slice(), bonne:i, reponse:ZONES_RISQUE[i]
+      };
+    } },
+
+  { id:`reperes`, comp:`C1`, nom:`Valeurs à connaître`,
+    aide:`Valeurs réglementaires et repères sur l’audition.`,
+    gen:function(){
+      const it = pick(REPERES_QCM);
+      const choix = melange([it.r].concat(it.d));
+      return {
+        svg: it.dB ? svgEchelle(null) : svgPanneau(`risque auditif`),
+        enonce: it.q,
+        type:`qcm`, choix:choix, bonne:choix.indexOf(it.r), reponse:it.r
+      };
+    } },
+
+  { id:`table-durees`, comp:`C1`, nom:`Lire le tableau des durées`,
+    aide:`85 dB → 8 h par jour, puis chaque +3 dB divise la durée par 2.`,
+    gen:function(){
+      const i = rnd(0, TABLE_DUREES.length-1);
+      const bonne = TABLE_DUREES[i].t;
+      const autres = melange(TABLE_DUREES.filter(function(x){ return x.t !== bonne; })
+                                         .map(function(x){ return x.t; })).slice(0,3);
+      const choix = melange([bonne].concat(autres));
+      return {
+        svg: svgHorloge(TABLE_DUREES[i].L+` dB`),
+        enonce:`D’après le tableau des durées maximales, combien de temps par jour peut-on travailler sans protection dans un atelier à ${TABLE_DUREES[i].L} dB ?`,
+        type:`qcm`, choix:choix, bonne:choix.indexOf(bonne), reponse:bonne
+      };
+    } },
+
+  { id:`regle3db`, comp:`C2`, nom:`Règle des 3 dB`,
+    aide:`Chaque +3 dB divise par 2 la durée autorisée. Départ : 85 dB → 8 h.`,
+    gen:function(){
+      if(Math.random() < 0.55){
+        const k = rnd(1,6), L = 85+3*k;
+        const bonne = fmtDuree(8/Math.pow(2,k));
+        const pool = [8,4,2,1,0.5,0.25,0.125].map(fmtDuree);
+        const autres = melange(pool.filter(function(x){ return x !== bonne; })).slice(0,3);
+        const choix = melange([bonne].concat(autres));
+        return {
+          svg: svgChaine3dB(L),
+          enonce:`À 85 dB, la durée maximale d’exposition est de 8 h par jour. Le poste mesuré atteint ${L} dB. Quelle est la durée maximale à ce poste ?`,
+          type:`qcm`, choix:choix, bonne:choix.indexOf(bonne), reponse:bonne
+        };
+      }
+      const k = rnd(1,5), L = 85+3*k, duree = fmtDuree(8/Math.pow(2,k));
+      return {
+        svg: svgHorloge(duree),
+        enonce:`Sur ce poste, la durée maximale d’exposition n’est plus que de ${duree} par jour, au lieu de 8 h à 85 dB. Quel est le niveau sonore du poste ?`,
+        type:`num`, valeur:L, tol:0.4, unite:`dB`, reponse:L+` dB`
+      };
+    } },
+
+  { id:`distance`, comp:`C2`, nom:`Effet de la distance`,
+    aide:`En champ libre, chaque doublement de la distance retire 6 dB.`,
+    gen:function(){
+      const machines = [`une meuleuse`,`un tour`,`une tronçonneuse`,`un marteau piqueur`,`une presse`,`un compresseur`];
+      const m = pick(machines);
+      const k = rnd(1,3);
+      const dPres = pick([1,2,3]);
+      const dLoin = dPres*Math.pow(2,k);
+      let d1, d2, L1, L2;
+      if(Math.random() < 0.65){
+        d1 = dPres; d2 = dLoin; L1 = rnd(56+6*k, 115); L2 = L1 - 6*k;
+      } else {
+        d1 = dLoin; d2 = dPres; L1 = rnd(56, 116-6*k); L2 = L1 + 6*k;
+      }
+      return {
+        svg: svgDistance(L1,d1,d2),
+        enonce:`À ${d1} m d’${m}, le sonomètre indique ${L1} dB. Quel niveau mesure-t-on à ${d2} m ?`,
+        type:`num`, valeur:L2, tol:1, unite:`dB`, reponse:L2+` dB`
+      };
+    } },
+
+  { id:`epi`, comp:`C2`, nom:`Protections auditives`,
+    aide:`niveau reçu = niveau de l’atelier − atténuation de la protection.`,
+    gen:function(){
+      const L = 5*rnd(18,23), a = pick([15,20,25,30,35]);
+      return {
+        svg: svgCasque(L,a),
+        enonce:`Dans l’atelier, le niveau sonore est de ${L} dB. L’élève porte un casque qui atténue ${a} dB. Quel niveau son oreille reçoit-elle réellement ?`,
+        type:`num`, valeur:L-a, tol:0.4, unite:`dB`, reponse:(L-a)+` dB`
+      };
+    } },
+
+  { id:`sources`, comp:`C2`, nom:`Plusieurs machines`,
+    aide:`2 machines identiques : +3 dB · 4 machines : +6 dB · 10 machines : +10 dB.`,
+    gen:function(){
+      const n = pick([2,4,10]), L = 5*rnd(14,20);
+      const plus = (n === 2) ? 3 : (n === 4 ? 6 : 10);
+      return {
+        svg: svgMachines(n,L),
+        enonce:`Une machine seule produit ${L} dB. On met ${n} machines identiques en marche en même temps. Quel est le niveau sonore total ?`,
+        type:`num`, valeur:L+plus, tol:0.6, unite:`dB`, reponse:(L+plus)+` dB`
+      };
+    } },
+
+  { id:`conformite`, comp:`C4`, nom:`Le poste est-il conforme ?`,
+    aide:`Comparer la durée réelle à la durée maximale autorisée au niveau mesuré.`,
+    gen:function(){
+      const i = rnd(1,5);
+      const L = TABLE_DUREES[i].L, dmax = TABLE_DUREES[i].t;
+      const href = 8/Math.pow(2,i);
+      const conforme = Math.random() < 0.5;
+      const candidats = DUREES_POSTE.filter(function(x){
+        return conforme ? x.h < href : x.h > href;
+      });
+      const poste = pick(candidats);
+      let faux = pick(TABLE_DUREES.filter(function(x){ return x.t !== dmax; })).t;
+      const bonneP = (conforme ? `Durée respectée` : `Durée dépassée`) + ` : à ${L} dB, la durée maximale est de ${dmax}`;
+      const choix = melange([
+        bonneP,
+        (conforme ? `Durée dépassée` : `Durée respectée`) + ` : à ${L} dB, la durée maximale est de ${dmax}`,
+        `Durée respectée : à ${L} dB, la durée maximale est de ${faux}`,
+        `Durée dépassée : à ${L} dB, la durée maximale est de ${faux}`
+      ]);
+      return {
+        svg: svgAtelier(L, poste.t),
+        enonce:`Au poste, le sonomètre indique ${L} dB. L’élève y travaille ${poste.t} par jour, sans protection. La durée maximale d’exposition est-elle respectée ?`,
+        ficheEnonce:`Le sonomètre indique ${L} dB au poste et l’élève y travaille ${poste.t} par jour, sans protection. · La durée maximale d’exposition est-elle respectée ? Donner cette durée maximale.`,
+        type:`qcm`, choix:choix, bonne:choix.indexOf(bonneP), reponse:bonneP
+      };
+    } },
+
+  { id:`erreur`, comp:`C4`, nom:`Repérer l’erreur`,
+    aide:`Vérifier l’affirmation avec les règles de l’aide-mémoire.`,
+    gen:function(){
+      const it = pick(ERREURS);
+      const choix = melange([it.r].concat(it.d));
+      return {
+        svg: svgBulle(),
+        enonce:`Un élève affirme : « ${it.dit} » Que faut-il en penser ?`,
+        ficheEnonce:`Un élève affirme : « ${it.dit} » · Cette affirmation est-elle juste ? Corriger si nécessaire.`,
+        type:`qcm`, choix:choix, bonne:choix.indexOf(it.r), reponse:it.r
+      };
+    } },
+
+  { id:`communiquer`, comp:`C5`, nom:`Rédiger la conclusion`,
+    aide:`Une conclusion complète donne la valeur, l’unité, la comparaison au seuil et la conséquence.`,
+    gen:function(){
+      const i = rnd(1,6);
+      const L = TABLE_DUREES[i].L, dmax = TABLE_DUREES[i].t;
+      const bonne = `Le niveau mesuré au poste est de ${L} dB. Il dépasse le seuil de 85 dB : la durée maximale d’exposition est de ${dmax} par jour et le port des protections est obligatoire.`;
+      const choix = melange([
+        bonne,
+        `Le niveau mesuré au poste est de ${L}. C’est beaucoup.`,
+        `Le poste est bruyant, il faudrait faire quelque chose.`,
+        `Le niveau mesuré au poste est de ${L} dB, soit en dessous du seuil de 85 dB : aucune protection n’est nécessaire.`
+      ]);
+      return {
+        svg: svgRapport(L,dmax),
+        enonce:`Tu rédiges la conclusion du compte rendu de mesure. Le sonomètre indique ${L} dB au poste. Quelle phrase est correcte et complète ?`,
+        ficheEnonce:`Le sonomètre indique ${L} dB au poste. Rédiger la phrase de conclusion du compte rendu : valeur, unité, comparaison au seuil de 85 dB, conséquence.`,
+        type:`qcm`, choix:choix, bonne:choix.indexOf(bonne), reponse:bonne
+      };
+    } }
+
+];
+
+/* ═══ MOTEUR DU DÉFI ═══════════════════════════════════════════════════════ */
+
+const compActives = { C1:true, C2:true, C4:true, C5:true };
+let ordre = [], idxOrdre = 0;
+let numQuestion = 0, bons = 0, total = 0, repondu = false, courant = null;
+
+function famillesActives(){
+  return FAMILLES.filter(function(f){ return compActives[f.comp]; });
+}
+
+function toggleComp(btn){
+  const c = btn.getAttribute(`data-comp`);
+  const actives = Object.keys(compActives).filter(function(k){ return compActives[k]; });
+  if(compActives[c] && actives.length === 1) return;   /* au moins une compétence */
+  compActives[c] = !compActives[c];
+  btn.classList.toggle(`active`, compActives[c]);
+  ordre = []; idxOrdre = 0;
+  majFicheInfo();
+}
+
+function majFicheInfo(){
+  const d = famillesActives();
+  const parts = Object.keys(COMPETENCES).map(function(c){
+    const n = d.filter(function(f){ return f.comp === c; }).length;
+    return n ? c+` × `+n : null;
+  }).filter(Boolean);
+  el(`comp-info`).textContent = d.length + ` familles de questions`;
+  el(`fiche-info`).textContent = `Fiche tirée dans : ` + parts.join(` · `);
+}
+
+function questionSuivante(){
+  const dispo = famillesActives();
+  if(!dispo.length) return;
+  if(!ordre.length || idxOrdre >= ordre.length){ ordre = melange(dispo.slice()); idxOrdre = 0; }
+  const f = ordre[idxOrdre++];
+  courant = f.gen();
+  courant.famille = f;
+  afficherQuestion();
+}
+
+function afficherQuestion(){
+  numQuestion++;
+  repondu = false;
+  const f = courant.famille, c = COMPETENCES[f.comp];
+
+  el(`defi-titre`).textContent = `Question ` + numQuestion + ` — ` + f.nom;
+  const badge = el(`defi-badge`);
+  badge.textContent = f.comp + ` · ` + c.nom;
+  badge.style.background = c.bg;
+  badge.style.color = c.fg;
+
+  el(`defi-svg`).innerHTML = courant.svg;
+  el(`defi-enonce`).innerHTML = courant.enonce
+    + (f.aide ? `<span class="defi-aide">` + f.aide + `</span>` : ``);
+
+  const fb = el(`defi-feedback`);
+  fb.className = `feedback-box`; fb.innerHTML = ``;
+  el(`btn-next`).style.display = `none`;
+
+  const zoneQcm = el(`defi-qcm`), zoneNum = el(`defi-num`);
+  if(courant.type === `qcm`){
+    zoneNum.style.display = `none`;
+    zoneQcm.style.display = `grid`;
+    zoneQcm.innerHTML = ``;
+    const lettres = [`A`,`B`,`C`,`D`];
+    for(let i=0;i<courant.choix.length;i++){
+      const b = document.createElement(`button`);
+      b.type = `button`;
+      b.className = `qcm-btn`;
+      b.setAttribute(`data-i`, i);
+      b.innerHTML = `<span class="lettre">` + lettres[i] + `</span><span>` + courant.choix[i] + `</span>`;
+      b.addEventListener(`click`, function(){ repondreQcm(parseInt(this.getAttribute(`data-i`),10)); });
+      zoneQcm.appendChild(b);
+    }
+  } else {
+    zoneQcm.style.display = `none`;
+    zoneQcm.innerHTML = ``;
+    zoneNum.style.display = `block`;
+    el(`defi-num-unit`).textContent = courant.unite;
+    el(`defi-input`).value = ``;
+    el(`defi-input`).focus();
+  }
+}
+
+function repondreQcm(i){
+  if(repondu) return;
+  const boutons = el(`defi-qcm`).querySelectorAll(`.qcm-btn`);
+  for(let k=0;k<boutons.length;k++){
+    boutons[k].setAttribute(`disabled`, `disabled`);
+    if(k === courant.bonne) boutons[k].classList.add(`bon`);
+    else if(k === i) boutons[k].classList.add(`faux`);
+  }
+  conclure(i === courant.bonne);
+}
+
+function verifierNum(){
+  if(repondu) return;
+  const x = parseFloat(el(`defi-input`).value.replace(`,`, `.`));
+  if(isNaN(x)){ alert(`Entre une valeur numérique.`); return; }
+  conclure(Math.abs(x - courant.valeur) <= courant.tol);
+}
+
+function conclure(ok){
+  repondu = true; total++;
+  if(ok) bons++;
+  const fb = el(`defi-feedback`);
+  fb.className = `feedback-box ` + (ok ? `correct` : `wrong`) + ` show`;
+  fb.innerHTML = ok
+    ? `<strong>Correct !</strong> ` + courant.reponse
+    : `<strong>Pas tout à fait.</strong> La bonne réponse : ` + courant.reponse;
+  el(`btn-next`).style.display = `block`;
+  majScore();
+}
+
+function majScore(){
+  el(`defi-score`).textContent = bons + ` / ` + total + ` correct` + (total > 1 ? `s` : ``);
+  el(`defi-progress`).style.width = (total > 0 ? (bons/total*100) : 0) + `%`;
+}
+
+document.addEventListener(`keydown`, function(e){
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  const defiVisible = el(`mode-defi`).classList.contains(`active`);
+  if(!defiVisible || !courant) return;
+  const tag = document.activeElement ? document.activeElement.tagName : ``;
+  const saisie = (tag === `INPUT` || tag === `TEXTAREA`);
+  if(e.key === `Enter`){
+    if(!repondu && courant.type === `num`) verifierNum();
+    else if(repondu) questionSuivante();
+    return;
+  }
+  if(saisie) return;
+  if(!repondu && courant.type === `qcm` && /^[1-4]$/.test(e.key)){
+    const i = parseInt(e.key,10) - 1;
+    if(i < courant.choix.length) repondreQcm(i);
+  }
+});
+
+/* ═══ FICHE IMPRIMABLE ═════════════════════════════════════════════════════ */
+
+function questionsFiche(n){
+  const dispo = famillesActives();
+  let ord = melange(dispo.slice());
+  const out = [];
+  while(out.length < n){
+    for(let k=0; k<ord.length && out.length<n; k++){
+      const f = ord[k], g = f.gen();
+      out.push({
+        num: out.length + 1,
+        nom: f.comp + ` · ` + f.nom,
+        hint: f.aide ? `Rappel : ` + f.aide : ``,
+        svg: g.svg,
+        cotes: g.ficheEnonce || g.enonce,
+        answerText: g.ficheReponse || g.reponse
+      });
+    }
+    ord = melange(ord);
+  }
+  return out;
+}
+
+function genererFiche(){
+  LP.fiche({
+    icon: `\u{1F50A}`,
+    title: `Bruit et risque auditif`,
+    subtitle: `Physique-chimie \u00b7 CAP \u00b7 Bac Pro \u00b7 3\u1d49 pr\u00e9pa-m\u00e9tiers`,
+    modeLabel: `Mode d\u00e9fi`,
+    isPlus: false,
+    accent: `#993C1D`,
+    answerLabel: `R\u00e9ponse :`,
+    unit: ``,
+    aide: `85 dB = 8 h/jour, et chaque +3 dB divise la dur\u00e9e par 2 &nbsp;|&nbsp; `
+        + `doubler la distance : \u22126 dB &nbsp;|&nbsp; 2 machines identiques : +3 dB `
+        + `(4 \u2192 +6 dB, 10 \u2192 +10 dB) &nbsp;|&nbsp; niveau re\u00e7u = niveau ambiant \u2212 att\u00e9nuation `
+        + `du casque &nbsp;|&nbsp; 80 dB : information \u00b7 85 dB : protections obligatoires \u00b7 `
+        + `120 dB : douleur`,
+    questions: questionsFiche(10)
   });
-  if (historyData.length < 2) return;
-  ctx.beginPath();
-  for (let i = 0; i < historyData.length; i++) {
-    let x = marginLeft + i * ((canvas.width - marginLeft) / maxPoints);
-    let y = canvas.height - (historyData[i] / 120) * canvas.height;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+}
+
+/* ═══ NAVIGATION ═══════════════════════════════════════════════════════════ */
+
+function setMode(m, btn){
+  const tabs = document.querySelectorAll(`.mode-tab`);
+  for(let i=0;i<tabs.length;i++) tabs[i].classList.remove(`active`);
+  if(btn) btn.classList.add(`active`);
+  const modes = [`mesure`,`reperes`,`defi`];
+  for(let i=0;i<modes.length;i++){
+    const noeud = el(`mode-` + modes[i]);
+    if(modes[i] === m){ noeud.classList.add(`active`); noeud.style.display = `block`; }
+    else { noeud.classList.remove(`active`); noeud.style.display = `none`; }
   }
-  ctx.strokeStyle = "#667eea";
-  ctx.lineWidth = 2;
-  ctx.setLineDash([]);
-  ctx.stroke();
+  if(m === `defi` && !courant) questionSuivante();
 }
 
-// Alerte bruit
-let overSeries = []; // Timestamps of dB over max
-function checkAlert() {
-  const now = Date.now();
-  const step = refreshMs;
-  // Ajoute une valeur si > max_db
-  if (dbCurrent > max_db) overSeries.push(now);
-  // Garde la série limitée à X secondes
-  overSeries = overSeries.filter(t => (now-t) < dur_sec*1000);
-  // Déclenche l'alerte si série > X sec
-  if (overSeries.length >= Math.ceil(dur_sec*1000/step) && !alertActive && now > alertCooldown) {
-    triggerAlert();
-  }
-  // Réinitialise la série si pas de dépassement
-  if (dbCurrent <= max_db) overSeries = [];
-}
+/* ═══ DÉMARRAGE ════════════════════════════════════════════════════════════ */
 
-let osc = null; // Oscillateur
-function triggerAlert() {
-  alertActive = true;
-  alertCooldown = Date.now() + 30000; // Jamais plus d'une alerte toutes les 30s
-  showAlertBtn();
-  playAlertTone();
-  setTimeout(stopAlert, 10000); // Maintient alerte 10s
-}
-function showAlertBtn() {
-  let btn = document.getElementById("alertBtn");
-  btn.style.display = "block";
-  btn.style.animation = "blinkAlert 0.7s infinite";
-}
-function stopAlert() {
-  alertActive = false;
-  let btn = document.getElementById("alertBtn");
-  btn.style.display = "none";
-  btn.style.animation = "none";
-  stopAlertTone();
-}
-function playAlertTone() {
-  if (audioContext.state === 'suspended') audioContext.resume();
-  osc = audioContext.createOscillator();
-  let gain = audioContext.createGain();
-  osc.type = "sine";
-  osc.frequency.value = freq_hz;
-  gain.gain.value = 1; // volume max PC
-  osc.connect(gain);
-  gain.connect(audioContext.destination);
-  osc.start();
-  setTimeout(stopAlertTone, 10000); // Stop après 10s
-}
-function stopAlertTone() {
-  if (osc) try { osc.stop(); } catch(e){}
-  osc = null;
-}
-
-renderGauge(0);
-startAudio();
+initCadranEcran();
+majHist();
+calcDistance(); calcSources(); calcEPI(); calcTemps();
+majFicheInfo();
+majScore();
+el(`son-seuil`).addEventListener(`input`, majHist);
 </script>
+
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp; Licence MIT &nbsp;·&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">Calculatrice Casio fx-92</a>
+  &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée · M : animations">Raccourcis : T · P · D · M</span>
+  <br>
+  <span style="font-size:var(--fs-xs)">Compétences travaillées :
+    C1 S’approprier · C2 Analyser/Raisonner · C4 Valider · C5 Communiquer</span>
+</footer>
 </body>
 </html>
