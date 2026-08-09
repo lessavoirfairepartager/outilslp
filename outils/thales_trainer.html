@@ -85,46 +85,6 @@ SOFTWARE.
   }
   .defi-aide b { color: var(--amber); }
 
-  /* Modale de fiche */
-  .modal-bg {
-    position: fixed; inset: 0; background: rgba(20,19,15,.55);
-    display: none; align-items: center; justify-content: center; padding: 1rem; z-index: 200;
-  }
-  .modal-bg.show { display: flex; }
-  .modal {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 1.5rem;
-    max-width: 540px; width: 100%; box-shadow: 0 10px 34px rgba(0,0,0,.3);
-  }
-  .modal h2 { font-size: var(--fs-lg); margin-bottom: 8px; }
-  .modal p  { font-size: var(--fs-xs); color: var(--text2); margin-bottom: 14px; line-height: 1.6; }
-  .modal-checks { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-  .modal-checks label {
-    display: flex; align-items: center; gap: 10px; padding: 11px 13px;
-    border: 1.5px solid var(--border); border-radius: var(--radius);
-    cursor: pointer; font-size: var(--fs-sm); color: var(--text2);
-  }
-  .modal-checks label.on {
-    border-color: var(--accent); background: var(--accent-bg);
-    color: var(--accent); font-weight: 700;
-  }
-  .modal-checks input { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
-  .dist-info {
-    padding: 10px 12px; border-radius: var(--radius);
-    font-size: var(--fs-xs); font-weight: 700; text-align: center; margin-bottom: 16px;
-  }
-  .dist-info.ok   { background: var(--teal-bg);  color: var(--teal); }
-  .dist-info.warn { background: var(--amber-bg); color: var(--amber); }
-  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
-  .modal-actions button {
-    padding: 11px 20px; border-radius: var(--radius); font-family: inherit;
-    font-size: var(--fs-sm); font-weight: 700; cursor: pointer; border: 1px solid var(--border);
-  }
-  .btn-modal-ok { background: var(--accent); color: #fff; border-color: var(--accent); }
-  html[data-theme="dark"] .btn-modal-ok { color: #14130f; }
-  .btn-modal-no { background: var(--surface2); color: var(--text2); }
-  .btn-modal-ok:disabled { opacity: .45; cursor: not-allowed; }
-
   /* Confettis discrets, désactivés si les animations le sont */
   .confetti {
     position: fixed; width: 9px; height: 9px; z-index: 300;
@@ -347,30 +307,14 @@ SOFTWARE.
       <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Question suivante →</button>
 
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
-        <button class="btn-fiche" onclick="openFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+        <button class="btn-fiche" onclick="LP.ficheModal.open()">📄 Générer une fiche d'exercices (10 questions)</button>
       </div>
     </div>
   </div>
 
 </div>
 
-<!-- Modale de génération de fiche -->
-<div class="modal-bg" id="modal-fiche">
-  <div class="modal">
-    <h2>📄 Générer une fiche d'exercices</h2>
-    <p>Choisis les familles de questions à inclure. Les 10 exercices seront répartis entre les familles sélectionnées.</p>
-    <div class="modal-checks" id="modal-checks">
-      <label class="on"><input type="checkbox" value="tri" checked> Configuration triangle</label>
-      <label class="on"><input type="checkbox" value="pap" checked> Configuration papillon</label>
-      <label class="on"><input type="checkbox" value="rec" checked> Réciproque : les droites sont-elles parallèles ?</label>
-    </div>
-    <div class="dist-info ok" id="dist-info">→ 4 + 3 + 3 = 10 exercices</div>
-    <div class="modal-actions">
-      <button class="btn-modal-no" onclick="closeFiche()">Annuler</button>
-      <button class="btn-modal-ok" id="modal-confirm" onclick="confirmFiche()">Générer la fiche</button>
-    </div>
-  </div>
-</div>
+<!-- La modale de choix des familles est construite par LP.ficheModal -->
 
 <script src="/assets/lp-fiche.js"></script>
 <script>
@@ -1310,10 +1254,7 @@ function confettis(){
 }
 
 document.addEventListener('keydown', function(e){
-  if (document.getElementById('modal-fiche').classList.contains('show')) {
-    if (e.key === 'Escape') closeFiche();
-    return;
-  }
+  if (LP.ficheModal.isOpen()) return;
   if (currentMode === 'explo') return;
   if (e.key === 'Enter') {
     if (!repondu) checkDefi();
@@ -1321,49 +1262,18 @@ document.addEventListener('keydown', function(e){
   }
 });
 
-/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
-function famillesCochees(){
-  var out = [], cbs = document.querySelectorAll('#modal-checks input'), i;
-  for (i = 0; i < cbs.length; i++) if (cbs[i].checked) out.push(cbs[i].value);
-  return out;
-}
-function repartir10(fams){
-  var k = fams.length, base = Math.floor(10/k), reste = 10 % k;
-  return fams.map(function(f,i){ return { fam:f, n:base + (i < reste ? 1 : 0) }; });
-}
-function majRepartition(){
-  var sel = famillesCochees();
-  var el = document.getElementById('dist-info');
-  var labels = document.querySelectorAll('#modal-checks label'), i;
-  for (i = 0; i < labels.length; i++) {
-    labels[i].classList.toggle('on', labels[i].querySelector('input').checked);
-  }
-  if (!sel.length) {
-    el.className = 'dist-info warn';
-    el.textContent = '⚠ Sélectionne au moins une famille';
-    document.getElementById('modal-confirm').disabled = true;
-    return;
-  }
-  el.className = 'dist-info ok';
-  el.textContent = '→ ' + repartir10(sel).map(function(d){ return d.n; }).join(' + ') + ' = 10 exercices';
-  document.getElementById('modal-confirm').disabled = false;
-}
-(function brancherCases(){
-  var cbs = document.querySelectorAll('#modal-checks input'), i;
-  for (i = 0; i < cbs.length; i++) cbs[i].addEventListener('change', majRepartition);
-})();
-
-function openFiche(){ document.getElementById('modal-fiche').classList.add('show'); majRepartition(); }
-function closeFiche(){ document.getElementById('modal-fiche').classList.remove('show'); }
-document.getElementById('modal-fiche').addEventListener('click', function(e){
-  if (e.target.id === 'modal-fiche') closeFiche();
+/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════ */
+LP.ficheModal.init({
+  familles: [
+    { value:'tri', label:"Configuration triangle" },
+    { value:'pap', label:"Configuration papillon" },
+    { value:'rec', label:"Réciproque : les droites sont-elles parallèles ?" }
+  ],
+  onConfirm: function(plan, sel){ confirmFiche(plan, sel); }
 });
 
-function confirmFiche(){
-  var sel = famillesCochees();
-  if (!sel.length) return;
-
-  var plan = repartir10(sel), questions = [], num = 1;
+function confirmFiche(plan, sel){
+  var questions = [], num = 1;
   plan.forEach(function(d){
     for (var i = 0; i < d.n; i++) {
       var ex = generateurs[d.fam]();
@@ -1383,8 +1293,6 @@ function confirmFiche(){
   var titre = (sel.length === 3)
     ? 'Théorème de Thalès'
     : 'Thalès — ' + sel.map(function(f){ return famNoms[f]; }).join(', ');
-
-  closeFiche();
 
   LP.fiche({
     icon:'\u{1F4D0}',
