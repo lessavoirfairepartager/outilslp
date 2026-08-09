@@ -38,7 +38,7 @@ outilslp/
 
 Chaque outil suit la même structure : onglets **Explorateur / Mode défi /
 Défi⁺**, génération de fiche imprimable (10 questions, page de corrigé
-séparée), raccourcis clavier T/P/D. Le modèle de référence pour un nouvel
+optionnelle), raccourcis clavier T/P/D. Le modèle de référence pour un nouvel
 outil est `outils/perimetre_usinage.html`.
 
 ## Déploiement
