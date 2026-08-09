@@ -713,6 +713,13 @@ html[data-theme="dark"] .btn-check { color: #14130f; }
 .dist-info.ok   { background: var(--teal-bg);  color: var(--teal); }
 .dist-info.warn { background: var(--amber-bg); color: var(--amber); }
 
+.modal-option { margin-bottom: 16px; }
+.modal-option label {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; font-size: var(--fs-sm); color: var(--text2);
+}
+.modal-option input { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 .modal-actions button {
   padding: 11px 20px; border-radius: var(--radius); font-family: inherit;

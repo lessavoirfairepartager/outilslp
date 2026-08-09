@@ -33,6 +33,12 @@
 
   function esc(s) { return String(s == null ? '' : s); }
 
+  /* Dernier état de la case « Inclure le corrigé » de LP.ficheModal.
+     Permet aux outils qui passent par la modale de bénéficier de l'option
+     sans avoir à relayer eux-mêmes le paramètre jusqu'à LP.fiche. */
+  var avecCorrigeModale = true;
+  function dernierAvecCorrige() { return avecCorrigeModale; }
+
   function build(cfg) {
     var accent   = cfg.accent || '#185FA5';
     var icon     = cfg.icon || '';
@@ -98,6 +104,26 @@
         '</div>';
     }).join('');
 
+    /* Page 2 — corrigé. Incluse par défaut ; omise si avecCorrige vaut false,
+       pour sortir une fiche d'évaluation sans limiter l'impression à la page 1.
+       Valeur explicite de cfg d'abord, sinon dernier choix fait dans la modale. */
+    var avecCorrige = (cfg.avecCorrige === undefined)
+      ? dernierAvecCorrige()
+      : (cfg.avecCorrige !== false);
+
+    var corrSection = !avecCorrige ? '' : (
+'<section class="sheet sheet-corr"><div class="sheet-inner">\n' +
+'  <div class="corr-head">\n' +
+'    <div>\n' +
+'      <h2>' + icon + ' Corrigé — ' + title + '</h2>\n' +
+'      <p>' + subtitle + ' &nbsp;—&nbsp; ' + modeLbl +
+       (tol ? ' &nbsp;—&nbsp; Tolérance : ' + tol : '') + '</p>\n' +
+'    </div>\n' +
+'    <span class="corr-badge">✓ CORRIGÉ</span>\n' +
+'  </div>\n' +
+'  <div class="grid">' + corr + '</div>\n' +
+'</div></section>');
+
     return '<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="UTF-8">\n' +
 '<title>' + title + ' — ' + modeLbl + '</title>\n<style>\n' +
 '  @page { size: A4 portrait; margin: 10mm; }\n' +
@@ -107,7 +133,7 @@
 '         color: #111; background: #e9e8e3; }\n' +
 '\n' +
 '  /* Une feuille = exactement une page A4 utile (190 × 277 mm) */\n' +
-'  .sheet { width: 190mm; height: 277mm; overflow: hidden;\n' +
+'  .sheet { width: 190mm; height: 275mm; overflow: hidden;\n' +
 '           background: #fff; margin: 8mm auto; padding: 0;\n' +
 '           box-shadow: 0 2px 10px rgba(0,0,0,.18); }\n' +
 '  .sheet-inner { width: 190mm; transform-origin: top left; }\n' +
@@ -190,9 +216,10 @@
 '    body { background: #fff; }\n' +
 '    .bar { display: none !important; }\n' +
 '    .sheet { margin: 0; box-shadow: none; }\n' +
+'    .sheet:last-of-type { page-break-after: avoid; break-after: avoid; }\n' +
 '  }\n' +
-'</style>\n</head>\n<body>\n' +
-'\n<section class="sheet sheet-enonce"><div class="sheet-inner">\n' +
+'</style>\n</head>\n<body>' +
+'<section class="sheet sheet-enonce"><div class="sheet-inner">\n' +
 '  <div class="page-head">\n' +
 '    <div>\n' +
 '      <h1>' + icon + ' ' + title + badgePlus + '</h1>\n' +
@@ -207,25 +234,15 @@
 '  </div>\n' +
    aideHTML + '\n' +
 '  <div class="grid">' + cards + '</div>\n' +
-'</div></section>\n' +
-'\n<section class="sheet sheet-corr"><div class="sheet-inner">\n' +
-'  <div class="corr-head">\n' +
-'    <div>\n' +
-'      <h2>' + icon + ' Corrigé — ' + title + '</h2>\n' +
-'      <p>' + subtitle + ' &nbsp;—&nbsp; ' + modeLbl +
-       (tol ? ' &nbsp;—&nbsp; Tolérance : ' + tol : '') + '</p>\n' +
-'    </div>\n' +
-'    <span class="corr-badge">✓ CORRIGÉ</span>\n' +
-'  </div>\n' +
-'  <div class="grid">' + corr + '</div>\n' +
-'</div></section>\n' +
-'\n<div class="bar">\n' +
+'</div></section>' +
+   corrSection +
+'<div class="bar">\n' +
 '  <button class="b-print" onclick="window.print()">🖨️ Imprimer / PDF</button>\n' +
 '  <button class="b-close" onclick="window.close()">Fermer</button>\n' +
-'</div>\n' +
-'\n<script>\n' +
+'</div>' +
+'<script>\n' +
 '/* Ajustement : si une feuille déborde, on la réduit juste ce qu\'il faut,\n' +
-'   pour garantir deux pages exactement. */\n' +
+'   pour que chaque feuille tienne sur une page entière. */\n' +
 '(function(){\n' +
 '  function fit(sheet){\n' +
 '    var inner = sheet.firstElementChild;\n' +
@@ -242,7 +259,7 @@
 '  window.addEventListener("load", function(){ run(); setTimeout(function(){ window.print(); }, 350); });\n' +
 '  window.addEventListener("beforeprint", run);\n' +
 '})();\n' +
-'<\/script>\n</body>\n</html>';
+'<\/script></body></html>';
   }
 
   window.LP = window.LP || {};
@@ -373,8 +390,12 @@
     var sel = selection();
     if (!sel.length) return;
     var plan = repartir(sel, mod.cfg.nombre);
+    var boite = mod.racine ? mod.racine.querySelector('#modal-corrige') : null;
+    avecCorrigeModale = boite ? !!boite.checked : true;
     fermer();
-    if (typeof mod.cfg.onConfirm === 'function') mod.cfg.onConfirm(plan, sel);
+    if (typeof mod.cfg.onConfirm === 'function') {
+      mod.cfg.onConfirm(plan, sel, { avecCorrige: avecCorrigeModale });
+    }
   }
 
   function construire() {
@@ -402,6 +423,11 @@
       + '<p>' + att(mod.cfg.texte) + '</p>'
       + '<div class="modal-checks" id="modal-checks">' + lignes + '</div>'
       + '<div class="dist-info ok" id="dist-info" role="status" aria-live="polite"></div>'
+      + '<div class="modal-option">'
+        + '<label><input type="checkbox" id="modal-corrige"'
+        + (avecCorrigeModale ? ' checked' : '') + '> '
+        + 'Inclure la page de corrigé</label>'
+      + '</div>'
       + '<div class="modal-actions">'
         + '<button type="button" class="btn-modal-no" id="modal-cancel">Annuler</button>'
         + '<button type="button" class="btn-modal-ok" id="modal-confirm">Générer la fiche</button>'
@@ -448,10 +474,11 @@
         document.addEventListener('DOMContentLoaded', construire);
       }
     },
-    open:      ouvrir,
-    close:     fermer,
-    isOpen:    estOuverte,
-    selection: selection
+    open:         ouvrir,
+    close:        fermer,
+    isOpen:       estOuverte,
+    selection:    selection,
+    avecCorrige:  dernierAvecCorrige
   };
 
   /* Tire n questions en piochant dans une liste de générateurs,
