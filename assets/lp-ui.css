@@ -562,11 +562,14 @@ html[data-size="projection"] .defi-shape-display svg { max-width: 420px; }
   font-size: var(--fs-base);
   line-height: 1.55;
   margin-top: 1rem;
-  display: none;
+}
+.feedback-box:empty {
+  padding: 0;
+  margin-top: 0;
+  border: 0;
 }
 .feedback-box.correct { background: var(--teal-bg); border-left: 4px solid var(--teal); color: var(--teal); }
 .feedback-box.wrong   { background: var(--red-bg);  border-left: 4px solid var(--red);  color: var(--red); }
-.feedback-box.show    { display: block; }
 .feedback-box strong  { font-weight: 700; }
 
 .progress-bar {
