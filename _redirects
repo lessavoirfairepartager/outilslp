@@ -4,3 +4,8 @@
 # chez GoatCounter. La ligne ci-dessous est la SEULE à adapter : remplace
 # lessavoirfairepatager par ton propre code si un jour il change.
 /gc/*  https://lessavoirfairepatager.goatcounter.com/counter/:splat  200
+
+# ── Renommage infographie nuisances sonores (retrait de l'espace du nom) ────
+# L'ancien nom générait des %20 dans toutes les URL. Redirection permanente
+# pour ne pas casser les liens externes ou favoris existants.
+/outils/infographie_nuisances%20sonores.html  /outils/infographie_nuisances_sonores.html  301
