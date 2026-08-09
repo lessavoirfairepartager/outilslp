@@ -1,1150 +1,1306 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Horloge Interactive de Classe</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Horloge de classe — minuteur de séance et heure courante</title>
+<!--
+  Horloge de classe · outilslp.netlify.app
+  Licence MIT — Copyright (c) 2026 Moïse Muller · lessavoirfairepartager@gmail.com
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, subject to the following conditions: the above
+  copyright notice and this permission notice shall be included in all copies.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+-->
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--purple); --accent-bg: var(--purple-bg); }
 
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            max-width: 1200px;
-            width: 100%;
-            position: relative;
-        }
+  /* ── Bascule des deux modes ───────────────────────────────────────────── */
+  #mode-horloge { display: none; }
+  #mode-horloge.active { display: block; }
 
-        .current-time {
-            position: absolute;
-            bottom: 20px;
-            right: 30px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #667eea;
-            background: #f8f9fa;
-            padding: 10px 15px;
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+  /* ── Scène : le cadran occupe la hauteur disponible ───────────────────
+     Le cadran est un outil de TABLEAU : sa taille se règle en unités de
+     hauteur d'écran (vh), pas en pixels fixes. Les 300 px de .sketch-card
+     conviennent à un croquis, pas à quelque chose qu'on lit du fond de la
+     salle. */
+  .hor-scene { gap: 12px; }
+  .hor-scene svg {
+    width: 100%;
+    max-width: none;
+    height: min(48vh, 400px);
+  }
+  html[data-size="projection"] .hor-scene svg { height: min(58vh, 620px); }
 
-        .current-time .time-label {
-            font-size: 0.9rem;
-            color: #666;
-            font-weight: normal;
-            display: block;
-        }
+  /* ── Affichage du temps ───────────────────────────────────────────────── */
+  .hor-readout { text-align: center; width: 100%; }
+  .hor-restant {
+    font-size: var(--fs-xxl);
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+  }
+  .hor-restant.fini { color: var(--red); }
+  .hor-etape {
+    font-size: var(--fs-md);
+    font-weight: 600;
+    color: var(--text2);
+    margin-top: 6px;
+    min-height: 1.6em;
+  }
+  .hor-fin { font-size: var(--fs-xs); color: var(--text3); margin-top: 2px; }
 
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 2.5rem;
-        }
+  /* ── Boutons de pilotage ──────────────────────────────────────────────── */
+  .hor-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .hor-btn {
+    padding: 11px 20px;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text2);
+    cursor: pointer;
+    transition: background-color .15s, color .15s, border-color .15s, opacity .15s;
+    white-space: nowrap;
+  }
+  .hor-btn:hover:not(:disabled) { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  .hor-btn:disabled { opacity: .42; cursor: default; }
+  .hor-btn.principal { background: var(--accent); border-color: var(--accent); color: #fff; }
+  html[data-theme="dark"] .hor-btn.principal { color: #14130f; }
+  .hor-btn.principal:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); color: #fff; }
+  html[data-theme="dark"] .hor-btn.principal:hover:not(:disabled) { color: #14130f; }
 
-        .main-content {
-            display: flex;
-            gap: 40px;
-            align-items: flex-start;
-        }
+  /* ── Réglages ─────────────────────────────────────────────────────────── */
+  .hor-ligne { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .hor-ligne label { font-size: var(--fs-xs); color: var(--text2); font-weight: 600; }
+  .hor-champ {
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: var(--fs-md);
+    font-weight: 600;
+    background: var(--surface2);
+    color: var(--text);
+    max-width: 100%;
+  }
+  .hor-champ:focus { border-color: var(--accent); background: var(--surface); outline: none; }
+  input.hor-champ[type="number"] { width: 96px; }
+  input.hor-champ[type="text"] { flex: 1; min-width: 150px; }
 
-        .clock-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+  .hor-secteurs { display: flex; flex-direction: column; gap: 8px; }
+  .hor-secteur {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+  }
+  .hor-puce {
+    width: 20px; height: 20px; flex-shrink: 0;
+    border-radius: 5px;
+    border: 1px solid rgba(0,0,0,.22);
+  }
+  .hor-secteur input[type="text"] { flex: 1; min-width: 80px; }
+  .hor-secteur input[type="number"] { width: 76px; }
+  .hor-secteur .unite { font-size: var(--fs-xs); color: var(--text3); }
 
-        .clock {
-            width: 400px;
-            height: 400px;
-            border-radius: 50%;
-            position: relative;
-            margin: 20px 0;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
+  .hor-bloc {
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+    display: flex; flex-direction: column; gap: .75rem;
+  }
 
-        .clock-face {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            position: relative;
-            overflow: hidden;
-            background: white;
-        }
+  /* ── Historique ───────────────────────────────────────────────────────── */
+  .hor-histo { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
+  .hor-histo-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+  }
+  .hor-histo-titre { font-size: var(--fs-sm); font-weight: 700; color: var(--text); }
+  .hor-histo-date  { font-size: var(--fs-xs); color: var(--text3); }
+  .hor-histo-tags  { display: flex; flex-wrap: wrap; gap: 5px; margin: 7px 0; }
+  .hor-tag {
+    font-size: var(--fs-xs);
+    padding: 2px 9px;
+    border-radius: 999px;
+    color: #1a1917;
+    white-space: nowrap;
+  }
+  .hor-histo-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hor-vide { font-size: var(--fs-xs); color: var(--text3); line-height: 1.6; }
 
-        .clock-svg {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-        }
+  /* ── Bandeau de fin ───────────────────────────────────────────────────── */
+  .hor-bandeau {
+    position: fixed; left: 12px; right: 12px; bottom: 12px;
+    z-index: 9998;
+    padding: 16px 20px;
+    border-radius: var(--radius-lg);
+    background: #7A2E86; color: #fff;
+    font-size: var(--fs-lg); font-weight: 700;
+    text-align: center;
+    box-shadow: 0 6px 26px rgba(0,0,0,.35);
+    display: none;
+  }
+  .hor-bandeau.visible { display: block; }
+  .hor-bandeau button {
+    margin-left: 14px;
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    border: 1px solid rgba(255,255,255,.6);
+    background: transparent; color: #fff;
+    font-family: inherit; font-size: var(--fs-xs); font-weight: 700;
+    cursor: pointer;
+  }
 
-        .section {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 200px;
-            height: 200px;
-            transform-origin: 0 0;
-            border: 2px solid white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 0.8rem;
-            color: #333;
-            text-align: center;
-            padding: 5px;
-            box-sizing: border-box;
-        }
+  /* ── MODE TABLEAU (plein cadre) ───────────────────────────────────────
+     C'est l'enjeu principal de cet outil : une fois la séance réglée, tout
+     ce qui n'est pas le cadran disparaît et le cadran prend l'écran. */
+  body.hor-tableau header,
+  body.hor-tableau .lp-footer,
+  body.hor-tableau .mode-tabs,
+  body.hor-tableau #reglages { display: none !important; }
+  body.hor-tableau .main { max-width: none; padding: .5rem 1rem 1rem; }
+  body.hor-tableau .panel.active { grid-template-columns: 1fr; }
+  body.hor-tableau .sketch-card {
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+  body.hor-tableau .hor-scene svg { height: min(72vh, 900px); }
+  body.hor-tableau .hor-restant { font-size: clamp(46px, 11vh, 150px); }
+  body.hor-tableau .hor-etape   { font-size: clamp(20px, 3.4vh, 46px); }
 
-        .hand {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 4px;
-            height: 180px;
-            background: #ff4444;
-            transform-origin: 50% 100%;
-            transform: translate(-50%, -100%) rotate(0deg);
-            border-radius: 2px;
-            z-index: 10;
-            transition: transform 0.1s ease-out;
-        }
+  /* ── Grande horloge (onglet Horloge) ──────────────────────────────────── */
+  .hor-mur { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .hor-mur svg {
+    width: 100%;
+    max-width: none;
+    height: min(56vh, 460px);
+    background: var(--sketch-bg);
+    border-radius: var(--radius-lg);
+  }
+  html[data-size="projection"] .hor-mur svg { height: min(64vh, 680px); }
+  body.hor-tableau .hor-mur svg { height: min(74vh, 900px); }
+  .hor-num {
+    font-size: var(--fs-xxl);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  body.hor-tableau .hor-num { font-size: clamp(46px, 11vh, 150px); }
+  .hor-jour { font-size: var(--fs-sm); color: var(--text2); }
 
-        .center-dot {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 12px;
-            height: 12px;
-            background: #ff4444;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 11;
-        }
-
-        .controls {
-            flex: 1;
-            min-width: 350px;
-        }
-
-        .control-group {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            transition: all 0.3s ease;
-        }
-
-        .control-group.collapsed {
-            padding: 10px 15px;
-            background: #e9ecef;
-        }
-
-        .control-group.collapsed .control-content {
-            display: none;
-        }
-
-        .control-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            cursor: pointer;
-            margin: 0 0 15px 0;
-        }
-
-        .control-group.collapsed .control-header {
-            margin: 0;
-        }
-
-        .control-header h3 {
-            margin: 0;
-            color: #555;
-            flex-grow: 1;
-        }
-
-        .collapse-indicator {
-            font-size: 1.2rem;
-            transition: transform 0.3s ease;
-        }
-
-        .control-group.collapsed .collapse-indicator {
-            transform: rotate(-90deg);
-        }
-
-        .history-item {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-            transition: all 0.3s ease;
-        }
-
-        .history-item:hover {
-            border-color: #667eea;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
-        }
-
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .history-title {
-            font-weight: bold;
-            color: #333;
-            flex-grow: 1;
-        }
-
-        .history-date {
-            font-size: 0.9rem;
-            color: #666;
-            margin-left: 10px;
-        }
-
-        .history-details {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 10px;
-        }
-
-        .history-sections {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-bottom: 10px;
-        }
-
-        .history-section-tag {
-            background: #f0f0f0;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            color: #555;
-        }
-
-        .history-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 0.9rem;
-        }
-
-        .history-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 10px;
-        }
-
-        .empty-history {
-            text-align: center;
-            color: #999;
-            font-style: italic;
-            padding: 30px;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        label {
-            font-weight: 500;
-            min-width: 120px;
-            color: #666;
-        }
-
-        input[type="number"], input[type="text"] {
-            flex: 1;
-            padding: 8px 12px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .sections-container {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 10px;
-        }
-
-        .section-input {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: white;
-            border-radius: 5px;
-            border: 1px solid #eee;
-        }
-
-        .section-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .section-input input[type="text"] {
-            flex: 1;
-        }
-
-        .section-input input[type="number"] {
-            width: 80px;
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 5px;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #5a67d8;
-            transform: translateY(-2px);
-        }
-
-        .btn-success {
-            background: #48bb78;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #38a169;
-            transform: translateY(-2px);
-        }
-
-        .btn-warning {
-            background: #ed8936;
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #dd6b20;
-            transform: translateY(-2px);
-        }
-
-        .btn-danger {
-            background: #f56565;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #e53e3e;
-            transform: translateY(-2px);
-        }
-
-        .timer-info {
-            text-align: center;
-            margin-top: 20px;
-            padding: 15px;
-            background: #e6f3ff;
-            border-radius: 10px;
-        }
-
-        .timer-info h3 {
-            margin: 0 0 10px 0;
-            color: #2d5aa0;
-        }
-
-        .time-display {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .current-section {
-            font-size: 1.2rem;
-            color: #667eea;
-            margin-top: 10px;
-        }
-
-        .button-group {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .section.completed {
-            background-color: #ff6b6b !important;
-        }
-
-        .storage-info {
-            background: #e8f5e8;
-            border: 1px solid #4caf50;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 15px;
-            font-size: 0.9rem;
-            color: #2e7d32;
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                flex-direction: column;
-                gap: 20px;
-            }
-            
-            .clock {
-                width: 300px;
-                height: 300px;
-            }
-            
-            h1 {
-                font-size: 2rem;
-            }
-            
-            .current-time {
-                position: static;
-                margin-top: 20px;
-                text-align: center;
-            }
-        }
-    </style>
+  @media (max-width: 860px) {
+    .hor-scene svg { height: min(42vh, 340px); }
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>🕐 Horloge Interactive de Classe</h1>
-        
-        <div class="main-content">
-            <div class="clock-container">
-                <div class="clock" id="clock">
-                    <div class="clock-face" id="clockFace">
-                        <svg class="clock-svg" id="clockSvg" viewBox="0 0 400 400">
-                            <!-- Les sections seront ajoutées ici -->
-                        </svg>
-                        <div class="hand" id="hand"></div>
-                        <div class="center-dot"></div>
-                    </div>
-                </div>
-                
-                <div class="timer-info">
-                    <h3>Temps restant</h3>
-                    <div class="time-display" id="timeDisplay">00:00</div>
-                    <div class="current-section" id="currentSection">En attente</div>
-                </div>
-                
-                <div class="button-group">
-                    <button class="btn btn-success" id="startBtn" onclick="startTimer()">▶️ Démarrer</button>
-                    <button class="btn btn-warning" id="pauseBtn" onclick="pauseTimer()" disabled>⏸️ Pause</button>
-                    <button class="btn btn-danger" onclick="resetTimer()">⏹️ Reset</button>
-                </div>
-            </div>
-            
-            <div class="controls">
-                <div class="control-group" id="generalConfig">
-                    <div class="control-header" onclick="toggleCollapse('generalConfig')">
-                        <h3>Configuration générale</h3>
-                        <span class="collapse-indicator">🔽</span>
-                    </div>
-                    <div class="control-content">
-                        <div class="form-row">
-                            <label>Durée totale (min):</label>
-                            <input type="number" id="totalDuration" value="60" min="1" max="300">
-                        </div>
-                        <div class="form-row">
-                            <label>Nombre de sections:</label>
-                            <input type="number" id="numSections" value="4" min="2" max="12">
-                            <button class="btn btn-primary" onclick="updateSections()">Mettre à jour</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="control-group" id="sectionsConfig">
-                    <div class="control-header" onclick="toggleCollapse('sectionsConfig')">
-                        <h3>Configuration des sections</h3>
-                        <span class="collapse-indicator">🔽</span>
-                    </div>
-                    <div class="control-content">
-                        <div class="sections-container" id="sectionsContainer">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="control-group">
-                    <button class="btn btn-primary" onclick="applyClock()" style="width: 100%; font-size: 18px;">
-                        🎯 Appliquer la configuration
-                    </button>
-                </div>
-                
-                <div class="control-group" id="historyConfig">
-                    <div class="control-header" onclick="toggleCollapse('historyConfig')">
-                        <h3>Historique des configurations (Permanent)</h3>
-                        <span class="collapse-indicator">🔽</span>
-                    </div>
-                    <div class="control-content">
-                        <div class="storage-info">
-                            💾 <strong>Historique permanent :</strong> Vos configurations sont sauvegardées localement dans votre navigateur et seront disponibles lors de vos prochaines visites.
-                        </div>
-                        <div class="history-container" id="historyContainer">
-                            <div class="empty-history">
-                                Aucune configuration sauvegardée pour le moment.<br>
-                                <small>Les configurations seront automatiquement ajoutées à l'historique lors de leur première utilisation.</small>
-                            </div>
-                        </div>
-                        <div style="margin-top: 15px;">
-                            <button class="btn btn-warning btn-small" onclick="exportHistory()">
-                                💾 Sauvegarder (historique.json)
-                            </button>
-                            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importHistory(event)">
-                            <button class="btn btn-primary btn-small" onclick="document.getElementById('importFile').click()" style="margin-left: 5px;">
-                                📂 Charger historique
-                            </button>
-                            <button class="btn btn-danger btn-small" onclick="clearHistory()" style="margin-left: 10px;">
-                                🗑️ Vider
-                            </button>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 0.85em; color: #666; background: #f8f9fa; padding: 10px; border-radius: 5px;">
-                            <strong>💡 Conseil :</strong> Sauvegardez régulièrement votre historique dans le même dossier que ce fichier HTML. 
-                            Le fichier "historique.json" contiendra toutes vos configurations et pourra être rechargé à tout moment.
-                        </div>
-                    </div>
-                </div>
-            </div>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="14.5" stroke="var(--purple)" stroke-width="2.6"/>
+      <path d="M20 11.5V20l6 3.6" stroke="var(--purple)" stroke-width="2.6"
+            stroke-linecap="round" stroke-linejoin="round" class="lp-spin"/>
+    </svg></div>
+  <div>
+    <h1>Horloge de classe</h1>
+    <p>Minuteur de séance à secteurs · heure courante · outil de tableau</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ═══ SÉLECTEUR DE MODE ═══════════════════════════════════════════════ -->
+  <div class="mode-tabs no-print">
+    <button class="mode-tab active" type="button" onclick="setMode('minuteur',this)">Minuteur de séance</button>
+    <button class="mode-tab" type="button" onclick="setMode('horloge',this)">Horloge</button>
+  </div>
+
+  <!-- ═══ 1. MINUTEUR DE SÉANCE ═══════════════════════════════════════════ -->
+  <div id="mode-minuteur">
+    <div class="panel active">
+
+      <!-- ── Cadran ─────────────────────────────────────────────────────── -->
+      <div class="sketch-card hor-scene">
+        <svg id="cadran" viewBox="0 0 400 400" role="img"
+             aria-label="Cadran du minuteur de séance">
+          <g id="secteurs"></g>
+          <g id="graduations"></g>
+          <g id="etiquettes"></g>
+          <circle cx="200" cy="200" r="160" fill="none" stroke="#1a1917"
+                  stroke-width="2.5" opacity=".5"/>
+          <line id="aiguille" x1="200" y1="200" x2="200" y2="46"
+                stroke="#1a1917" stroke-width="5" stroke-linecap="round"/>
+          <circle cx="200" cy="200" r="9" fill="#1a1917"/>
+        </svg>
+
+        <div class="hor-readout">
+          <div class="hor-restant" id="restant">00:00</div>
+          <div class="hor-etape" id="etape" role="status" aria-live="polite">En attente</div>
+          <div class="hor-fin" id="heure-fin"></div>
         </div>
-        
-        <div class="current-time" id="currentTime">
-            <span class="time-label">Heure actuelle</span>
-            <span id="currentTimeDisplay">--:--:--</span>
+
+        <div class="hor-actions no-print">
+          <button class="hor-btn principal" type="button" id="btn-marche" onclick="basculerMarche()">Démarrer</button>
+          <button class="hor-btn" type="button" id="btn-reset" onclick="reinitialiser()">Réinitialiser</button>
+          <button class="hor-btn" type="button" id="btn-tableau" onclick="basculerTableau()">Mode tableau</button>
         </div>
+      </div>
+
+      <!-- ── Réglages ───────────────────────────────────────────────────── -->
+      <div class="controls-card" id="reglages">
+
+        <div>
+          <div class="section-label">La séance</div>
+        </div>
+
+        <div class="hor-ligne">
+          <label for="titre-seance">Intitulé</label>
+          <input type="text" id="titre-seance" class="hor-champ" maxlength="60"
+                 placeholder="Séance de mathématiques">
+        </div>
+
+        <div class="hor-ligne">
+          <label for="duree-totale">Durée totale</label>
+          <input type="number" id="duree-totale" class="hor-champ" min="2" max="300" step="1" value="60">
+          <span class="unit">min</span>
+          <label for="nb-secteurs" style="margin-left:auto">Étapes</label>
+          <input type="number" id="nb-secteurs" class="hor-champ" min="2" max="12" step="1" value="4">
+        </div>
+
+        <div class="formula-box">
+          Changer la <strong>durée totale</strong> répartit le temps entre les étapes
+          en conservant leurs proportions. Changer la durée d'une étape met la durée
+          totale à jour. Le cadran fait toujours un tour complet sur la séance entière.
+        </div>
+
+        <div>
+          <div class="hor-ligne" style="justify-content:space-between;margin-bottom:8px">
+            <span class="section-label">Les étapes</span>
+            <button class="btn-rnd" type="button" onclick="repartirEgalement()">Répartir également</button>
+          </div>
+          <div class="hor-secteurs" id="liste-secteurs"></div>
+        </div>
+
+        <div class="hor-bloc">
+          <div class="hor-ligne">
+            <input type="checkbox" id="son" checked style="width:20px;height:20px">
+            <label for="son">Signal sonore au changement d'étape et en fin de séance</label>
+          </div>
+          <button class="btn-rnd" type="button" onclick="enregistrerSeance()">Enregistrer cette séance</button>
+        </div>
+
+        <div class="hor-bloc">
+          <div class="section-label">Séances enregistrées</div>
+          <div class="hor-vide" style="color:var(--text2)">
+            Conservées dans ce navigateur, sur ce poste. Le fichier d'export
+            permet de les retrouver sur un autre ordinateur.
+          </div>
+          <div class="hor-histo" id="histo"></div>
+          <div class="hor-actions" style="justify-content:flex-start">
+            <button class="btn-rnd" type="button" onclick="exporterHistorique()">Exporter</button>
+            <input type="file" id="fichier-import" accept=".json,application/json"
+                   style="display:none" onchange="importerHistorique(event)">
+            <button class="btn-rnd" type="button" onclick="document.getElementById('fichier-import').click()">Importer</button>
+            <button class="btn-rnd" type="button" onclick="viderHistorique()">Tout effacer</button>
+          </div>
+        </div>
+
+      </div>
     </div>
+  </div>
 
-    <script>
-        let timer = null;
-        let clockTimer = null;
-        let isPaused = false;
-        let startTime = null;
-        let pausedTime = 0;
-        let totalDurationMs = 0;
-        let sections = [];
-        let currentSectionIndex = 0;
-        let configHistory = [];
-        
-        const pastelColors = [
-            '#FFB6C1', '#87CEEB', '#98FB98', '#DDA0DD',
-            '#F0E68C', '#FF7F50', '#40E0D0', '#EE82EE',
-            '#90EE90', '#FFB347', '#87CEFA', '#DEB887'
-        ];
+  <!-- ═══ 2. HORLOGE ══════════════════════════════════════════════════════ -->
+  <div id="mode-horloge">
+    <div class="sketch-card hor-mur">
+      <svg id="cadran-heure" viewBox="0 0 400 400" role="img" aria-label="Horloge indiquant l'heure courante">
+        <circle cx="200" cy="200" r="176" fill="none" stroke="#1a1917" stroke-width="3" opacity=".55"/>
+        <g id="heure-grad"></g>
+        <g id="heure-chiffres"></g>
+        <line id="aig-h" x1="200" y1="200" x2="200" y2="112" stroke="#1a1917" stroke-width="9" stroke-linecap="round"/>
+        <line id="aig-m" x1="200" y1="200" x2="200" y2="62"  stroke="#1a1917" stroke-width="6" stroke-linecap="round"/>
+        <line id="aig-s" x1="200" y1="216" x2="200" y2="50"  stroke="#A32D2D" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="200" cy="200" r="8" fill="#1a1917"/>
+      </svg>
+      <div class="hor-num" id="heure-num">--:--:--</div>
+      <div class="hor-jour" id="heure-jour"></div>
+      <div class="hor-actions no-print">
+        <button class="hor-btn" type="button" onclick="basculerTableau()">Mode tableau</button>
+      </div>
+    </div>
+  </div>
 
-        // NOUVELLES FONCTIONS POUR LA PERSISTENCE
-        function loadHistoryFromStorage() {
-            try {
-                const savedHistory = localStorage.getItem('horloge-config-history');
-                if (savedHistory) {
-                    configHistory = JSON.parse(savedHistory);
-                    console.log(`Historique chargé: ${configHistory.length} configurations`);
-                } else {
-                    configHistory = [];
-                }
-            } catch (error) {
-                console.error('Erreur lors du chargement de l\'historique:', error);
-                configHistory = [];
-            }
-        }
+</div>
 
-        function saveHistoryToStorage() {
-            try {
-                localStorage.setItem('horloge-config-history', JSON.stringify(configHistory));
-                console.log('Historique sauvegardé avec succès');
-            } catch (error) {
-                console.error('Erreur lors de la sauvegarde de l\'historique:', error);
-                // En cas d'erreur (quota dépassé, etc.), on peut supprimer les plus anciennes configurations
-                if (configHistory.length > 10) {
-                    configHistory = configHistory.slice(0, 10);
-                    try {
-                        localStorage.setItem('horloge-config-history', JSON.stringify(configHistory));
-                        console.log('Historique réduit et sauvegardé');
-                    } catch (e) {
-                        console.error('Impossible de sauvegarder même avec un historique réduit', e);
-                    }
-                }
-            }
-        }
+<div class="hor-bandeau no-print" id="bandeau" role="alert">
+  <span id="bandeau-texte">Séance terminée</span>
+  <button type="button" onclick="fermerBandeau()">Fermer</button>
+</div>
 
-        function exportHistory() {
-            if (configHistory.length === 0) {
-                alert('Aucune configuration à sauvegarder !');
-                return;
-            }
-
-            const dataStr = JSON.stringify(configHistory, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(dataBlob);
-            link.download = `historique.json`; // Nom fixe pour faciliter la gestion
-            link.click();
-            
-            // Nettoyage
-            URL.revokeObjectURL(link.href);
-            
-            alert(`✅ Historique sauvegardé !\n📁 Fichier: "historique.json"\n💡 Placez ce fichier dans le même dossier que votre fichier HTML pour faciliter la gestion.`);
-        }
-
-        function importHistory(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    
-                    if (Array.isArray(importedData)) {
-                        const validConfigs = importedData.filter(config => 
-                            config.id && config.sections && Array.isArray(config.sections)
-                        );
-                        
-                        if (validConfigs.length > 0) {
-                            if (confirm(`Voulez-vous remplacer l'historique actuel (${configHistory.length} configurations) par les ${validConfigs.length} configurations importées ?`)) {
-                                configHistory = validConfigs;
-                                saveHistoryToStorage();
-                                updateHistoryDisplay();
-                                alert(`${validConfigs.length} configurations importées avec succès !`);
-                            }
-                        } else {
-                            alert('Aucune configuration valide trouvée dans le fichier !');
-                        }
-                    } else {
-                        alert('Format de fichier invalide !');
-                    }
-                } catch (error) {
-                    console.error('Erreur lors de l\'import:', error);
-                    alert('Erreur lors de la lecture du fichier. Vérifiez que c\'est un fichier JSON valide.');
-                }
-            };
-            
-            reader.readAsText(file);
-            // Réinitialiser l'input file
-            event.target.value = '';
-        }
-
-        function updateSections() {
-            const numSections = parseInt(document.getElementById('numSections').value);
-            const container = document.getElementById('sectionsContainer');
-            container.innerHTML = '';
-            
-            sections = [];
-            for (let i = 0; i < numSections; i++) {
-                sections.push({
-                    name: `Activité ${i + 1}`,
-                    duration: Math.floor(60 / numSections),
-                    color: pastelColors[i % pastelColors.length]
-                });
-                
-                const sectionDiv = document.createElement('div');
-                sectionDiv.className = 'section-input';
-                sectionDiv.innerHTML = `
-                    <div class="section-color" style="background-color: ${sections[i].color}"></div>
-                    <input type="text" placeholder="Nom de l'activité" value="${sections[i].name}" onchange="updateSectionName(${i}, this.value)">
-                    <label>min:</label>
-                    <input type="number" value="${sections[i].duration}" min="1" max="120" onchange="updateSectionDuration(${i}, this.value)">
-                `;
-                container.appendChild(sectionDiv);
-            }
-        }
-
-        function updateSectionName(index, name) {
-            sections[index].name = name;
-        }
-
-        function updateSectionDuration(index, duration) {
-            sections[index].duration = parseInt(duration);
-            updateTotalFromSections();
-        }
-
-        function updateTotalFromSections() {
-            const total = sections.reduce((sum, section) => sum + section.duration, 0);
-            document.getElementById('totalDuration').value = total;
-        }
-
-        function applyClock() {
-            const totalDuration = parseInt(document.getElementById('totalDuration').value);
-            totalDurationMs = totalDuration * 60 * 1000;
-            
-            // Ajuster les durées des sections si nécessaire
-            const sectionsTotal = sections.reduce((sum, section) => sum + section.duration, 0);
-            if (sectionsTotal !== totalDuration) {
-                const ratio = totalDuration / sectionsTotal;
-                sections.forEach(section => {
-                    section.duration = Math.round(section.duration * ratio);
-                });
-            }
-            
-            // Sauvegarder dans l'historique PERMANENT
-            saveToHistory();
-            
-            drawClock();
-            resetTimer();
-            
-            // Replier les sections de configuration
-            document.getElementById('generalConfig').classList.add('collapsed');
-            document.getElementById('sectionsConfig').classList.add('collapsed');
-        }
-
-        function saveToHistory() {
-            const config = {
-                id: Date.now(),
-                date: new Date().toLocaleString('fr-FR'),
-                totalDuration: parseInt(document.getElementById('totalDuration').value),
-                sections: sections.map(section => ({...section})), // Copie profonde
-                sectionsCount: sections.length
-            };
-            
-            // Vérifier si une configuration identique existe déjà 
-            const isDuplicate = configHistory.some(item => 
-                item.totalDuration === config.totalDuration &&
-                item.sectionsCount === config.sectionsCount &&
-                JSON.stringify(item.sections) === JSON.stringify(config.sections)
-            );
-            
-            if (!isDuplicate) {
-                configHistory.unshift(config); // Ajouter en premier
-                
-                // Limiter à 50 configurations pour éviter les problèmes de stockage
-                if (configHistory.length > 50) {
-                    configHistory = configHistory.slice(0, 50);
-                }
-                
-                // Sauvegarder dans le localStorage
-                saveHistoryToStorage();
-                updateHistoryDisplay();
-            }
-        }
-
-        function updateHistoryDisplay() {
-            const container = document.getElementById('historyContainer');
-            
-            if (configHistory.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-history">
-                        Aucune configuration sauvegardée pour le moment.<br>
-                        <small>Les configurations seront automatiquement ajoutées à l'historique lors de leur première utilisation.</small>
-                    </div>`;
-                return;
-            }
-            
-            container.innerHTML = configHistory.map(config => `
-                <div class="history-item">
-                    <div class="history-header">
-                        <div class="history-title">
-                            Configuration ${config.sectionsCount} sections
-                        </div>
-                        <div class="history-date">${config.date}</div>
-                    </div>
-                    <div class="history-details">
-                        Durée totale: ${config.totalDuration} minutes
-                    </div>
-                    <div class="history-sections">
-                        ${config.sections.map(section => `
-                            <span class="history-section-tag" style="background-color: ${section.color}30; border: 1px solid ${section.color};">
-                                ${section.name} (${section.duration}min)
-                            </span>
-                        `).join('')}
-                    </div>
-                    <div class="history-actions">
-                        <button class="btn btn-primary btn-small" onclick="loadFromHistory(${config.id})">
-                            📋 Utiliser
-                        </button>
-                        <button class="btn btn-warning btn-small" onclick="editFromHistory(${config.id})">
-                            ✏️ Modifier
-                        </button>
-                        <button class="btn btn-danger btn-small" onclick="deleteFromHistory(${config.id})">
-                            🗑️ Supprimer
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function loadFromHistory(configId) {
-            const config = configHistory.find(item => item.id === configId);
-            if (!config) return;
-            
-            // Charger la configuration
-            document.getElementById('totalDuration').value = config.totalDuration;
-            document.getElementById('numSections').value = config.sectionsCount;
-            
-            sections = config.sections.map(section => ({...section}));
-            
-            // Mettre à jour l'affichage des sections
-            const container = document.getElementById('sectionsContainer');
-            container.innerHTML = '';
-            
-            sections.forEach((section, index) => {
-                const sectionDiv = document.createElement('div');
-                sectionDiv.className = 'section-input';
-                sectionDiv.innerHTML = `
-                    <div class="section-color" style="background-color: ${section.color}"></div>
-                    <input type="text" placeholder="Nom de l'activité" value="${section.name}" onchange="updateSectionName(${index}, this.value)">
-                    <label>min:</label>
-                    <input type="number" value="${section.duration}" min="1" max="120" onchange="updateSectionDuration(${index}, this.value)">
-                `;
-                container.appendChild(sectionDiv);
-            });
-            
-            // Déplier les sections de configuration
-            document.getElementById('generalConfig').classList.remove('collapsed');
-            document.getElementById('sectionsConfig').classList.remove('collapsed');
-            
-            alert('Configuration chargée ! Vous pouvez la modifier et cliquer sur "Appliquer" pour l\'utiliser.');
-        }
-
-        function editFromHistory(configId) {
-            loadFromHistory(configId);
-        }
-
-        function deleteFromHistory(configId) {
-            if (confirm('Êtes-vous sûr de vouloir supprimer cette configuration ?')) {
-                configHistory = configHistory.filter(item => item.id !== configId);
-                saveHistoryToStorage();
-                updateHistoryDisplay();
-            }
-        }
-
-        function clearHistory() {
-            if (confirm('Êtes-vous sûr de vouloir vider tout l\'historique permanent ?')) {
-                configHistory = [];
-                localStorage.removeItem('horloge-config-history');
-                updateHistoryDisplay();
-            }
-        }
-
-        function drawClock() {
-            const clockSvg = document.getElementById('clockSvg');
-            
-            // Supprimer les anciennes sections
-            clockSvg.innerHTML = '';
-            
-            let startAngle = 0;
-            const totalDuration = sections.reduce((sum, section) => sum + section.duration, 0);
-            const centerX = 200;
-            const centerY = 200;
-            const radius = 180;
-            
-            sections.forEach((section, index) => {
-                const sectionAngle = (section.duration / totalDuration) * 360;
-                const endAngle = startAngle + sectionAngle;
-                
-                // Créer le chemin du secteur
-                const startAngleRad = (startAngle - 90) * Math.PI / 180;
-                const endAngleRad = (endAngle - 90) * Math.PI / 180;
-                
-                const x1 = centerX + Math.cos(startAngleRad) * radius;
-                const y1 = centerY + Math.sin(startAngleRad) * radius;
-                const x2 = centerX + Math.cos(endAngleRad) * radius;
-                const y2 = centerY + Math.sin(endAngleRad) * radius;
-                
-                const largeArcFlag = sectionAngle > 180 ? 1 : 0;
-                
-                const pathData = [
-                    `M ${centerX} ${centerY}`,
-                    `L ${x1} ${y1}`,
-                    `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
-                    'Z'
-                ].join(' ');
-                
-                // Créer l'élément path
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('d', pathData);
-                path.setAttribute('fill', section.color);
-                path.setAttribute('stroke', 'white');
-                path.setAttribute('stroke-width', '2');
-                path.classList.add('section-path');
-                path.setAttribute('data-index', index);
-                
-                clockSvg.appendChild(path);
-                
-                // Ajouter le texte orienté dans le sens du rayon (au centre du secteur)
-                const midAngle = startAngle + sectionAngle / 2;
-                const textAngleRad = (midAngle - 90) * Math.PI / 180;
-                const textRadius = radius * 0.6;
-                const textX = centerX + Math.cos(textAngleRad) * textRadius;
-                const textY = centerY + Math.sin(textAngleRad) * textRadius;
-                
-                // Calculer l'angle de rotation du texte pour qu'il suive le rayon
-                let textRotation = midAngle - 90;
-                // Si le texte serait à l'envers, le retourner de 180°
-                if (textRotation > 90 && textRotation < 270) {
-                    textRotation += 180;
-                }
-                
-                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                text.setAttribute('x', textX);
-                text.setAttribute('y', textY);
-                text.setAttribute('text-anchor', 'middle');
-                text.setAttribute('dominant-baseline', 'central');
-                text.setAttribute('font-size', '12');
-                text.setAttribute('font-weight', 'bold');
-                text.setAttribute('fill', '#333');
-                text.setAttribute('transform', `rotate(${textRotation}, ${textX}, ${textY})`);
-                text.textContent = section.name;
-                
-                clockSvg.appendChild(text);
-                
-                startAngle = endAngle;
-            });
-        }
-
-        function startTimer() {
-            if (sections.length === 0) {
-                alert('Veuillez d\'abord configurer l\'horloge !');
-                return;
-            }
-            
-            if (isPaused) {
-                // Reprendre là où on s'était arrêté
-                startTime = Date.now() - pausedTime;
-                isPaused = false;
-            } else {
-                // Nouveau démarrage
-                startTime = Date.now();
-                pausedTime = 0;
-                currentSectionIndex = 0;
-            }
-            
-            timer = setInterval(updateClock, 100);
-            
-            document.getElementById('startBtn').disabled = true;
-            document.getElementById('pauseBtn').disabled = false;
-        }
-
-        function pauseTimer() {
-            if (timer) {
-                clearInterval(timer);
-                timer = null;
-                isPaused = true;
-                pausedTime = Date.now() - startTime;
-                
-                document.getElementById('startBtn').disabled = false;
-                document.getElementById('pauseBtn').disabled = true;
-            }
-        }
-
-        function resetTimer() {
-            if (timer) {
-                clearInterval(timer);
-                timer = null;
-            }
-            
-            isPaused = false;
-            startTime = null;
-            pausedTime = 0;
-            currentSectionIndex = 0;
-            
-            document.getElementById('startBtn').disabled = false;
-            document.getElementById('pauseBtn').disabled = true;
-            
-            document.getElementById('timeDisplay').textContent = '00:00';
-            document.getElementById('currentSection').textContent = 'En attente';
-            document.getElementById('hand').style.transform = 'translate(-50%, -100%) rotate(0deg)';
-            
-            // Remettre les couleurs originales
-            const sectionPaths = document.querySelectorAll('.section-path');
-            sectionPaths.forEach((path, index) => {
-                path.setAttribute('fill', sections[index]?.color || pastelColors[index % pastelColors.length]);
-            });
-        }
-
-        function toggleCollapse(groupId) {
-            const group = document.getElementById(groupId);
-            group.classList.toggle('collapsed');
-        }
-
-        function updateCurrentTime() {
-            const now = new Date();
-            const hours = now.getHours().toString().padStart(2, '0');
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            const seconds = now.getSeconds().toString().padStart(2, '0');
-            
-            document.getElementById('currentTimeDisplay').textContent = `${hours}:${minutes}:${seconds}`;
-        }
-
-        function startClockTimer() {
-            if (!clockTimer) {
-                updateCurrentTime(); // Mise à jour immédiate
-                clockTimer = setInterval(updateCurrentTime, 1000); // Mise à jour chaque seconde
-            }
-        }
-
-        function stopClockTimer() {
-            if (clockTimer) {
-                clearInterval(clockTimer);
-                clockTimer = null;
-            }
-        }
-
-        function updateClock() {
-            const elapsed = Date.now() - startTime;
-            const remaining = Math.max(0, totalDurationMs - elapsed);
-            
-            if (remaining === 0) {
-                // Temps écoulé
-                clearInterval(timer);
-                timer = null;
-                document.getElementById('startBtn').disabled = false;
-                document.getElementById('pauseBtn').disabled = true;
-                document.getElementById('timeDisplay').textContent = '00:00';
-                document.getElementById('currentSection').textContent = 'Terminé !';
-                alert('⏰ Temps écoulé !');
-                return;
-            }
-            
-            // Mettre à jour l'affichage du temps
-            const minutes = Math.floor(remaining / 60000);
-            const seconds = Math.floor((remaining % 60000) / 1000);
-            document.getElementById('timeDisplay').textContent = 
-                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            // Calculer l'angle de la trotteuse
-            const progress = elapsed / totalDurationMs;
-            const angle = progress * 360; // Commencer directement à 0° (12h)
-            document.getElementById('hand').style.transform = `translate(-50%, -100%) rotate(${angle}deg)`;
-            
-            // Déterminer la section actuelle et mettre à jour les couleurs
-            let cumulativeDuration = 0;
-            let newCurrentSectionIndex = 0;
-            
-            for (let i = 0; i < sections.length; i++) {
-                cumulativeDuration += sections[i].duration * 60 * 1000;
-                if (elapsed < cumulativeDuration) {
-                    newCurrentSectionIndex = i;
-                    break;
-                }
-                if (i === sections.length - 1) {
-                    newCurrentSectionIndex = sections.length - 1;
-                }
-            }
-            
-            currentSectionIndex = newCurrentSectionIndex;
-            
-            // Mettre à jour l'affichage de la section actuelle
-            if (currentSectionIndex < sections.length) {
-                document.getElementById('currentSection').textContent = 
-                    `Section actuelle: ${sections[currentSectionIndex].name}`;
-            }
-            
-            // Mettre à jour les couleurs des sections (rouge pour les sections dépassées)
-            const sectionPaths = document.querySelectorAll('.section-path');
-            let sectionCumulativeTime = 0;
-            
-            sections.forEach((section, index) => {
-                sectionCumulativeTime += section.duration * 60 * 1000;
-                if (index < sectionPaths.length) {
-                    if (elapsed >= sectionCumulativeTime) {
-                        sectionPaths[index].setAttribute('fill', '#ff6b6b');
-                    } else {
-                        sectionPaths[index].setAttribute('fill', section.color);
-                    }
-                }
-            });
-        }
-
-        // INITIALISATION AU CHARGEMENT DE LA PAGE
-        document.addEventListener('DOMContentLoaded', function() {
-            // Charger l'historique depuis le localStorage
-            loadHistoryFromStorage();
-            
-            // Initialiser l'affichage
-            updateSections();
-            applyClock();
-            updateHistoryDisplay();
-            
-            // Démarrer l'affichage de l'heure actuelle
-            startClockTimer();
-        });
-
-        // Compteur de visites simple (comme dans l'original)
-        let visites = localStorage.getItem('compteur-visites') || 0;
-        visites++;
-        localStorage.setItem('compteur-visites', visites);
-    </script>
-
-<footer class="footer" style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 15px; text-align: center; color: #666;">
-    <p>© 2026 - Ressources Pédagogiques | Lycée Professionnel</p>
-    <p>Site conçu pour l'enseignement des mathématiques et des sciences</p>
-    <p style="margin-top: 15px; font-size: 0.8em; color: #a0aec0;">
-        <strong>Licence MIT</strong> - Créé par <a href="mailto:lessavoirfaire.partager@gmail.com" style="color: #667eea;">lessavoirfaire.partager@gmail.com</a><br>
-        Ce projet est sous licence libre. 
-        <a href="#" onclick="showLicense()" style="color: #667eea;">Voir licence complète</a>
-    </p>
-    <p id="compteur-visites" style="margin-top: 10px; font-size: 0.8em;"></p>
+<footer class="lp-footer">
+  <a href="/">&larr; Tous les outils</a> &nbsp;&middot;&nbsp; Licence MIT &nbsp;&middot;&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">Calculatrice Casio fx-92</a>
+  &nbsp;&middot;&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée · M : animations">Raccourcis : T &middot; P &middot; D &middot; M</span>
+  <br>
+  <span style="font-size:var(--fs-xs)">Minuteur : Espace démarre ou met en pause &middot;
+    R réinitialise &middot; F bascule en mode tableau &middot; Échap en sort</span>
 </footer>
 
 <script>
-// Affichage du compteur de visites
-document.addEventListener('DOMContentLoaded', function() {
-    const compteur = document.getElementById('compteur-visites');
-    if (compteur) {
-        compteur.innerHTML = `👁️ Visites sur cette page : <strong>${visites}</strong>`;
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Horloge de classe — outilslp.netlify.app
+   Toutes les apostrophes de ce bloc sont DROITES. Les apostrophes francaises
+   des textes affiches sont ecrites \u2019 pour qu\u2019aucun editeur ne puisse
+   les transformer en caracteres qui casseraient le fichier entier.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+var APO = '\u2019';
+
+function el(id){ return document.getElementById(id); }
+
+/* Palette des secteurs : couleurs fixes, lisibles sur le fond clair du cadran
+   (--sketch-bg reste clair meme en theme sombre) et supportant un texte noir. */
+var PALETTE = [
+  '#9CC3E8', '#8FD3BE', '#F2CE86', '#F0AC93',
+  '#BDB6EE', '#EEACC1', '#C4DE9B', '#E9AAAA',
+  '#A5D6E3', '#DCC9A6', '#CBB2E0', '#AEDCC7'
+];
+
+var CLE_HISTO = 'horloge-config-history';   /* inchangee : compatible avec les
+                                               seances deja enregistrees */
+
+/* ── Etat ─────────────────────────────────────────────────────────────────── */
+
+var secteurs = [];          /* [{ nom, duree (min), couleur }] */
+var minuteur = null;        /* identifiant setInterval */
+var horlogeMurale = null;
+var depart = null;          /* Date.now() au demarrage, corrige des pauses */
+var ecoulePause = 0;        /* millisecondes deja ecoulees a la mise en pause */
+var enPause = false;
+var indexEtape = -1;        /* etape annoncee, pour ne parler qu\u2019au changement */
+var dernierAffichage = '';
+var termine = false;
+var modeCourant = 'minuteur';
+
+/* ── Outils ───────────────────────────────────────────────────────────────── */
+
+function somme(t){
+  var s = 0;
+  for (var i = 0; i < t.length; i++) s += t[i];
+  return s;
+}
+
+function dureeTotale(){
+  var s = 0;
+  for (var i = 0; i < secteurs.length; i++) s += secteurs[i].duree;
+  return s;
+}
+
+function deuxChiffres(n){ return (n < 10 ? '0' : '') + n; }
+
+/* Repartit un total entier entre n parts en conservant les proportions
+   d\u2019origine, avec une somme EXACTEMENT egale au total et un minimum de
+   1 minute par etape. Methode des plus forts restes : pas de derive, contrairement
+   a un Math.round applique part par part. */
+function repartirProportionnel(durees, total){
+  var n = durees.length, i;
+  if (n === 0) return [];
+  total = Math.round(total);
+  if (total < n) total = n;
+
+  var s = somme(durees);
+  var res = [], frac = [];
+
+  if (s <= 0){
+    var base = Math.floor(total / n), r = total - base * n;
+    for (i = 0; i < n; i++) res.push(base + (i < r ? 1 : 0));
+    return res;
+  }
+
+  for (i = 0; i < n; i++){
+    var v = durees[i] * total / s;
+    var e = Math.floor(v);
+    if (e < 1) e = 1;
+    res.push(e);
+    frac.push({ i: i, f: v - Math.floor(v) });
+  }
+
+  var reste = total - somme(res);
+  frac.sort(function(a, b){ return b.f - a.f; });
+
+  var k = 0, garde = 0;
+  while (reste > 0 && garde < 100000){ res[frac[k % n].i] += 1; reste--; k++; garde++; }
+
+  k = 0; garde = 0;
+  while (reste < 0 && garde < 100000){
+    var idx = frac[n - 1 - (k % n)].i;
+    if (res[idx] > 1){ res[idx] -= 1; reste++; }
+    k++; garde++;
+  }
+  return res;
+}
+
+/* ── Construction des etapes ──────────────────────────────────────────────── */
+
+/* Changer le NOMBRE d\u2019etapes repartit la duree totale a parts egales : c\u2019est
+   le comportement previsible. Conserver les anciennes proportions donnerait
+   1 minute a chaque etape ajoutee, ce qui n\u2019a aucun sens au tableau.
+   Les noms et les couleurs deja saisis sont, eux, conserves. */
+function fabriquerSecteurs(n, total){
+  var anciens = secteurs.slice(0);
+  var zeros = [], i;
+  for (i = 0; i < n; i++) zeros.push(0);
+  var durees = repartirProportionnel(zeros, total);
+
+  var neufs = [];
+  for (i = 0; i < n; i++){
+    neufs.push({
+      nom:     anciens[i] ? anciens[i].nom : 'Étape ' + (i + 1),
+      duree:   durees[i],
+      couleur: anciens[i] ? anciens[i].couleur : PALETTE[i % PALETTE.length]
+    });
+  }
+  secteurs = neufs;
+}
+
+function dessinerReglages(){
+  var boite = el('liste-secteurs');
+  boite.innerHTML = '';
+
+  for (var i = 0; i < secteurs.length; i++){
+    (function(idx){
+      var s = secteurs[idx];
+
+      var ligne = document.createElement('div');
+      ligne.className = 'hor-secteur';
+
+      var puce = document.createElement('span');
+      puce.className = 'hor-puce';
+      puce.style.background = s.couleur;
+      puce.setAttribute('aria-hidden', 'true');
+
+      var idNom = 'sec-nom-' + idx;
+      var etiqNom = document.createElement('label');
+      etiqNom.htmlFor = idNom;
+      etiqNom.textContent = 'Étape ' + (idx + 1);
+      etiqNom.style.position = 'absolute';
+      etiqNom.style.width = '1px';
+      etiqNom.style.height = '1px';
+      etiqNom.style.overflow = 'hidden';
+      etiqNom.style.clip = 'rect(0 0 0 0)';
+      etiqNom.style.whiteSpace = 'nowrap';
+
+      var champNom = document.createElement('input');
+      champNom.type = 'text';
+      champNom.id = idNom;
+      champNom.className = 'hor-champ';
+      champNom.value = s.nom;
+      champNom.maxLength = 34;
+      champNom.addEventListener('input', function(){
+        secteurs[idx].nom = champNom.value;
+        dessinerCadran();
+      });
+
+      var idMin = 'sec-min-' + idx;
+      var etiqMin = document.createElement('label');
+      etiqMin.htmlFor = idMin;
+      etiqMin.className = 'unite';
+      etiqMin.textContent = 'min';
+
+      var champMin = document.createElement('input');
+      champMin.type = 'number';
+      champMin.id = idMin;
+      champMin.className = 'hor-champ';
+      champMin.min = '1';
+      champMin.max = '300';
+      champMin.step = '1';
+      champMin.value = String(s.duree);
+      champMin.addEventListener('change', function(){
+        var v = parseInt(champMin.value, 10);
+        if (isNaN(v) || v < 1) v = 1;
+        if (v > 300) v = 300;
+        champMin.value = String(v);
+        secteurs[idx].duree = v;
+        el('duree-totale').value = String(dureeTotale());
+        structureModifiee();
+      });
+
+      ligne.appendChild(puce);
+      ligne.appendChild(etiqNom);
+      ligne.appendChild(champNom);
+      ligne.appendChild(champMin);
+      ligne.appendChild(etiqMin);
+      boite.appendChild(ligne);
+    })(i);
+  }
+}
+
+/* Remet toutes les etapes a la meme duree, la totale etant conservee.
+   Utile apres plusieurs reglages successifs : la mise a l\u2019echelle
+   proportionnelle est fidele, mais elle amplifie les ecarts quand on part
+   d\u2019un total tres court. */
+function repartirEgalement(){
+  var n = secteurs.length, i;
+  if (n === 0) return;
+  var zeros = [];
+  for (i = 0; i < n; i++) zeros.push(0);
+  var durees = repartirProportionnel(zeros, dureeTotale());
+  for (i = 0; i < n; i++) secteurs[i].duree = durees[i];
+  el('duree-totale').value = String(dureeTotale());
+  dessinerReglages();
+  structureModifiee();
+}
+
+/* Toute modification de structure remet le minuteur a zero : laisser tourner
+   un decompte sur un cadran qui vient de changer donnerait un affichage faux. */
+function structureModifiee(){
+  reinitialiser();
+  dessinerCadran();
+}
+
+/* ── Cadran du minuteur ───────────────────────────────────────────────────── */
+
+var CX = 200, CY = 200, R = 160;
+
+function pointCercle(angleDeg, rayon){
+  var a = (angleDeg - 90) * Math.PI / 180;
+  return { x: CX + Math.cos(a) * rayon, y: CY + Math.sin(a) * rayon };
+}
+
+function svgEl(nom){ return document.createElementNS('http://www.w3.org/2000/svg', nom); }
+
+function dessinerCadran(){
+  var gSect = el('secteurs'), gGrad = el('graduations'), gEtiq = el('etiquettes');
+  gSect.innerHTML = ''; gGrad.innerHTML = ''; gEtiq.innerHTML = '';
+
+  var total = dureeTotale();
+  if (total <= 0) return;
+
+  /* Secteurs */
+  var angle = 0, i;
+  for (i = 0; i < secteurs.length; i++){
+    var ouverture = secteurs[i].duree / total * 360;
+    var fin = angle + ouverture;
+    var p1 = pointCercle(angle, R), p2 = pointCercle(fin, R);
+    var grand = ouverture > 180 ? 1 : 0;
+
+    var d;
+    if (ouverture >= 359.999){
+      /* Une seule etape : un disque, l\u2019arc unique degenere en point. */
+      d = 'M ' + CX + ' ' + (CY - R) +
+          ' A ' + R + ' ' + R + ' 0 1 1 ' + (CX - 0.01) + ' ' + (CY - R) + ' Z';
+    } else {
+      d = 'M ' + CX + ' ' + CY +
+          ' L ' + p1.x.toFixed(2) + ' ' + p1.y.toFixed(2) +
+          ' A ' + R + ' ' + R + ' 0 ' + grand + ' 1 ' + p2.x.toFixed(2) + ' ' + p2.y.toFixed(2) +
+          ' Z';
     }
+
+    var chemin = svgEl('path');
+    chemin.setAttribute('d', d);
+    chemin.setAttribute('fill', secteurs[i].couleur);
+    chemin.setAttribute('stroke', '#ffffff');
+    chemin.setAttribute('stroke-width', '2');
+    chemin.setAttribute('class', 'secteur');
+    chemin.setAttribute('data-index', String(i));
+    gSect.appendChild(chemin);
+
+    /* Nom de l\u2019etape, oriente le long du rayon */
+    if (ouverture >= 16){
+      var milieu = angle + ouverture / 2;
+      var pt = pointCercle(milieu, R * 0.62);
+      var rot = milieu - 90;
+      if (rot > 90 && rot < 270) rot += 180;
+
+      var t = svgEl('text');
+      t.setAttribute('x', pt.x.toFixed(2));
+      t.setAttribute('y', pt.y.toFixed(2));
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('dominant-baseline', 'central');
+      t.setAttribute('font-family', 'Arial, Helvetica, sans-serif');
+      t.setAttribute('font-size', ouverture >= 34 ? '15' : '12');
+      t.setAttribute('font-weight', '700');
+      t.setAttribute('fill', '#1a1917');
+      t.setAttribute('transform', 'rotate(' + rot.toFixed(2) + ' ' + pt.x.toFixed(2) + ' ' + pt.y.toFixed(2) + ')');
+      t.textContent = secteurs[i].nom;
+      gEtiq.appendChild(t);
+
+      var t2 = svgEl('text');
+      t2.setAttribute('x', pt.x.toFixed(2));
+      t2.setAttribute('y', (pt.y + 17).toFixed(2));
+      t2.setAttribute('text-anchor', 'middle');
+      t2.setAttribute('dominant-baseline', 'central');
+      t2.setAttribute('font-family', 'Arial, Helvetica, sans-serif');
+      t2.setAttribute('font-size', '12');
+      t2.setAttribute('fill', '#3d3b36');
+      t2.setAttribute('transform', 'rotate(' + rot.toFixed(2) + ' ' + pt.x.toFixed(2) + ' ' + pt.y.toFixed(2) + ')');
+      t2.textContent = secteurs[i].duree + ' min';
+      gEtiq.appendChild(t2);
+    }
+
+    angle = fin;
+  }
+
+  /* Graduations en minutes ecoulees : le cadran se lit comme une duree */
+  var pas = total <= 20 ? 2 : (total <= 60 ? 5 : (total <= 120 ? 10 : 15));
+  for (var m = 0; m < total; m += pas){
+    var a = m / total * 360;
+    var q1 = pointCercle(a, R), q2 = pointCercle(a, R + 9);
+    var tr = svgEl('line');
+    tr.setAttribute('x1', q1.x.toFixed(2)); tr.setAttribute('y1', q1.y.toFixed(2));
+    tr.setAttribute('x2', q2.x.toFixed(2)); tr.setAttribute('y2', q2.y.toFixed(2));
+    tr.setAttribute('stroke', '#1a1917');
+    tr.setAttribute('stroke-width', '2');
+    tr.setAttribute('opacity', '.55');
+    gGrad.appendChild(tr);
+
+    var q3 = pointCercle(a, R + 22);
+    var lab = svgEl('text');
+    lab.setAttribute('x', q3.x.toFixed(2));
+    lab.setAttribute('y', q3.y.toFixed(2));
+    lab.setAttribute('text-anchor', 'middle');
+    lab.setAttribute('dominant-baseline', 'central');
+    lab.setAttribute('font-family', 'Arial, Helvetica, sans-serif');
+    lab.setAttribute('font-size', '13');
+    lab.setAttribute('font-weight', '600');
+    lab.setAttribute('fill', '#55534e');
+    lab.textContent = String(m);
+    gGrad.appendChild(lab);
+  }
+
+  peindreEtat(0);
+  placerAiguille(0);
+  if (!minuteur && !enPause) afficherRestant(total * 60000);
+  majHeureFin();
+}
+
+/* Etat visuel des secteurs : passe eteint, en cours souligne, a venir normal.
+   Choix delibere de ne PAS repeindre le passe en rouge : sur un tableau, du
+   rouge signifie « probleme », pas « fait ». */
+function peindreEtat(ecouleMs){
+  var chemins = el('secteurs').childNodes;
+  var cumul = 0;
+  var courant = indexEnCours(ecouleMs);
+  for (var i = 0; i < secteurs.length && i < chemins.length; i++){
+    cumul += secteurs[i].duree * 60000;
+    var c = chemins[i];
+    if (ecouleMs >= cumul - 0.5){
+      c.setAttribute('fill-opacity', '.22');
+      c.setAttribute('stroke', '#ffffff');
+      c.setAttribute('stroke-width', '2');
+    } else if (i === courant && (minuteur || enPause)){
+      c.setAttribute('fill-opacity', '1');
+      c.setAttribute('stroke', '#1a1917');
+      c.setAttribute('stroke-width', '3.5');
+    } else {
+      c.setAttribute('fill-opacity', '1');
+      c.setAttribute('stroke', '#ffffff');
+      c.setAttribute('stroke-width', '2');
+    }
+  }
+}
+
+function indexEnCours(ecouleMs){
+  var cumul = 0;
+  for (var i = 0; i < secteurs.length; i++){
+    cumul += secteurs[i].duree * 60000;
+    if (ecouleMs < cumul) return i;
+  }
+  return secteurs.length - 1;
+}
+
+function placerAiguille(fraction){
+  var a = fraction * 360;
+  el('aiguille').setAttribute('transform', 'rotate(' + a.toFixed(3) + ' ' + CX + ' ' + CY + ')');
+}
+
+/* ── Affichage ────────────────────────────────────────────────────────────── */
+
+function afficherRestant(ms){
+  if (ms < 0) ms = 0;
+  var totalSec = Math.ceil(ms / 1000);
+  var h = Math.floor(totalSec / 3600);
+  var mn = Math.floor((totalSec % 3600) / 60);
+  var sc = totalSec % 60;
+  var txt = h > 0
+    ? h + ':' + deuxChiffres(mn) + ':' + deuxChiffres(sc)
+    : deuxChiffres(mn) + ':' + deuxChiffres(sc);
+  if (txt !== dernierAffichage){
+    el('restant').textContent = txt;
+    dernierAffichage = txt;
+  }
+}
+
+function majHeureFin(){
+  var boite = el('heure-fin');
+  if (termine){ boite.textContent = ''; return; }
+  var restant;
+  if (minuteur){
+    restant = dureeTotale() * 60000 - (Date.now() - depart);
+  } else if (enPause){
+    restant = dureeTotale() * 60000 - ecoulePause;
+  } else {
+    boite.textContent = 'Durée totale : ' + dureeTotale() + ' min';
+    return;
+  }
+  if (restant < 0) restant = 0;
+  var f = new Date(Date.now() + restant);
+  boite.textContent = 'Fin prévue à ' + deuxChiffres(f.getHours()) + ':' + deuxChiffres(f.getMinutes());
+}
+
+/* ── Son ──────────────────────────────────────────────────────────────────── */
+
+var ctxAudio = null;
+
+function bip(frequence, dureeMs){
+  if (!el('son').checked) return;
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!ctxAudio) ctxAudio = new AC();
+    if (ctxAudio.state === 'suspended') ctxAudio.resume();
+    var o = ctxAudio.createOscillator(), g = ctxAudio.createGain();
+    var t0 = ctxAudio.currentTime, d = dureeMs / 1000;
+    o.type = 'sine';
+    o.frequency.value = frequence;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g); g.connect(ctxAudio.destination);
+    o.start(t0);
+    o.stop(t0 + d + 0.05);
+  } catch (e){ /* un poste sans audio ne doit pas arreter le minuteur */ }
+}
+
+/* ── Pilotage ─────────────────────────────────────────────────────────────── */
+
+function basculerMarche(){
+  if (minuteur) mettreEnPause(); else demarrer();
+}
+
+function demarrer(){
+  if (secteurs.length === 0) return;
+  fermerBandeau();
+  termine = false;
+  el('restant').classList.remove('fini');
+
+  if (enPause){
+    depart = Date.now() - ecoulePause;
+    enPause = false;
+  } else {
+    depart = Date.now();
+    ecoulePause = 0;
+    indexEtape = -1;
+  }
+
+  minuteur = setInterval(battre, 100);
+  battre();
+
+  el('btn-marche').textContent = 'Pause';
+  bip(760, 120);
+}
+
+function mettreEnPause(){
+  if (!minuteur) return;
+  clearInterval(minuteur);
+  minuteur = null;
+  enPause = true;
+  ecoulePause = Date.now() - depart;
+  el('btn-marche').textContent = 'Reprendre';
+  el('etape').textContent = 'En pause — ' + secteurs[indexEnCours(ecoulePause)].nom;
+  peindreEtat(ecoulePause);
+}
+
+function reinitialiser(){
+  if (minuteur){ clearInterval(minuteur); minuteur = null; }
+  enPause = false;
+  termine = false;
+  depart = null;
+  ecoulePause = 0;
+  indexEtape = -1;
+  dernierAffichage = '';
+  fermerBandeau();
+
+  el('btn-marche').textContent = 'Démarrer';
+  el('restant').classList.remove('fini');
+  el('etape').textContent = 'En attente';
+  placerAiguille(0);
+  afficherRestant(dureeTotale() * 60000);
+  peindreEtat(0);
+  majHeureFin();
+}
+
+function battre(){
+  var totalMs = dureeTotale() * 60000;
+  var ecoule = Date.now() - depart;
+  if (ecoule < 0) ecoule = 0;
+
+  if (ecoule >= totalMs){
+    clearInterval(minuteur);
+    minuteur = null;
+    enPause = false;
+    termine = true;
+    ecoulePause = totalMs;
+    placerAiguille(1);
+    afficherRestant(0);
+    peindreEtat(totalMs);
+    el('restant').classList.add('fini');
+    el('etape').textContent = 'Séance terminée';
+    el('heure-fin').textContent = '';
+    el('btn-marche').textContent = 'Démarrer';
+    el('bandeau-texte').textContent = 'Séance terminée — ' + (el('titre-seance').value || 'fin du temps');
+    el('bandeau').classList.add('visible');
+    bip(560, 260);
+    setTimeout(function(){ bip(560, 260); }, 340);
+    setTimeout(function(){ bip(440, 460); }, 700);
+    return;
+  }
+
+  afficherRestant(totalMs - ecoule);
+  placerAiguille(ecoule / totalMs);
+  peindreEtat(ecoule);
+
+  var i = indexEnCours(ecoule);
+  if (i !== indexEtape){
+    if (indexEtape !== -1) bip(880, 180);
+    indexEtape = i;
+    el('etape').textContent = secteurs[i].nom + '  (' + secteurs[i].duree + ' min)';
+  }
+  majHeureFin();
+}
+
+/* ── Mode tableau ─────────────────────────────────────────────────────────── */
+
+function basculerTableau(){
+  var actif = document.body.classList.toggle('hor-tableau');
+  var b = el('btn-tableau');
+  if (b) b.textContent = actif ? 'Quitter le mode tableau' : 'Mode tableau';
+  try {
+    if (actif){
+      if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    } else if (document.fullscreenElement && document.exitFullscreen){
+      document.exitFullscreen();
+    }
+  } catch (e){ /* le plein ecran navigateur est un bonus, pas une condition */ }
+}
+
+function quitterTableau(){
+  if (!document.body.classList.contains('hor-tableau')) return;
+  document.body.classList.remove('hor-tableau');
+  var b = el('btn-tableau');
+  if (b) b.textContent = 'Mode tableau';
+  try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); }
+  catch (e){}
+}
+
+/* Sortie du plein ecran par la touche du navigateur : on suit. */
+document.addEventListener('fullscreenchange', function(){
+  if (!document.fullscreenElement && document.body.classList.contains('hor-tableau')){
+    document.body.classList.remove('hor-tableau');
+    var b = el('btn-tableau');
+    if (b) b.textContent = 'Mode tableau';
+  }
 });
 
-function showLicense() {
-    alert(`MIT License
+function fermerBandeau(){ el('bandeau').classList.remove('visible'); }
 
-Copyright (c) 2024 lessavoirfaire.partager@gmail.com
+/* ── Historique ───────────────────────────────────────────────────────────── */
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+var historique = [];
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.`);
+function lireHistorique(){
+  try {
+    var brut = localStorage.getItem(CLE_HISTO);
+    var t = brut ? JSON.parse(brut) : [];
+    historique = [];
+    if (Object.prototype.toString.call(t) !== '[object Array]') return;
+    for (var i = 0; i < t.length; i++){
+      var c = normaliser(t[i]);
+      if (c) historique.push(c);
+    }
+  } catch (e){ historique = []; }
 }
+
+/* Accepte l\u2019ancien format (name / duration / color) aussi bien que le
+   nouveau : les seances deja enregistrees restent utilisables. */
+function normaliser(c){
+  if (!c || !c.sections || Object.prototype.toString.call(c.sections) !== '[object Array]') return null;
+  var sect = [];
+  for (var i = 0; i < c.sections.length; i++){
+    var s = c.sections[i];
+    var d = parseInt(s.duration !== undefined ? s.duration : s.duree, 10);
+    if (isNaN(d) || d < 1) d = 1;
+    sect.push({
+      name:     String(s.name !== undefined ? s.name : (s.nom !== undefined ? s.nom : 'Étape ' + (i + 1))),
+      duration: d,
+      color:    String(s.color !== undefined ? s.color : (s.couleur !== undefined ? s.couleur : PALETTE[i % PALETTE.length]))
+    });
+  }
+  if (sect.length === 0) return null;
+  var tot = 0;
+  for (i = 0; i < sect.length; i++) tot += sect[i].duration;
+  return {
+    id: c.id || Date.now() + Math.floor(Math.random() * 1000),
+    titre: String(c.titre !== undefined ? c.titre : ''),
+    date: String(c.date || ''),
+    totalDuration: tot,
+    sectionsCount: sect.length,
+    sections: sect
+  };
+}
+
+function ecrireHistorique(){
+  try { localStorage.setItem(CLE_HISTO, JSON.stringify(historique)); }
+  catch (e){
+    if (historique.length > 12){
+      historique = historique.slice(0, 12);
+      try { localStorage.setItem(CLE_HISTO, JSON.stringify(historique)); } catch (e2){}
+    }
+  }
+}
+
+function enregistrerSeance(){
+  var conf = {
+    id: Date.now(),
+    titre: el('titre-seance').value || '',
+    date: new Date().toLocaleString('fr-FR'),
+    totalDuration: dureeTotale(),
+    sectionsCount: secteurs.length,
+    sections: []
+  };
+  for (var i = 0; i < secteurs.length; i++){
+    conf.sections.push({ name: secteurs[i].nom, duration: secteurs[i].duree, color: secteurs[i].couleur });
+  }
+
+  var signature = JSON.stringify([conf.titre, conf.sections]);
+  for (i = 0; i < historique.length; i++){
+    if (JSON.stringify([historique[i].titre, historique[i].sections]) === signature){
+      historique.splice(i, 1);
+      break;
+    }
+  }
+  historique.unshift(conf);
+  if (historique.length > 50) historique = historique.slice(0, 50);
+  ecrireHistorique();
+  dessinerHistorique();
+}
+
+function dessinerHistorique(){
+  var boite = el('histo');
+  boite.innerHTML = '';
+
+  if (historique.length === 0){
+    var vide = document.createElement('div');
+    vide.className = 'hor-vide';
+    vide.textContent = 'Aucune séance enregistrée pour le moment. Réglez les étapes '
+      + 'ci-dessus puis cliquez sur « Enregistrer cette séance ».';
+    boite.appendChild(vide);
+    return;
+  }
+
+  for (var i = 0; i < historique.length; i++){
+    (function(conf){
+      var carte = document.createElement('div');
+      carte.className = 'hor-histo-item';
+
+      var titre = document.createElement('div');
+      titre.className = 'hor-histo-titre';
+      titre.textContent = (conf.titre || (conf.sectionsCount + ' étapes')) + ' — ' + conf.totalDuration + ' min';
+
+      var date = document.createElement('div');
+      date.className = 'hor-histo-date';
+      date.textContent = conf.date;
+
+      var tags = document.createElement('div');
+      tags.className = 'hor-histo-tags';
+      for (var j = 0; j < conf.sections.length; j++){
+        var tag = document.createElement('span');
+        tag.className = 'hor-tag';
+        tag.style.background = conf.sections[j].color;
+        tag.textContent = conf.sections[j].name + ' · ' + conf.sections[j].duration + ' min';
+        tags.appendChild(tag);
+      }
+
+      var actions = document.createElement('div');
+      actions.className = 'hor-histo-actions';
+
+      var bCharger = document.createElement('button');
+      bCharger.type = 'button';
+      bCharger.className = 'btn-rnd';
+      bCharger.textContent = 'Charger';
+      bCharger.addEventListener('click', function(){ chargerSeance(conf); });
+
+      var bSuppr = document.createElement('button');
+      bSuppr.type = 'button';
+      bSuppr.className = 'btn-rnd';
+      bSuppr.textContent = 'Supprimer';
+      bSuppr.addEventListener('click', function(){
+        if (!window.confirm('Supprimer cette séance enregistrée ' + APO + '?')) return;
+        for (var k = 0; k < historique.length; k++){
+          if (historique[k].id === conf.id){ historique.splice(k, 1); break; }
+        }
+        ecrireHistorique();
+        dessinerHistorique();
+      });
+
+      actions.appendChild(bCharger);
+      actions.appendChild(bSuppr);
+
+      carte.appendChild(titre);
+      carte.appendChild(date);
+      carte.appendChild(tags);
+      carte.appendChild(actions);
+      boite.appendChild(carte);
+    })(historique[i]);
+  }
+}
+
+function chargerSeance(conf){
+  secteurs = [];
+  for (var i = 0; i < conf.sections.length; i++){
+    secteurs.push({
+      nom:     conf.sections[i].name,
+      duree:   conf.sections[i].duration,
+      couleur: conf.sections[i].color
+    });
+  }
+  el('titre-seance').value = conf.titre || '';
+  el('nb-secteurs').value = String(secteurs.length);
+  el('duree-totale').value = String(dureeTotale());
+  dessinerReglages();
+  structureModifiee();
+}
+
+function exporterHistorique(){
+  if (historique.length === 0){
+    window.alert('Aucune séance à exporter.');
+    return;
+  }
+  var d = new Date();
+  var nom = 'horloge-seances-' + d.getFullYear() + '-'
+          + deuxChiffres(d.getMonth() + 1) + '-' + deuxChiffres(d.getDate()) + '.json';
+  var blob = new Blob([JSON.stringify(historique, null, 2)], { type: 'application/json' });
+  var lien = document.createElement('a');
+  lien.href = URL.createObjectURL(blob);
+  lien.download = nom;
+  document.body.appendChild(lien);
+  lien.click();
+  document.body.removeChild(lien);
+  setTimeout(function(){ URL.revokeObjectURL(lien.href); }, 2000);
+}
+
+function importerHistorique(evt){
+  var f = evt.target.files && evt.target.files[0];
+  evt.target.value = '';
+  if (!f) return;
+
+  var lecteur = new FileReader();
+  lecteur.onload = function(e){
+    var t;
+    try { t = JSON.parse(e.target.result); }
+    catch (err){ window.alert('Ce fichier n' + APO + 'est pas un fichier JSON valide.'); return; }
+    if (Object.prototype.toString.call(t) !== '[object Array]'){
+      window.alert('Format de fichier inattendu.');
+      return;
+    }
+    var valides = [];
+    for (var i = 0; i < t.length; i++){
+      var c = normaliser(t[i]);
+      if (c) valides.push(c);
+    }
+    if (valides.length === 0){ window.alert('Aucune séance valide dans ce fichier.'); return; }
+    if (!window.confirm('Ajouter ' + valides.length + ' séance(s) aux ' + historique.length + ' déjà enregistrées ' + APO + '?')) return;
+    historique = valides.concat(historique);
+    if (historique.length > 50) historique = historique.slice(0, 50);
+    ecrireHistorique();
+    dessinerHistorique();
+  };
+  lecteur.readAsText(f);
+}
+
+function viderHistorique(){
+  if (historique.length === 0) return;
+  if (!window.confirm('Effacer les ' + historique.length + ' séances enregistrées ' + APO + '?')) return;
+  historique = [];
+  try { localStorage.removeItem(CLE_HISTO); } catch (e){}
+  dessinerHistorique();
+}
+
+/* ── Grande horloge ───────────────────────────────────────────────────────── */
+
+function preparerHorloge(){
+  var gGrad = el('heure-grad'), gNum = el('heure-chiffres');
+  gGrad.innerHTML = ''; gNum.innerHTML = '';
+
+  for (var m = 0; m < 60; m++){
+    var a = m * 6;
+    var heure = (m % 5 === 0);
+    var p1 = pointCercle(a, heure ? 152 : 162);
+    var p2 = pointCercle(a, 172);
+    var tr = svgEl('line');
+    tr.setAttribute('x1', p1.x.toFixed(2)); tr.setAttribute('y1', p1.y.toFixed(2));
+    tr.setAttribute('x2', p2.x.toFixed(2)); tr.setAttribute('y2', p2.y.toFixed(2));
+    tr.setAttribute('stroke', '#1a1917');
+    tr.setAttribute('stroke-width', heure ? '4' : '1.5');
+    tr.setAttribute('opacity', heure ? '.85' : '.4');
+    gGrad.appendChild(tr);
+  }
+
+  for (var h = 1; h <= 12; h++){
+    var pt = pointCercle(h * 30, 126);
+    var t = svgEl('text');
+    t.setAttribute('x', pt.x.toFixed(2));
+    t.setAttribute('y', pt.y.toFixed(2));
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('dominant-baseline', 'central');
+    t.setAttribute('font-family', 'Arial, Helvetica, sans-serif');
+    t.setAttribute('font-size', '30');
+    t.setAttribute('font-weight', '700');
+    t.setAttribute('fill', '#1a1917');
+    t.textContent = String(h);
+    gNum.appendChild(t);
+  }
+}
+
+var JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+var MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+            'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+function battreHorloge(){
+  var d = new Date();
+  var s = d.getSeconds(), m = d.getMinutes(), h = d.getHours() % 12;
+
+  el('aig-s').setAttribute('transform', 'rotate(' + (s * 6) + ' ' + CX + ' ' + CY + ')');
+  el('aig-m').setAttribute('transform', 'rotate(' + ((m + s / 60) * 6).toFixed(2) + ' ' + CX + ' ' + CY + ')');
+  el('aig-h').setAttribute('transform', 'rotate(' + ((h + m / 60) * 30).toFixed(2) + ' ' + CX + ' ' + CY + ')');
+
+  el('heure-num').textContent = deuxChiffres(d.getHours()) + ':' + deuxChiffres(m) + ':' + deuxChiffres(s);
+  el('heure-jour').textContent = JOURS[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+/* ── Navigation ───────────────────────────────────────────────────────────── */
+
+function setMode(m, bouton){
+  var onglets = document.querySelectorAll('.mode-tab');
+  for (var i = 0; i < onglets.length; i++) onglets[i].classList.remove('active');
+  if (bouton) bouton.classList.add('active');
+
+  var modes = ['minuteur', 'horloge'];
+  for (i = 0; i < modes.length; i++){
+    var noeud = el('mode-' + modes[i]);
+    if (modes[i] === m){
+      noeud.classList.add('active');
+      noeud.style.display = 'block';
+    } else {
+      noeud.classList.remove('active');
+      noeud.style.display = 'none';
+    }
+  }
+  modeCourant = m;
+
+  if (m === 'horloge'){
+    battreHorloge();
+    if (!horlogeMurale) horlogeMurale = setInterval(battreHorloge, 1000);
+  } else if (horlogeMurale){
+    clearInterval(horlogeMurale);
+    horlogeMurale = null;
+  }
+}
+
+/* ── Raccourcis propres au minuteur ───────────────────────────────────────
+   T / P / D / M restent geres par lp-ui.js. On n\u2019y touche pas. */
+function saisieEnCours(n){
+  if (!n) return false;
+  var tag = n.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || n.isContentEditable;
+}
+
+document.addEventListener('keydown', function(e){
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  if (e.key === 'Escape'){ quitterTableau(); return; }
+  if (saisieEnCours(document.activeElement)) return;
+
+  var k = (e.key || '').toLowerCase();
+
+  if (e.key === ' ' || e.key === 'Spacebar' || k === 'space'){
+    /* Ne pas doubler l\u2019action quand un bouton a deja le focus. */
+    if (document.activeElement && document.activeElement.tagName === 'BUTTON') return;
+    if (modeCourant !== 'minuteur') return;
+    e.preventDefault();
+    basculerMarche();
+  } else if (k === 'r'){
+    if (modeCourant !== 'minuteur') return;
+    reinitialiser();
+  } else if (k === 'f'){
+    basculerTableau();
+  }
+});
+
+/* ── Reglages generaux ────────────────────────────────────────────────────── */
+
+el('duree-totale').addEventListener('change', function(){
+  var v = parseInt(el('duree-totale').value, 10);
+  if (isNaN(v)) v = dureeTotale();
+  if (v < secteurs.length) v = secteurs.length;
+  if (v > 300) v = 300;
+
+  var durees = [];
+  for (var i = 0; i < secteurs.length; i++) durees.push(secteurs[i].duree);
+  durees = repartirProportionnel(durees, v);
+  for (i = 0; i < secteurs.length; i++) secteurs[i].duree = durees[i];
+
+  el('duree-totale').value = String(dureeTotale());
+  dessinerReglages();
+  structureModifiee();
+});
+
+el('nb-secteurs').addEventListener('change', function(){
+  var n = parseInt(el('nb-secteurs').value, 10);
+  if (isNaN(n) || n < 2) n = 2;
+  if (n > 12) n = 12;
+  el('nb-secteurs').value = String(n);
+
+  var total = dureeTotale();
+  if (total < n) total = n;
+  fabriquerSecteurs(n, total);
+  el('duree-totale').value = String(dureeTotale());
+  dessinerReglages();
+  structureModifiee();
+});
+
+el('titre-seance').addEventListener('input', function(){ /* utilise a l\u2019enregistrement */ });
+
+/* ── Demarrage ────────────────────────────────────────────────────────────── */
+
+fabriquerSecteurs(4, 60);
+el('duree-totale').value = String(dureeTotale());
+el('nb-secteurs').value = String(secteurs.length);
+dessinerReglages();
+dessinerCadran();
+reinitialiser();
+
+preparerHorloge();
+lireHistorique();
+dessinerHistorique();
+setMode('minuteur', document.querySelector('.mode-tab'));
 </script>
+
+</body>
+</html>
