@@ -222,19 +222,19 @@
         <p class="section-label">Alerte bruit</p>
         <div class="fields-grid">
           <div class="field">
-            <label>Seuil d’alerte</label>
+            <label for="son-seuil">Seuil d’alerte</label>
             <div class="field-row"><input type="number" id="son-seuil" value="75" min="30" max="120" step="1"><span class="unit">dB</span></div>
           </div>
           <div class="field">
-            <label>Pendant au moins</label>
+            <label for="son-duree-seuil">Pendant au moins</label>
             <div class="field-row"><input type="number" id="son-duree-seuil" value="5" min="1" max="120" step="1"><span class="unit">s</span></div>
           </div>
           <div class="field">
-            <label>Son de l’alerte</label>
+            <label for="son-freq">Son de l’alerte</label>
             <div class="field-row"><input type="number" id="son-freq" value="900" min="200" max="4000" step="50"><span class="unit">Hz</span></div>
           </div>
           <div class="field">
-            <label>Volume de l’alerte</label>
+            <label for="son-vol">Volume de l’alerte</label>
             <div class="field-row"><input type="number" id="son-vol" value="20" min="0" max="100" step="5"><span class="unit">%</span></div>
           </div>
         </div>
@@ -244,7 +244,7 @@
 
         <p class="section-label">Étalonnage</p>
         <div class="field">
-          <label>Correction appliquée à la mesure</label>
+          <label for="son-cal">Correction appliquée à la mesure</label>
           <div class="field-row"><input type="number" id="son-cal" value="0" min="-30" max="30" step="1"><span class="unit">dB</span></div>
         </div>
         <div class="rep-note">Pour caler l’affichage sur un vrai sonomètre ou une application
@@ -342,15 +342,15 @@
         <div class="mini-calc">
           <div class="fields-grid">
             <div class="field">
-              <label>Niveau mesuré L₁</label>
+              <label for="cd-L1">Niveau mesuré L₁</label>
               <div class="field-row"><input type="number" id="cd-L1" value="100" min="0" max="160" step="1" oninput="calcDistance()"><span class="unit">dB</span></div>
             </div>
             <div class="field">
-              <label>à la distance d₁</label>
+              <label for="cd-d1">à la distance d₁</label>
               <div class="field-row"><input type="number" id="cd-d1" value="1" min="0.1" max="200" step="0.1" oninput="calcDistance()"><span class="unit">m</span></div>
             </div>
             <div class="field">
-              <label>Nouvelle distance d₂</label>
+              <label for="cd-d2">Nouvelle distance d₂</label>
               <div class="field-row"><input type="number" id="cd-d2" value="4" min="0.1" max="200" step="0.1" oninput="calcDistance()"><span class="unit">m</span></div>
             </div>
           </div>
@@ -370,11 +370,11 @@
         <div class="mini-calc">
           <div class="fields-grid">
             <div class="field">
-              <label>Niveau d’une machine</label>
+              <label for="cs-L">Niveau d’une machine</label>
               <div class="field-row"><input type="number" id="cs-L" value="85" min="0" max="160" step="1" oninput="calcSources()"><span class="unit">dB</span></div>
             </div>
             <div class="field">
-              <label>Nombre de machines</label>
+              <label for="cs-n">Nombre de machines</label>
               <div class="field-row"><input type="number" id="cs-n" value="4" min="1" max="50" step="1" oninput="calcSources()"><span class="unit">machines</span></div>
             </div>
           </div>
@@ -394,11 +394,11 @@
         <div class="mini-calc">
           <div class="fields-grid">
             <div class="field">
-              <label>Niveau de l’atelier</label>
+              <label for="ce-L">Niveau de l’atelier</label>
               <div class="field-row"><input type="number" id="ce-L" value="100" min="0" max="160" step="1" oninput="calcEPI()"><span class="unit">dB</span></div>
             </div>
             <div class="field">
-              <label>Atténuation du casque</label>
+              <label for="ce-a">Atténuation du casque</label>
               <div class="field-row"><input type="number" id="ce-a" value="25" min="0" max="40" step="1" oninput="calcEPI()"><span class="unit">dB</span></div>
             </div>
           </div>
@@ -417,7 +417,7 @@
         </div>
         <div class="mini-calc">
           <div class="field">
-            <label>Niveau du poste</label>
+            <label for="ct-L">Niveau du poste</label>
             <div class="field-row"><input type="number" id="ct-L" value="94" min="60" max="140" step="1" oninput="calcTemps()"><span class="unit">dB</span></div>
           </div>
           <div class="mini-res" id="ct-res">—</div>
@@ -499,14 +499,14 @@
       <!-- Réponse : valeur numérique -->
       <div id="defi-num" style="display:none">
         <div class="defi-input-row">
-          <label id="defi-num-label">Réponse =</label>
+          <label for="defi-input" id="defi-num-label">Réponse =</label>
           <input type="number" id="defi-input" placeholder="?" step="0.1">
           <span class="unit" id="defi-num-unit">dB</span>
         </div>
         <button class="btn-check" onclick="verifierNum()">Vérifier ma réponse</button>
       </div>
 
-      <div class="feedback-box" id="defi-feedback"></div>
+      <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
       <button class="btn-next" id="btn-next" onclick="questionSuivante()" style="display:none">Question suivante →</button>
 
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">

@@ -65,11 +65,11 @@
       <div class="controls-card">
         <p class="section-label">Dimensions</p>
         <div class="field">
-          <label>Longueur L</label>
+          <label for="rect-L">Longueur L</label>
           <div class="field-row"><input type="number" id="rect-L" value="120" min="0" step="0.1" oninput="calcRect()"><span class="unit">mm</span></div>
         </div>
         <div class="field">
-          <label>Largeur l</label>
+          <label for="rect-l">Largeur l</label>
           <div class="field-row"><input type="number" id="rect-l" value="80" min="0" step="0.1" oninput="calcRect()"><span class="unit">mm</span></div>
         </div>
         <div class="formula-box">
@@ -101,11 +101,11 @@
       <div class="controls-card">
         <p class="section-label">Saisir diamètre ou rayon</p>
         <div class="field">
-          <label>Diamètre d</label>
+          <label for="cercle-d">Diamètre d</label>
           <div class="field-row"><input type="number" id="cercle-d" value="80" min="0" step="0.1" oninput="calcCercleD()"><span class="unit">mm</span></div>
         </div>
         <div class="field">
-          <label>Rayon r</label>
+          <label for="cercle-r">Rayon r</label>
           <div class="field-row"><input type="number" id="cercle-r" value="40" min="0" step="0.1" oninput="calcCercleR()"><span class="unit">mm</span></div>
         </div>
         <div class="formula-box">
@@ -137,11 +137,11 @@
       <div class="controls-card">
         <p class="section-label">Dimensions</p>
         <div class="field">
-          <label>Longueur droite L (entre les axes)</label>
+          <label for="comp-L">Longueur droite L (entre les axes)</label>
           <div class="field-row"><input type="number" id="comp-L" value="100" min="0" step="0.1" oninput="calcCompose()"><span class="unit">mm</span></div>
         </div>
         <div class="field">
-          <label>Rayon r des demi-cercles</label>
+          <label for="comp-r">Rayon r des demi-cercles</label>
           <div class="field-row"><input type="number" id="comp-r" value="30" min="0" step="0.1" oninput="calcCompose()"><span class="unit">mm</span></div>
         </div>
         <div class="formula-box">
@@ -175,12 +175,12 @@
       <div class="controls-card">
         <p class="section-label">Les 6 côtés</p>
         <div class="fields-grid">
-          <div class="field"><label>Côté a</label><div class="field-row"><input type="number" id="l-a" value="144" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
-          <div class="field"><label>Côté b</label><div class="field-row"><input type="number" id="l-b" value="72" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
-          <div class="field"><label>Côté c</label><div class="field-row"><input type="number" id="l-c" value="72" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
-          <div class="field"><label>Côté d</label><div class="field-row"><input type="number" id="l-d" value="80" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
-          <div class="field"><label>Côté e</label><div class="field-row"><input type="number" id="l-e" value="152" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
-          <div class="field"><label>Côté f</label><div class="field-row"><input type="number" id="l-f" value="72" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label for="l-a">Côté a</label><div class="field-row"><input type="number" id="l-a" value="144" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label for="l-b">Côté b</label><div class="field-row"><input type="number" id="l-b" value="72" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label for="l-c">Côté c</label><div class="field-row"><input type="number" id="l-c" value="72" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label for="l-d">Côté d</label><div class="field-row"><input type="number" id="l-d" value="80" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label for="l-e">Côté e</label><div class="field-row"><input type="number" id="l-e" value="152" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label for="l-f">Côté f</label><div class="field-row"><input type="number" id="l-f" value="72" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
         </div>
         <div class="formula-box">
           <code>P = a+b+c+d+e+f</code>
@@ -209,9 +209,9 @@
       </div>
       <div class="controls-card">
         <p class="section-label">Les 3 côtés</p>
-        <div class="field"><label>Côté a</label><div class="field-row"><input type="number" id="tri-a" value="85" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Côté b</label><div class="field-row"><input type="number" id="tri-b" value="85" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Côté c (base)</label><div class="field-row"><input type="number" id="tri-c" value="100" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="tri-a">Côté a</label><div class="field-row"><input type="number" id="tri-a" value="85" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="tri-b">Côté b</label><div class="field-row"><input type="number" id="tri-b" value="85" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="tri-c">Côté c (base)</label><div class="field-row"><input type="number" id="tri-c" value="100" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
         <div class="formula-box">
           <code>P = a + b + c</code>
           <div class="formula-detail" id="tri-detail">P = 85 + 85 + 100</div>
@@ -240,10 +240,10 @@
       </div>
       <div class="controls-card">
         <p class="section-label">Les 4 côtés</p>
-        <div class="field"><label>Grande base B</label><div class="field-row"><input type="number" id="trap-B" value="160" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Petite base b</label><div class="field-row"><input type="number" id="trap-b" value="100" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Côté gauche c</label><div class="field-row"><input type="number" id="trap-c" value="70" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Côté droit d</label><div class="field-row"><input type="number" id="trap-d" value="70" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="trap-B">Grande base B</label><div class="field-row"><input type="number" id="trap-B" value="160" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="trap-b">Petite base b</label><div class="field-row"><input type="number" id="trap-b" value="100" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="trap-c">Côté gauche c</label><div class="field-row"><input type="number" id="trap-c" value="70" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="trap-d">Côté droit d</label><div class="field-row"><input type="number" id="trap-d" value="70" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
         <div class="formula-box">
           <code>P = B + b + c + d</code>
           <div class="formula-detail" id="trap-detail">P = 160 + 100 + 70 + 70</div>
@@ -272,8 +272,8 @@
       </div>
       <div class="controls-card">
         <p class="section-label">Rayon ou diamètre</p>
-        <div class="field"><label>Rayon r</label><div class="field-row"><input type="number" id="dc-r" value="50" min="0" step="0.1" oninput="calcDc()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Diamètre d (calculé)</label><div class="field-row"><input type="number" id="dc-d" value="100" min="0" step="0.1" oninput="calcDcD()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="dc-r">Rayon r</label><div class="field-row"><input type="number" id="dc-r" value="50" min="0" step="0.1" oninput="calcDc()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="dc-d">Diamètre d (calculé)</label><div class="field-row"><input type="number" id="dc-d" value="100" min="0" step="0.1" oninput="calcDcD()"><span class="unit">mm</span></div></div>
         <div class="formula-box">
           <code>P = π×r + 2×r = r×(π+2)</code>
           <div style="font-size:11px;color:var(--text3);margin-top:2px">Arc demi-cercle + diamètre (la base)</div>
@@ -303,7 +303,7 @@
       </div>
       <div class="controls-card">
         <p class="section-label">Longueur d'un côté</p>
-        <div class="field"><label>Côté c (un seul suffit)</label><div class="field-row"><input type="number" id="hex-c" value="20" min="0" step="0.1" oninput="calcHex()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="hex-c">Côté c (un seul suffit)</label><div class="field-row"><input type="number" id="hex-c" value="20" min="0" step="0.1" oninput="calcHex()"><span class="unit">mm</span></div></div>
         <div style="font-size:13px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;">
           💡 Pour un écrou M10, le côté = 8,6 mm. Pour M12 : 10,3 mm. Pour M16 : 13,7 mm.
         </div>
@@ -335,13 +335,13 @@
         <div class="defi-cotes" id="defi-cotes"></div>
       </div>
       <div class="defi-input-row">
-        <label>Périmètre =</label>
+        <label for="defi-input">Périmètre =</label>
         <input type="number" id="defi-input" placeholder="?" min="0" step="0.1">
         <span class="unit">mm</span>
       </div>
       <div style="font-size:12px;color:var(--text3);margin-bottom:0.75rem;">Tolérance acceptée : ± 1 mm</div>
       <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
-      <div class="feedback-box" id="defi-feedback"></div>
+      <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
       <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Pièce suivante →</button>
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
         <button class="btn-fiche" onclick="generateFiche()">📄 Générer une fiche d'exercices (10 questions)</button>

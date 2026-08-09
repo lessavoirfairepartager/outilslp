@@ -64,8 +64,8 @@
       </div>
       <div class="controls-card">
         <p class="section-label">Dimensions</p>
-        <div class="field"><label>Longueur L</label><div class="field-row"><input type="number" id="rect-L" value="120" min="0" step="0.1" oninput="calcRect()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Largeur l</label><div class="field-row"><input type="number" id="rect-l" value="80" min="0" step="0.1" oninput="calcRect()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="rect-L">Longueur L</label><div class="field-row"><input type="number" id="rect-L" value="120" min="0" step="0.1" oninput="calcRect()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="rect-l">Largeur l</label><div class="field-row"><input type="number" id="rect-l" value="80" min="0" step="0.1" oninput="calcRect()"><span class="unit">mm</span></div></div>
         <div class="formula-box">
           <code>A = L × l</code>
           <div class="formula-detail" id="rect-detail">A = 120 × 80</div>
@@ -93,8 +93,8 @@
       </div>
       <div class="controls-card">
         <p class="section-label">Saisir diamètre ou rayon</p>
-        <div class="field"><label>Diamètre d</label><div class="field-row"><input type="number" id="cerc-d" value="80" min="0" step="0.1" oninput="calcCercD()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Rayon r</label><div class="field-row"><input type="number" id="cerc-r" value="40" min="0" step="0.1" oninput="calcCercR()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="cerc-d">Diamètre d</label><div class="field-row"><input type="number" id="cerc-d" value="80" min="0" step="0.1" oninput="calcCercD()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="cerc-r">Rayon r</label><div class="field-row"><input type="number" id="cerc-r" value="40" min="0" step="0.1" oninput="calcCercR()"><span class="unit">mm</span></div></div>
         <div class="formula-box">
           <code>A = π × r²</code>
           <div style="font-size:11px;color:var(--text3);margin-top:2px">ou A = π × d² / 4</div>
@@ -124,8 +124,8 @@
       </div>
       <div class="controls-card">
         <p class="section-label">Dimensions</p>
-        <div class="field"><label>Longueur droite L (entre axes)</label><div class="field-row"><input type="number" id="obl-L" value="100" min="0" step="0.1" oninput="calcOblong()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Rayon r des demi-cercles</label><div class="field-row"><input type="number" id="obl-r" value="30" min="0" step="0.1" oninput="calcOblong()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="obl-L">Longueur droite L (entre axes)</label><div class="field-row"><input type="number" id="obl-L" value="100" min="0" step="0.1" oninput="calcOblong()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="obl-r">Rayon r des demi-cercles</label><div class="field-row"><input type="number" id="obl-r" value="30" min="0" step="0.1" oninput="calcOblong()"><span class="unit">mm</span></div></div>
         <div class="formula-box">
           <code>A = 2 × L × r + π × r²</code>
           <div style="font-size:11px;color:var(--text3);margin-top:2px">Rectangle central + cercle complet</div>
@@ -164,13 +164,13 @@
       <div class="controls-card">
         <p class="section-label">Rectangle total</p>
         <div class="fields-grid">
-          <div class="field"><label>Largeur totale W</label><div class="field-row"><input type="number" id="l-W" value="157" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
-          <div class="field"><label>Hauteur totale H</label><div class="field-row"><input type="number" id="l-H" value="170" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label for="l-W">Largeur totale W</label><div class="field-row"><input type="number" id="l-W" value="157" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label for="l-H">Hauteur totale H</label><div class="field-row"><input type="number" id="l-H" value="170" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
         </div>
         <p class="section-label">Découpe (angle supérieur droit)</p>
         <div class="fields-grid">
-          <div class="field"><label>Largeur découpe cw</label><div class="field-row"><input type="number" id="l-cw" value="80" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
-          <div class="field"><label>Hauteur découpe ch</label><div class="field-row"><input type="number" id="l-ch" value="77" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label for="l-cw">Largeur découpe cw</label><div class="field-row"><input type="number" id="l-cw" value="80" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
+          <div class="field"><label for="l-ch">Hauteur découpe ch</label><div class="field-row"><input type="number" id="l-ch" value="77" min="0" step="0.1" oninput="calcL()"><span class="unit">mm</span></div></div>
         </div>
         <div class="formula-box">
           <code>A = W×H − cw×ch</code>
@@ -199,8 +199,8 @@
       </div>
       <div class="controls-card">
         <p class="section-label">Base et hauteur</p>
-        <div class="field"><label>Base b</label><div class="field-row"><input type="number" id="tri-b" value="120" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Hauteur h (perpendiculaire à b)</label><div class="field-row"><input type="number" id="tri-h" value="80" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="tri-b">Base b</label><div class="field-row"><input type="number" id="tri-b" value="120" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="tri-h">Hauteur h (perpendiculaire à b)</label><div class="field-row"><input type="number" id="tri-h" value="80" min="0" step="0.1" oninput="calcTri()"><span class="unit">mm</span></div></div>
         <div class="formula-box">
           <code>A = (b × h) / 2</code>
           <div class="formula-detail" id="tri-detail">A = (120 × 80) / 2</div>
@@ -229,9 +229,9 @@
       </div>
       <div class="controls-card">
         <p class="section-label">Bases et hauteur</p>
-        <div class="field"><label>Grande base B</label><div class="field-row"><input type="number" id="trap-B" value="160" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Petite base b</label><div class="field-row"><input type="number" id="trap-b" value="100" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Hauteur h (perpendiculaire aux bases)</label><div class="field-row"><input type="number" id="trap-h" value="70" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="trap-B">Grande base B</label><div class="field-row"><input type="number" id="trap-B" value="160" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="trap-b">Petite base b</label><div class="field-row"><input type="number" id="trap-b" value="100" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="trap-h">Hauteur h (perpendiculaire aux bases)</label><div class="field-row"><input type="number" id="trap-h" value="70" min="0" step="0.1" oninput="calcTrap()"><span class="unit">mm</span></div></div>
         <div class="formula-box">
           <code>A = (B + b) × h / 2</code>
           <div class="formula-detail" id="trap-detail">A = (160 + 100) × 70 / 2</div>
@@ -260,8 +260,8 @@
       </div>
       <div class="controls-card">
         <p class="section-label">Rayon ou diamètre</p>
-        <div class="field"><label>Rayon r</label><div class="field-row"><input type="number" id="dc-r" value="50" min="0" step="0.1" oninput="calcDc()"><span class="unit">mm</span></div></div>
-        <div class="field"><label>Diamètre d (calculé)</label><div class="field-row"><input type="number" id="dc-d" value="100" min="0" step="0.1" oninput="calcDcD()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="dc-r">Rayon r</label><div class="field-row"><input type="number" id="dc-r" value="50" min="0" step="0.1" oninput="calcDc()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="dc-d">Diamètre d (calculé)</label><div class="field-row"><input type="number" id="dc-d" value="100" min="0" step="0.1" oninput="calcDcD()"><span class="unit">mm</span></div></div>
         <div class="formula-box">
           <code>A = π × r² / 2</code>
           <div style="font-size:11px;color:var(--text3);margin-top:2px">Moitié de l'aire du disque complet</div>
@@ -290,7 +290,7 @@
       </div>
       <div class="controls-card">
         <p class="section-label">Longueur d'un côté</p>
-        <div class="field"><label>Côté c (un seul suffit)</label><div class="field-row"><input type="number" id="hex-c" value="20" min="0" step="0.1" oninput="calcHex()"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="hex-c">Côté c (un seul suffit)</label><div class="field-row"><input type="number" id="hex-c" value="20" min="0" step="0.1" oninput="calcHex()"><span class="unit">mm</span></div></div>
         <div style="font-size:13px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;">
           💡 Formule exacte : A = (3√3 / 2) × c² ≈ <strong>2,598 × c²</strong>
         </div>
@@ -322,13 +322,13 @@
         <div class="defi-cotes" id="defi-cotes"></div>
       </div>
       <div class="defi-input-row">
-        <label>Aire =</label>
+        <label for="defi-input">Aire =</label>
         <input type="number" id="defi-input" placeholder="?" min="0" step="0.1">
         <span class="unit">mm²</span>
       </div>
       <div style="font-size:12px;color:var(--text3);margin-bottom:0.75rem;">Tolérance acceptée : ± 2 %</div>
       <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
-      <div class="feedback-box" id="defi-feedback"></div>
+      <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
       <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Pièce suivante →</button>
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
         <button class="btn-fiche" onclick="generateFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
