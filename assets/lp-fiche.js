@@ -22,6 +22,10 @@
        aide: 'Rectangle : P = 2×(L+l) | Cercle : P = π×d',
        questions: [ { num, nom, hint, svg, cotes, answerText } ]
      });
+
+   Ce fichier fournit aussi :
+     LP.ficheModal — modale de choix des familles de questions (voir plus bas)
+     LP.pickQuestions — tirage de n questions dans une liste de générateurs
    ========================================================================== */
 
 (function () {
@@ -253,6 +257,201 @@
     win.document.open();
     win.document.write(html);
     win.document.close();
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     LP.ficheModal — boîte de dialogue de choix des familles de questions
+     ----------------------------------------------------------------------
+     Remplace le bloc HTML et les cinq fonctions (famillesCochees, repartir10,
+     majRepartition, openFiche, closeFiche) qui étaient recopiés à l'identique
+     dans chaque outil proposant plusieurs familles d'exercices.
+
+     Mise en place, dans le script de l'outil :
+
+       LP.ficheModal.init({
+         familles: [
+           { value: 'hyp', label: "Calculer l'hypoténuse" },
+           { value: 'cot', label: "Calculer un côté de l'angle droit" },
+           { value: 'rec', label: "Réciproque : le triangle est-il rectangle ?" }
+         ],
+         onConfirm: function (plan, sel) { ... }
+       });
+
+     Options facultatives : titre, texte, nombre (10 par défaut).
+     Une famille est cochée au départ sauf si on précise checked: false.
+
+     Le bouton de l'outil appelle simplement :
+       <button class="btn-fiche" onclick="LP.ficheModal.open()">…</button>
+
+     onConfirm reçoit :
+       plan = [ { fam: 'hyp', n: 4 }, { fam: 'cot', n: 3 }, ... ]
+       sel  = [ 'hyp', 'cot', ... ]
+     La modale se ferme d'elle-même juste avant l'appel.
+
+     Le gestionnaire clavier de l'outil doit commencer par :
+       if (LP.ficheModal.isOpen()) return;
+     La touche Échap est prise en charge ici.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  var mod = { racine: null, cfg: null, focusAvant: null };
+  var echapBranche = false;
+
+  function att(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function cases() {
+    return mod.racine ? mod.racine.querySelectorAll('#modal-checks input') : [];
+  }
+
+  function selection() {
+    var out = [], cbs = cases(), i;
+    for (i = 0; i < cbs.length; i++) if (cbs[i].checked) out.push(cbs[i].value);
+    return out;
+  }
+
+  /* Répartit un total d'exercices entre les familles retenues.
+     Le reste de la division est distribué aux premières familles. */
+  function repartir(fams, total) {
+    var k = fams.length;
+    if (!k) return [];
+    var base = Math.floor(total / k), reste = total % k;
+    return fams.map(function (f, i) {
+      return { fam: f, n: base + (i < reste ? 1 : 0) };
+    });
+  }
+
+  function majRepartition() {
+    if (!mod.racine) return;
+    var sel    = selection();
+    var info   = mod.racine.querySelector('#dist-info');
+    var valide = mod.racine.querySelector('#modal-confirm');
+    var labels = mod.racine.querySelectorAll('#modal-checks label'), i;
+    for (i = 0; i < labels.length; i++) {
+      labels[i].classList.toggle('on', labels[i].querySelector('input').checked);
+    }
+    if (!sel.length) {
+      info.className = 'dist-info warn';
+      info.textContent = '\u26A0 Sélectionne au moins une famille';
+      valide.disabled = true;
+      return;
+    }
+    var n = mod.cfg.nombre;
+    info.className = 'dist-info ok';
+    info.textContent = '\u2192 ' + repartir(sel, n).map(function (d) { return d.n; }).join(' + ')
+                     + ' = ' + n + ' exercices';
+    valide.disabled = false;
+  }
+
+  function estOuverte() {
+    return !!(mod.racine && mod.racine.classList.contains('show'));
+  }
+
+  function ouvrir() {
+    if (!mod.racine) return;
+    mod.focusAvant = document.activeElement;
+    mod.racine.classList.add('show');
+    mod.racine.setAttribute('aria-hidden', 'false');
+    majRepartition();
+    /* Donner le focus à la première case évite en outre que les raccourcis
+       T / P / D de lp-ui.js se déclenchent pendant que la modale est ouverte. */
+    var premiere = mod.racine.querySelector('#modal-checks input');
+    if (premiere) premiere.focus();
+  }
+
+  function fermer() {
+    if (!mod.racine) return;
+    mod.racine.classList.remove('show');
+    mod.racine.setAttribute('aria-hidden', 'true');
+    if (mod.focusAvant && mod.focusAvant.focus) mod.focusAvant.focus();
+    mod.focusAvant = null;
+  }
+
+  function confirmer() {
+    var sel = selection();
+    if (!sel.length) return;
+    var plan = repartir(sel, mod.cfg.nombre);
+    fermer();
+    if (typeof mod.cfg.onConfirm === 'function') mod.cfg.onConfirm(plan, sel);
+  }
+
+  function construire() {
+    var ancienne = document.getElementById('modal-fiche');
+    if (ancienne && ancienne.parentNode) ancienne.parentNode.removeChild(ancienne);
+
+    var bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.id = 'modal-fiche';
+    bg.setAttribute('role', 'dialog');
+    bg.setAttribute('aria-modal', 'true');
+    bg.setAttribute('aria-labelledby', 'modal-fiche-titre');
+    bg.setAttribute('aria-hidden', 'true');
+
+    var lignes = mod.cfg.familles.map(function (f) {
+      var coche = (f.checked === false) ? '' : ' checked';
+      return '<label' + (coche ? ' class="on"' : '') + '>'
+           + '<input type="checkbox" value="' + att(f.value) + '"' + coche + '> '
+           + att(f.label) + '</label>';
+    }).join('');
+
+    bg.innerHTML =
+      '<div class="modal">'
+      + '<h2 id="modal-fiche-titre">' + att(mod.cfg.titre) + '</h2>'
+      + '<p>' + att(mod.cfg.texte) + '</p>'
+      + '<div class="modal-checks" id="modal-checks">' + lignes + '</div>'
+      + '<div class="dist-info ok" id="dist-info" role="status" aria-live="polite"></div>'
+      + '<div class="modal-actions">'
+        + '<button type="button" class="btn-modal-no" id="modal-cancel">Annuler</button>'
+        + '<button type="button" class="btn-modal-ok" id="modal-confirm">Générer la fiche</button>'
+      + '</div>'
+      + '</div>';
+
+    document.body.appendChild(bg);
+    mod.racine = bg;
+
+    var cbs = cases(), i;
+    for (i = 0; i < cbs.length; i++) cbs[i].addEventListener('change', majRepartition);
+
+    bg.querySelector('#modal-cancel').addEventListener('click', fermer);
+    bg.querySelector('#modal-confirm').addEventListener('click', confirmer);
+    bg.addEventListener('click', function (e) {
+      if (e.target === bg) fermer();
+    });
+
+    if (!echapBranche) {
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && estOuverte()) fermer();
+      });
+      echapBranche = true;
+    }
+
+    majRepartition();
+  }
+
+  window.LP.ficheModal = {
+    init: function (cfg) {
+      cfg = cfg || {};
+      var n = cfg.nombre || 10;
+      mod.cfg = {
+        familles:  cfg.familles || [],
+        nombre:    n,
+        titre:     cfg.titre || "\uD83D\uDCC4 Générer une fiche d'exercices",
+        texte:     cfg.texte || ('Choisis les familles de questions à inclure. Les ' + n
+                     + ' exercices seront répartis entre les familles sélectionnées.'),
+        onConfirm: cfg.onConfirm
+      };
+      if (document.body) {
+        construire();
+      } else {
+        document.addEventListener('DOMContentLoaded', construire);
+      }
+    },
+    open:      ouvrir,
+    close:     fermer,
+    isOpen:    estOuverte,
+    selection: selection
   };
 
   /* Tire n questions en piochant dans une liste de générateurs,
