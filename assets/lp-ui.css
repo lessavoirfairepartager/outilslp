@@ -586,6 +586,125 @@ html[data-size="projection"] .defi-shape-display svg { max-width: 420px; }
   transition: width .4s;
 }
 
+/* ── 12 bis. MOTEUR DE DÉFI PARTAGÉ (balisage produit par lp-defi.js) ────── */
+
+/* Rappel : la propriété ou la formule, offerte avant de répondre en mode
+   défi, masquée en Défi ⁺. Jusqu'ici recopié dans Thalès, Pythagore et
+   le sonomètre. */
+.defi-aide {
+  background: var(--amber-bg);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--radius);
+  padding: 11px 14px;
+  font-size: var(--fs-sm);
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: var(--gap);
+}
+.defi-aide b { color: var(--amber); }
+
+.defi-enonce {
+  font-size: var(--fs-md);
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: .75rem;
+}
+
+/* Compteur d'essais, glissé en fin de retour tant que la question reste
+   ouverte. Discret : c'est une information de service, pas un verdict. */
+.defi-essai {
+  display: inline-block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text3);
+  background: var(--surface2);
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+/* ── Réponses à choisir ─────────────────────────────────────────────────── */
+.defi-choix {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+.defi-choice {
+  padding: 13px 14px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s, color .15s, opacity .15s;
+}
+.defi-choice:hover:not(.locked):not(.elimine) {
+  border-color: var(--accent); background: var(--accent-bg);
+}
+.defi-choice.selected  { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+.defi-choice.correct   { border-color: var(--teal);   background: var(--teal-bg);   color: var(--teal); }
+.defi-choice.incorrect { border-color: var(--red);    background: var(--red-bg);    color: var(--red); }
+.defi-choice.locked    { cursor: default; }
+/* Éliminée au premier essai raté : encore lisible, mais hors jeu. La bonne
+   réponse n'est pas dévoilée pour autant — l'élève rejoue sur le reste. */
+.defi-choice.elimine {
+  cursor: not-allowed;
+  opacity: .5;
+  border-style: dashed;
+  text-decoration: line-through;
+}
+
+/* ── Réponses à plusieurs champs ────────────────────────────────────────── */
+.defi-champs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+.defi-champ {
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--surface2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 13px;
+}
+.defi-champ label { font-size: var(--fs-xs); color: var(--text3); font-weight: 600; }
+.defi-champ input {
+  padding: 9px 11px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+}
+.defi-champ input:focus { border-color: var(--accent); }
+.defi-champ.ok { border-color: var(--teal); background: var(--teal-bg); }
+.defi-champ.ko { border-color: var(--red);  background: var(--red-bg); }
+
+/* ── Bilan de fin de série ──────────────────────────────────────────────── */
+.defi-bilan { margin: 8px 0 0 0; padding-left: 1.1rem; }
+.defi-bilan li { font-size: var(--fs-sm); line-height: 1.7; }
+
+/* ── Confettis ──────────────────────────────────────────────────────────── */
+.confetti {
+  position: fixed; width: 9px; height: 9px; z-index: 300;
+  pointer-events: none; border-radius: 1px;
+  animation: lp-tombe 2.4s linear forwards;
+}
+@keyframes lp-tombe {
+  to { transform: translateY(105vh) rotate(540deg); opacity: 0; }
+}
+html[data-motion="off"] .confetti { display: none; }
+
 /* ── 13. BOUTONS ─────────────────────────────────────────────────────────── */
 
 .btn-rnd {
@@ -734,6 +853,7 @@ html[data-theme="dark"] .btn-modal-ok { color: #14130f; }
 /* ── 17. IMPRESSION ──────────────────────────────────────────────────────── */
 
 @media print {
-  .lp-toolbar, .mode-tabs, .btn-rnd, .btn-fiche, .modal-bg, .no-print { display: none !important; }
+  .lp-toolbar, .mode-tabs, .btn-rnd, .btn-fiche, .modal-bg, .no-print,
+  .confetti, .btn-check, .btn-next, .shape-tabs { display: none !important; }
   body { background: #fff; color: #000; }
 }
