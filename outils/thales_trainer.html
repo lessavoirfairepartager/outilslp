@@ -63,40 +63,9 @@ SOFTWARE.
   .compare .l { display: flex; justify-content: space-between; gap: 10px; }
   .compare .l b { color: var(--text); }
 
-  /* Boutons oui / non du défi */
-  .choix-rec { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-  @media (max-width: 520px) { .choix-rec { grid-template-columns: 1fr; } }
-  .btn-rec {
-    padding: 15px; border: 2px solid var(--border); border-radius: var(--radius);
-    background: var(--surface); color: var(--text); cursor: pointer;
-    font-family: inherit; font-size: var(--fs-md); font-weight: 600;
-    transition: border-color .15s, background-color .15s;
-  }
-  .btn-rec:hover:not(.locked)  { border-color: var(--accent); background: var(--accent-bg); }
-  .btn-rec.selected  { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
-  .btn-rec.correct   { border-color: var(--teal); background: var(--teal-bg); color: var(--teal); }
-  .btn-rec.incorrect { border-color: var(--red);  background: var(--red-bg);  color: var(--red); }
-  .btn-rec.locked    { cursor: default; }
+  /* Boutons du défi, rappel, confettis et masquage à l'impression :
+     tout cela vit désormais dans lp-ui.css, section 12 bis. */
 
-  .defi-aide {
-    background: var(--amber-bg); border-left: 4px solid var(--amber);
-    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 1rem;
-    font-size: var(--fs-sm); color: var(--text2); line-height: 1.65;
-  }
-  .defi-aide b { color: var(--amber); }
-
-  /* Confettis discrets, désactivés si les animations le sont */
-  .confetti {
-    position: fixed; width: 9px; height: 9px; z-index: 300;
-    pointer-events: none; border-radius: 1px;
-    animation: tombe 2.4s linear forwards;
-  }
-  @keyframes tombe {
-    to { transform: translateY(105vh) rotate(540deg); opacity: 0; }
-  }
-  html[data-motion="off"] .confetti { display: none; }
-
-  @media print { .modal-bg, .confetti, .btn-check, .btn-next, .shape-tabs { display: none !important; } }
 </style>
 </head>
 <body>
@@ -265,6 +234,8 @@ SOFTWARE.
   </div>
 
   <!-- ═══════════════ DÉFI ═══════════════ -->
+  <!-- Balisage standard du moteur. Les onglets de familles et la zone de
+       réponse sont construits par lp-defi.js : rien à écrire ici. -->
   <div id="mode-defi">
     <div class="defi-card">
       <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI ⁺ — propriété masquée</div>
@@ -274,37 +245,23 @@ SOFTWARE.
       </div>
       <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
 
-      <div class="shape-tabs" style="margin-bottom:1.25rem">
-        <button class="shape-tab active" data-color="purple" onclick="setFam('mix',this)"><span class="dot" style="background:var(--purple)"></span>Mélange</button>
-        <button class="shape-tab" data-color="coral" onclick="setFam('tri',this)"><span class="dot" style="background:var(--coral)"></span>Triangle</button>
-        <button class="shape-tab" data-color="blue"  onclick="setFam('pap',this)"><span class="dot" style="background:var(--blue)"></span>Papillon</button>
-        <button class="shape-tab" data-color="green" onclick="setFam('rec',this)"><span class="dot" style="background:var(--green)"></span>Réciproque</button>
-      </div>
+      <div id="defi-familles" style="margin-bottom:1.25rem"></div>
 
       <div class="defi-aide" id="defi-aide"></div>
 
-      <div class="defi-shape-display">
+      <div class="defi-shape-display" id="defi-figure">
         <svg id="defi-svg" viewBox="0 0 320 250" xmlns="http://www.w3.org/2000/svg" style="max-width:300px;width:100%;"></svg>
+        <div class="defi-enonce" id="defi-enonce"></div>
         <div class="defi-cotes" id="defi-cotes"></div>
       </div>
 
-      <div class="defi-input-row" id="zone-nombre">
-        <label id="defi-label">? =</label>
-        <input type="number" id="defi-input" placeholder="?" step="0.01">
-        <span class="unit">cm</span>
-      </div>
-      <div id="zone-rec" style="display:none">
-        <div class="choix-rec">
-          <button class="btn-rec" data-rep="oui" onclick="choisirRec(this)">Oui, elles sont parallèles</button>
-          <button class="btn-rec" data-rep="non" onclick="choisirRec(this)">Non, elles ne le sont pas</button>
-        </div>
-      </div>
+      <div id="defi-reponse"></div>
 
-      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol">Arrondir au centième · tolérance ± 0,05 cm</div>
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol"></div>
 
-      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+      <button class="btn-check" id="btn-check">Vérifier ma réponse</button>
       <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
-      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Question suivante →</button>
+      <button class="btn-next" id="btn-next" style="display:none">Question suivante →</button>
 
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
         <button class="btn-fiche" onclick="LP.ficheModal.open()">📄 Générer une fiche d'exercices (10 questions)</button>
@@ -317,6 +274,7 @@ SOFTWARE.
 <!-- La modale de choix des familles est construite par LP.ficheModal -->
 
 <script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
 <script>
 /* ═══ UTILITAIRES ═══════════════════════════════════════════════════════ */
 var M = '\u2212';                       /* vrai signe moins */
@@ -954,15 +912,16 @@ function setMode(m, btn){
 
   var isDefi = (m !== 'explo');
   document.getElementById('mode-explo').style.display = isDefi ? 'none' : 'block';
-  var defi = document.getElementById('mode-defi');
-  defi.style.display = isDefi ? 'block' : 'none';
-  defi.classList.toggle('active', isDefi);
+  /* montrerBloc pose le display ET la classe active d'un seul geste : c'est
+     le piège #mode-defi de lp-ui.css, désormais impossible à rater. */
+  LP.defi.montrerBloc('#mode-defi', isDefi);
 
-  document.getElementById('defi-plus-badge').classList.toggle('visible', m === 'defiplus');
   document.getElementById('defi-mode-title').textContent =
     (m === 'defiplus') ? 'Défi ⁺ — sans aide' : 'Mode défi — avec aide';
 
-  if (isDefi) nextDefi();
+  /* Le badge « propriété masquée » est posé par le moteur, qui interroge
+     modePlus() à chaque question. */
+  if (isDefi) defi.ui.suivante();
 }
 
 /* ═══ EXPLORATEUR ═══════════════════════════════════════════════════════ */
@@ -1124,196 +1083,113 @@ function calcRec(){
   svg.innerHTML = dessin(ex, 320, 250, {});
 }
 
-/* ═══ MODE DÉFI ═════════════════════════════════════════════════════════ */
-var famille = 'mix';
-var courante = null, repondu = false, bons = 0, total = 0, choixRec = null;
+/* ═══ MODE DÉFI ════════════════════════════════════════════════ */
+/* Toute la boucle est dans lp-defi.js. Ce qui reste ici est du contenu :
+   les générateurs, les libellés, les indices. */
 
-function setFam(f, btn){
-  famille = f;
-  var tabs = document.querySelectorAll('#mode-defi .shape-tab'), i;
-  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
-  btn.classList.add('active');
-  nextDefi();
-}
+/* ⚠ INDICES DU SECOND ESSAI — PREMIER JET, À RELIRE
+   Ce sont les seules phrases nouvelles de la migration. Elles sont données
+   après un premier essai raté, dans les deux modes, avant la correction.
+   Un indice doit désigner l'erreur probable sans donner la réponse.
+   Si tu en supprimes un, le moteur reste correct : il annonce simplement
+   qu'il reste un essai. */
+var famIndices = {
+  tri:'Repère les deux longueurs qui appartiennent au MÊME triangle : '
+    + 'elles vont ensemble dans le même quotient. Ne mélange pas une longueur '
+    + 'du petit triangle avec une longueur du grand au numérateur.',
+  pap:'De part et d\u2019autre du point de croisement, les longueurs se '
+    + 'correspondent deux à deux. Vérifie que ton produit en croix associe '
+    + 'bien une longueur de chaque côté.',
+  rec:'Ne compare pas les longueurs une à une : ce sont les QUOTIENTS qu\u2019il '
+    + 'faut comparer. Le plus sûr est de calculer les deux produits en croix '
+    + 'et de regarder s\u2019ils tombent sur le même nombre.'
+};
 
-function nextDefi(){
-  var fam = (famille === 'mix') ? pick(['tri','pap','rec']) : famille;
-  courante = generateurs[fam]();
-  repondu = false;
-  choixRec = null;
+/* Adapte un générateur existant à l'objet question normalisé.
+   Les générateurs eux-mêmes n'ont pas bougé d'une ligne. */
+function adapter(fam){
+  return function(){
+    var ex = generateurs[fam]();
+    var estRec = (fam === 'rec');
 
-  var fb = document.getElementById('defi-feedback');
-  fb.className = 'feedback-box';
-  fb.innerHTML = '';
-  document.getElementById('btn-next').style.display = 'none';
+    ex.enonce = ex.question;
+    ex.cotes  = ex.donnees;
+    ex.rappel = ex.hint;                 // la propriété, avant de répondre
+    ex.hint   = famIndices[fam];         // l'indice, après un essai raté
+    ex.comp   = estRec ? 'C4' : 'C3';    // valider / réaliser
 
-  document.getElementById('defi-svg').innerHTML = dessin(courante, 320, 250, {});
-
-  document.getElementById('defi-cotes').innerHTML =
-    '<strong>' + courante.question + '</strong><br>' + courante.donnees;
-
-  var aide = document.getElementById('defi-aide');
-  if (currentMode === 'defiplus') {
-    aide.style.display = 'none';
-  } else {
-    aide.style.display = 'block';
-    aide.innerHTML = '<b>Rappel :</b> ' + courante.hint;
-  }
-
-  var estRec = (fam === 'rec');
-  document.getElementById('zone-nombre').style.display = estRec ? 'none' : 'flex';
-  document.getElementById('zone-rec').style.display    = estRec ? 'block' : 'none';
-  document.getElementById('defi-tol').textContent = estRec
-    ? 'Réponds par oui ou par non, après avoir comparé les quotients.'
-    : 'Arrondir au centième · tolérance ± 0,05 cm';
-
-  var btns = document.querySelectorAll('.btn-rec'), i;
-  for (i = 0; i < btns.length; i++) btns[i].className = 'btn-rec';
-
-  if (!estRec) {
-    document.getElementById('defi-label').textContent = courante.inconnue + ' =';
-    var inp = document.getElementById('defi-input');
-    inp.value = '';
-    inp.focus();
-  }
-  majScore();
-}
-
-function choisirRec(btn){
-  if (repondu) return;
-  var btns = document.querySelectorAll('.btn-rec'), i;
-  for (i = 0; i < btns.length; i++) btns[i].classList.remove('selected');
-  btn.classList.add('selected');
-  choixRec = btn.getAttribute('data-rep');
-}
-
-function checkDefi(){
-  if (repondu || !courante) return;
-  var fb = document.getElementById('defi-feedback');
-  var ok, i, btns;
-
-  if (courante.fam === 'rec') {
-    if (!choixRec) {
-      fb.className = 'feedback-box wrong show';
-      fb.innerHTML = '<strong>Choisis une réponse</strong> avant de vérifier.';
-      return;
+    if (estRec) {
+      ex.type  = 'choix';
+      ex.choix = [
+        { val:'oui', label:'Oui, elles sont parallèles' },
+        { val:'non', label:'Non, elles ne le sont pas' }
+      ];
+    } else {
+      ex.type  = 'nombre';
+      ex.label = ex.inconnue + ' =';
+      ex.unite = 'cm';
+      ex.tol   = 0.05;
     }
-    ok = (choixRec === courante.reponse);
-    btns = document.querySelectorAll('.btn-rec');
-    for (i = 0; i < btns.length; i++) {
-      btns[i].classList.add('locked');
-      if (btns[i].getAttribute('data-rep') === courante.reponse) btns[i].classList.add('correct');
-      else if (btns[i].classList.contains('selected')) btns[i].classList.add('incorrect');
-    }
-  } else {
-    var brut = document.getElementById('defi-input').value.replace(',', '.');
-    var rep = parseFloat(brut);
-    if (isNaN(rep)) {
-      fb.className = 'feedback-box wrong show';
-      fb.innerHTML = '<strong>Entre une valeur</strong> avant de vérifier.';
-      return;
-    }
-    /* Le 1e-6 évite qu'une réponse pile à la limite soit refusée par un
-       arrondi binaire : 4,72 + 0,05 ne vaut pas exactement 4,77 en machine. */
-    ok = Math.abs(rep - courante.reponse) <= 0.05 + 1e-6;
-  }
 
-  fb.className = 'feedback-box ' + (ok ? 'correct' : 'wrong') + ' show';
-  fb.innerHTML = (ok ? '<strong>Correct !</strong> ' : '<strong>Pas tout à fait.</strong> ')
-               + courante.detail;
-
-  repondu = true;
-  total++;
-  if (ok) { bons++; confettis(); }
-  document.getElementById('btn-next').style.display = 'block';
-  majScore();
+    /* Une seule figure, deux formats. La version fiche omet les valeurs :
+       elles sont déjà dans la colonne de texte à côté. */
+    ex.figure = function(o){
+      return o && o.fiche
+        ? dessin(ex, 200, 160, { fs:13, offCote:12, offSom:14, rPt:3, sansValeurs:true })
+        : dessin(ex, 320, 250, {});
+    };
+    delete ex.svg;
+    return ex;
+  };
 }
 
-function majScore(){
-  document.getElementById('defi-score').textContent = bons + ' / ' + total + ' correct' + (total > 1 ? 's' : '');
-  var pct = total > 0 ? (bons/total*100) : 0;
-  document.getElementById('defi-progress').style.width = pct + '%';
-}
-
-function confettis(){
-  if (document.documentElement.getAttribute('data-motion') === 'off') return;
-  var couleurs = ['#993C1D','#185FA5','#0F6E56','#854F0B','#534AB7','#3B6D11'];
-  for (var i = 0; i < 26; i++) {
-    (function(k){
-      setTimeout(function(){
-        var c = document.createElement('div');
-        c.className = 'confetti';
-        c.style.left = Math.round(Math.random()*100) + 'vw';
-        c.style.top = '-12px';
-        c.style.background = couleurs[Math.floor(Math.random()*couleurs.length)];
-        document.body.appendChild(c);
-        setTimeout(function(){ if (c.parentNode) c.parentNode.removeChild(c); }, 2600);
-      }, k*28);
-    })(i);
-  }
-}
-
-document.addEventListener('keydown', function(e){
-  if (LP.ficheModal.isOpen()) return;
-  if (currentMode === 'explo') return;
-  if (e.key === 'Enter') {
-    if (!repondu) checkDefi();
-    else nextDefi();
-  }
+var defi = LP.defi.creer({
+  outil:    'thales',
+  serie:    0,                        // flux continu ; mettre 10 pour une série
+  essaisMax: 2,
+  melange:  { label:'Mélange', couleur:'purple' },
+  modePlus: function(){ return currentMode === 'defiplus'; },
+  familles: [
+    { value:'tri', label:'Triangle',   couleur:'coral', gen:adapter('tri'),
+      nom:famNoms.tri, consigne:famConsignes.tri, comp:'C3' },
+    { value:'pap', label:'Papillon',   couleur:'blue',  gen:adapter('pap'),
+      nom:famNoms.pap, consigne:famConsignes.pap, comp:'C3' },
+    { value:'rec', label:'Réciproque', couleur:'green', gen:adapter('rec'),
+      nom:famNoms.rec, consigne:famConsignes.rec, comp:'C4' }
+  ]
 });
 
-/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════ */
+/* ═══ FICHE IMPRIMABLE ═══════════════════════════════════════ */
 LP.ficheModal.init({
   familles: [
     { value:'tri', label:"Configuration triangle" },
     { value:'pap', label:"Configuration papillon" },
     { value:'rec', label:"Réciproque : les droites sont-elles parallèles ?" }
   ],
-  onConfirm: function(plan, sel){ confirmFiche(plan, sel); }
+  onConfirm: function(plan, sel){
+    var isPlus = (currentMode === 'defiplus');
+    LP.fiche({
+      icon:'\u{1F4D0}',
+      title: (sel.length === 3) ? 'Théorème de Thalès'
+           : 'Thalès — ' + sel.map(function(f){ return famNoms[f]; }).join(', '),
+      subtitle:'3e prépa-métiers · CAP · 2de Bac Pro',
+      modeLabel: isPlus ? 'Défi ⁺' : 'Mode défi',
+      isPlus: isPlus,
+      tolerance:'± 0,05 cm',
+      accent:'#993C1D',
+      answerLabel:'Réponse :',
+      unit:'',
+      aide: sel.map(function(f){ return famAides[f]; }).join('<br>'),
+      questions: defi.questionsFiche(plan)      // même objet que le défi
+    });
+  }
 });
-
-function confirmFiche(plan, sel){
-  var questions = [], num = 1;
-  plan.forEach(function(d){
-    for (var i = 0; i < d.n; i++) {
-      var ex = generateurs[d.fam]();
-      questions.push({
-        num:num++,
-        nom:famNoms[d.fam],
-        hint:famConsignes[d.fam],
-        svg:dessin(ex, 200, 160, { fs:13, offCote:12, offSom:14, rPt:3, sansValeurs:true }),
-        cotes:ex.donnees + ' · ' + ex.question,
-        answerText:ex.reponseTexte
-      });
-    }
-  });
-
-  var isPlus = (currentMode === 'defiplus');
-  var aide = sel.map(function(f){ return famAides[f]; }).join('<br>');
-  var titre = (sel.length === 3)
-    ? 'Théorème de Thalès'
-    : 'Thalès — ' + sel.map(function(f){ return famNoms[f]; }).join(', ');
-
-  LP.fiche({
-    icon:'\u{1F4D0}',
-    title:titre,
-    subtitle:'3e prépa-métiers · CAP · 2de Bac Pro',
-    modeLabel:isPlus ? 'Défi ⁺' : 'Mode défi',
-    isPlus:isPlus,
-    tolerance:'± 0,05 cm',
-    accent:'#993C1D',
-    answerLabel:'Réponse :',
-    unit:'',
-    aide:aide,
-    questions:questions
-  });
-}
 
 /* ═══ INITIALISATION ════════════════════════════════════════════════════ */
 calcTri();
 calcPap();
 calcRec();
-nextDefi();
+defi.demarrer();
 </script>
 <footer class="lp-footer">
   <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
