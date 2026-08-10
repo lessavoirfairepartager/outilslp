@@ -27,7 +27,8 @@ outilslp/
 ├── assets/                 Design system partagé
 │   ├── lp-ui.css           Styles communs, modes projection/DYS
 │   ├── lp-ui.js            Barre d'outils, compteur, navigation
-│   └── lp-fiche.js         Génération des fiches imprimables
+│   ├── lp-fiche.js         Génération des fiches imprimables
+│   └── lp-defi.js          Moteur de défi (boucle, second essai, événements)
 ├── outils/                 Outils (maths, physique-chimie)
 ├── jeux/                   Outils au format jeu
 ├── profs/                  Ressources réservées à l'usage enseignant
@@ -38,8 +39,10 @@ outilslp/
 
 Chaque outil suit la même structure : onglets **Explorateur / Mode défi /
 Défi⁺**, génération de fiche imprimable (10 questions, page de corrigé
-optionnelle), raccourcis clavier T/P/D. Le modèle de référence pour un nouvel
-outil est `outils/perimetre_usinage.html`.
+optionnelle), raccourcis clavier T/P/D. Le mode défi s'appuie sur le moteur
+partagé `assets/lp-defi.js` : la page fournit les générateurs de questions et
+un conteneur vide, le moteur pilote la boucle (deux essais, indices, fiche).
+Le modèle de référence pour un nouvel outil est `outils/thales_trainer.html`.
 
 ## Déploiement
 
