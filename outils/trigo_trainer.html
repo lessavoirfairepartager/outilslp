@@ -2,6 +2,7 @@
 Trigonométrie — calcul d'un côté et d'un angle dans le triangle rectangle
 Copyright (c) 2025 Moise Muller <moise.muller@ac-dijon.fr>
 Version harmonisée du 4 août 2026 pour outilslp.netlify.app
+Boucle de défi confiée à assets/lp-defi.js le 11 août 2026 (dom:false)
 
 MIT License
 
@@ -215,11 +216,11 @@ SOFTWARE.
         <div class="fields-grid">
           <div class="field">
             <label for="re-ang">Angle du sommet de gauche</label>
-            <div class="field-row"><input type="number" id="re-ang" value="35" min="15" max="75" step="5" oninput="calcRec()"><span class="unit">°</span></div>
+            <div class="field-row"><input type="text" inputmode="decimal" id="re-ang" value="35" oninput="calcRec()"><span class="unit">°</span></div>
           </div>
           <div class="field">
             <label for="re-adj">Côté horizontal</label>
-            <div class="field-row"><input type="number" id="re-adj" value="9" min="3" max="20" oninput="calcRec()"><span class="unit">cm</span></div>
+            <div class="field-row"><input type="text" inputmode="decimal" id="re-adj" value="9" oninput="calcRec()"><span class="unit">cm</span></div>
           </div>
         </div>
         <div class="formula-box">
@@ -245,11 +246,11 @@ SOFTWARE.
         <div class="fields-grid">
           <div class="field">
             <label for="co-ang">Angle de référence</label>
-            <div class="field-row"><input type="number" id="co-ang" value="35" min="15" max="75" step="5" oninput="calcCot()"><span class="unit">°</span></div>
+            <div class="field-row"><input type="text" inputmode="decimal" id="co-ang" value="35" oninput="calcCot()"><span class="unit">°</span></div>
           </div>
           <div class="field">
             <label for="co-val">Longueur connue</label>
-            <div class="field-row"><input type="number" id="co-val" value="9" min="2" max="30" oninput="calcCot()"><span class="unit">cm</span></div>
+            <div class="field-row"><input type="text" inputmode="decimal" id="co-val" value="9" oninput="calcCot()"><span class="unit">cm</span></div>
           </div>
         </div>
         <div class="fields-grid">
@@ -302,11 +303,11 @@ SOFTWARE.
         <div class="fields-grid">
           <div class="field">
             <label for="an-n" id="an-ln">Numérateur</label>
-            <div class="field-row"><input type="number" id="an-n" value="7" min="1" max="30" oninput="calcAng()"><span class="unit">cm</span></div>
+            <div class="field-row"><input type="text" inputmode="decimal" id="an-n" value="7" oninput="calcAng()"><span class="unit">cm</span></div>
           </div>
           <div class="field">
             <label for="an-d" id="an-ld">Dénominateur</label>
-            <div class="field-row"><input type="number" id="an-d" value="10" min="1" max="30" oninput="calcAng()"><span class="unit">cm</span></div>
+            <div class="field-row"><input type="text" inputmode="decimal" id="an-d" value="10" oninput="calcAng()"><span class="unit">cm</span></div>
           </div>
         </div>
         <div class="formula-box">
@@ -366,6 +367,7 @@ SOFTWARE.
 <!-- La modale de choix des familles est construite par LP.ficheModal -->
 
 <script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
 <script>
 /* ═══ UTILITAIRES ═══════════════════════════════════════════════════════ */
 var DEG = Math.PI/180;
@@ -379,7 +381,7 @@ function shuffle(a){
   for (i = r.length-1; i > 0; i--) { j = Math.floor(Math.random()*(i+1)); t = r[i]; r[i] = r[j]; r[j] = t; }
   return r;
 }
-function val(id){ var n = parseFloat(String(document.getElementById(id).value).replace(',','.')); return isNaN(n) ? 0 : n; }
+function val(id){ var n = LP.defi.lireNombre(document.getElementById(id).value); return (n === null) ? 0 : n; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function arr(x, d){ var p = Math.pow(10,d); return Math.round(x*p)/p; }
 /* Écriture française : virgule décimale, d décimales AU PLUS, sans zéro inutile.
@@ -672,9 +674,9 @@ function setMode(m, btn){
 
   var isDefi = (m !== 'explo');
   document.getElementById('mode-explo').style.display = isDefi ? 'none' : 'block';
-  var defi = document.getElementById('mode-defi');
-  defi.style.display = isDefi ? 'block' : 'none';
-  defi.classList.toggle('active', isDefi);
+  /* montrerBloc pose le display ET la classe active d'un seul geste : c'est
+     le piège #mode-defi de lp-ui.css, désormais impossible à rater. */
+  LP.defi.montrerBloc('#mode-defi', isDefi);
 
   document.getElementById('defi-plus-badge').classList.toggle('visible', m === 'defiplus');
   document.getElementById('defi-mode-title').textContent =
@@ -877,11 +879,114 @@ function calcAng(){
 }
 
 /* ═══ MODE DÉFI — parcours guidé ════════════════════════════════════════ */
-var famille = 'mix';
-var courante = null, fini = false, bons = 0, total = 0, instantFin = 0;
+/* Trigo est le premier outil à passer en dom:false. Le moteur lp-defi.js ne
+   construit rien dans la page : il tient la question courante, le second
+   essai sur la réponse finale, le score, le journal et les événements. Les
+   étapes cliquables restent écrites ici, telles quelles — c'est la seule
+   partie de l'interface qui n'a pas d'équivalent ailleurs dans le dépôt. */
+
+/* ⚠ INDICES DU SECOND ESSAI — PREMIER JET, À RELIRE
+   Donnés après un premier essai raté sur la réponse finale, dans les deux
+   modes, avant la correction. Un indice doit désigner l'erreur probable
+   sans donner la réponse. Contrairement à Thalès, l'indice dépend ici de la
+   question tirée et non seulement de la famille : pour un côté, l'erreur
+   attendue n'est pas la même selon que l'inconnue est au numérateur ou au
+   dénominateur. Si tu en supprimes un, le moteur reste correct : il annonce
+   simplement qu'il reste un essai. */
+function indiceDe(ex){
+  if (ex.fam === 'angle') {
+    return 'Deux pièges ici. Le rapport se calcule dans le bon sens : '
+         + ex.nomDe[ex.num] + ' \u00F7 ' + ex.nomDe[ex.den] + ', et pas l\u2019inverse. '
+         + 'Ensuite, c\u2019est la touche ' + ex.formule.toUpperCase() + '\u207B\u00B9 '
+         + '(SHIFT puis ' + ex.formule.toUpperCase() + ') qui redonne l\u2019angle — '
+         + 'et la calculatrice doit être en mode degrés (DEG).';
+  }
+  return ex.cibleAuNum
+    ? 'Le côté cherché est au numérateur de la fraction : on MULTIPLIE la '
+      + 'longueur connue par ' + ex.formule.toUpperCase() + '(' + ex.angleRef + '°). '
+      + 'Vérifie aussi que ta calculatrice est en mode degrés (DEG).'
+    : 'Le côté cherché est au dénominateur de la fraction : on DIVISE la '
+      + 'longueur connue par ' + ex.formule.toUpperCase() + '(' + ex.angleRef + '°). '
+      + 'Vérifie aussi que ta calculatrice est en mode degrés (DEG).';
+}
+
+/* Adapte un générateur existant à l'objet question normalisé.
+   Les générateurs eux-mêmes n'ont pas bougé d'une ligne.
+
+   Un seul point demande attention : le générateur appelle « cotes » le
+   tableau des trois côtés du dessin, quand le moteur appelle « cotes » la
+   ligne de données lue à l'écran. Le tableau part donc dans « fig », qui
+   regroupe tout ce dont dessin() a besoin ; « cotes » reste au moteur. */
+function adapter(fam){
+  return function(){
+    var ex = generateurs[fam]();
+    var estAngle = (fam === 'angle');
+
+    ex.fig = {
+      pts:ex.pts, noms:ex.noms, ref:ex.ref, droit:ex.droit,
+      angleTexte:ex.angleTexte, cotes:ex.cotes
+    };
+
+    ex.enonce = ex.question;
+    ex.cotes  = ex.donnees;
+    ex.type   = 'nombre';
+    ex.unite  = estAngle ? '\u00B0' : 'cm';
+    ex.tol    = estAngle ? 1 : 0.2;
+    ex.tolTexte = estAngle ? 'Tolérance \u00B1 1\u00B0' : 'Tolérance \u00B1 0,2 cm';
+    ex.rappel = famAides[fam];        // la formule, avant de répondre
+    ex.hint   = indiceDe(ex);         // l'indice, après un essai raté
+    ex.comp   = 'C3';                 // réaliser
+
+    /* Une seule figure, deux formats. */
+    ex.figure = function(o){
+      return (o && o.fiche)
+        ? dessin(ex.fig, 200, 160, { fs:11, offCote:11, offSom:12, tAngle:9, rArc:16 })
+        : dessin(ex.fig, 320, 250, {});
+    };
+    return ex;
+  };
+}
+
+var defi = LP.defi.creer({
+  outil:     'trigo',
+  serie:     0,                       // flux continu ; mettre 10 pour une série
+  essaisMax: 2,
+  dom:       false,                   // l'affichage reste ici : étapes cliquables
+  modePlus:  function(){ return currentMode === 'defiplus'; },
+  /* Le journal du moteur ne sait rien du parcours guidé. On lui ajoute ce
+     qu'il ne peut pas deviner, avant l'émission de l'événement : combien
+     d'étapes ont été franchies, combien ont été ratées. L'étape 5 pourra
+     distinguer un élève qui trouve la bonne longueur après avoir choisi la
+     mauvaise ligne trigonométrique d'un élève qui a tout mené seul. */
+  onReponse: function(ligne){
+    ligne.guide        = (currentMode !== 'defiplus');
+    ligne.etapes       = parcours.etapes;
+    ligne.etapesRatees = parcours.ratees;
+  },
+  familles: [
+    { value:'cote',  label:famNoms.cote,  couleur:'blue', gen:adapter('cote'),
+      nom:famNoms.cote,  consigne:famConsignes.cote,  comp:'C3' },
+    { value:'angle', label:famNoms.angle, couleur:'teal', gen:adapter('angle'),
+      nom:famNoms.angle, consigne:famConsignes.angle, comp:'C3' }
+  ]
+});
+
+var courante = null, instantFin = 0;
+var parcours = { etapes:0, ratees:0 };
+
+/* Les étapes s'enchaînent par une minuterie, pour laisser voir la réponse
+   avant de passer à la suivante. Si l'eleve change de famille ou de mode
+   pendant ce délai, la minuterie de la question précédente doit mourir :
+   sinon elle greffe une étape sur la question suivante. Le jeton change à
+   chaque tirage ; une minuterie périmée ne fait plus rien. */
+var jeton = 0;
+function enchainer(suite, delai){
+  var mien = jeton;
+  setTimeout(function(){ if (mien === jeton) suite(); }, delai);
+}
 
 function setFam(f, btn){
-  famille = f;
+  defi.setFamille(f);
   var tabs = document.querySelectorAll('#mode-defi .shape-tab'), i;
   for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
   btn.classList.add('active');
@@ -902,28 +1007,34 @@ function etape(titre){
 }
 function contenu(st){ return st.querySelector('.step-content'); }
 function ajouterEtape(st){ document.getElementById('steps-area').appendChild(st); }
-function clore(st, ok){ st.className = 'step ' + (ok ? 'done' : 'error'); }
+/* Clôture d'une étape intermédiaire. L'étape finale, elle, est close par
+   terminer() : c'est le moteur qui décide quand la question est finie. */
+function clore(st, ok){
+  st.className = 'step ' + (ok ? 'done' : 'error');
+  parcours.etapes++;
+  if (!ok) parcours.ratees++;
+}
 
 function nextDefi(){
-  var fam = (famille === 'mix') ? pick(['cote','angle']) : famille;
-  courante = generateurs[fam]();
-  fini = false;
+  jeton++;                                 /* tue les minuteries en cours */
+  courante = defi.tirer();
+  parcours.etapes = 0;
+  parcours.ratees = 0;
 
   var fb = document.getElementById('defi-feedback');
   fb.className = 'feedback-box';
-  fb.innerHTML = '';
+  fb.innerHTML = '';                       /* :empty reprend la main sur le CSS */
   document.getElementById('btn-next').style.display = 'none';
   document.getElementById('steps-area').innerHTML = '';
 
-  document.getElementById('defi-svg').innerHTML = dessin(courante, 320, 250, {});
+  document.getElementById('defi-svg').innerHTML = courante.svg;
   document.getElementById('lg-h').textContent = 'hypoténuse : ' + courante.nomDe.hyp;
   document.getElementById('lg-o').textContent = 'opposé : ' + courante.nomDe.opp;
   document.getElementById('lg-a').textContent = 'adjacent : ' + courante.nomDe.adj;
   document.getElementById('defi-cotes').innerHTML =
-    '<strong>' + courante.question + '</strong><br>' + courante.donnees;
+    '<strong>' + courante.enonce + '</strong><br>' + courante.cotes;
 
-  if (currentMode === 'defiplus') etapeDirecte();
-  else if (fam === 'cote') etape1Formule(etape2Cotes);
+  if (defi.estPlus()) etapeDirecte();
   else etape1Formule(etape2Cotes);
   majScore();
 }
@@ -952,7 +1063,7 @@ function etape1Formule(suite){
       b.classList.add(ok ? 'correct' : 'wrong');
       if (!ok) wrap.querySelector('[data-f="' + courante.formule + '"]').classList.add('correct');
       clore(st, ok);
-      setTimeout(suite, ok ? 350 : 900);
+      enchainer(suite, ok ? 350 : 900);
     };
     wrap.appendChild(b);
   });
@@ -1015,8 +1126,8 @@ function etape2Cotes(){
         }
         clore(st, ok);
         document.getElementById('defi-svg').innerHTML =
-          dessin(courante, 320, 250, { haut:[num, den] });
-        setTimeout(courante.fam === 'cote' ? etape3Isoler : etape3Rapport, ok ? 350 : 1000);
+          dessin(courante.fig, 320, 250, { haut:[num, den] });
+        enchainer(courante.fam === 'cote' ? etape3Isoler : etape3Rapport, ok ? 350 : 1000);
       }
     };
   });
@@ -1053,7 +1164,7 @@ function etape3Isoler(){
       var ok = (o === bonne);
       if (!ok) b.classList.add('wrong');
       clore(st, ok);
-      setTimeout(etape4Calcul, ok ? 350 : 1000);
+      enchainer(etape4Calcul, ok ? 350 : 1000);
     };
     wrap.appendChild(b);
   });
@@ -1066,13 +1177,14 @@ function etape4Calcul(){
   var st = etape('Étape 4 — Calculer ' + cible + ' (au dixième)');
   ajouterEtape(st);
   contenu(st).appendChild(elem('div', 'formula-built', courante.expression));
-  contenu(st).appendChild(elem('div', 'hint-text', 'Calculatrice en mode degrés.'));
-  saisie(st, courante.reponse, 0.2, 'cm', function(ok){
-    terminer(ok, st);
-  });
+  contenu(st).appendChild(elem('div', 'hint-text',
+    'Calculatrice en mode degrés. ' + courante.tolTexte + '.'));
+  saisie(st, 'cm', reponseFinale(st));
 }
 
-/* Étape 3 (angle) — calculer le rapport */
+/* Étape 3 (angle) — calculer le rapport.
+   Étape intermédiaire : un seul essai, contrôle local, elle ne consomme
+   pas d'essai du moteur — c'est la mesure de l'angle qui est la réponse. */
 function etape3Rapport(){
   var fn = courante.formule.toUpperCase();
   var p = courante.noms[0];
@@ -1081,12 +1193,17 @@ function etape3Rapport(){
   contenu(st).appendChild(elem('div', 'formula-built',
     fn + '(∠' + p + ') = ' + courante.nomDe[courante.num] + ' ÷ ' + courante.nomDe[courante.den]
     + ' = ' + courante.valeurs[courante.num] + ' ÷ ' + courante.valeurs[courante.den]));
-  saisie(st, courante.rapport, 0.011, '', function(ok){
+  saisie(st, '', function(brut, s){
+    var v = LP.defi.lireNombre(brut);
+    if (v === null) { s.marquer(false); return; }
+    var ok = LP.defi.proche(v, courante.rapport, 0.011);
+    s.marquer(ok);
+    s.verrouiller();
     clore(st, ok);
     if (!ok) contenu(st).appendChild(elem('div', 'reveal',
       fn + '(∠' + p + ') ≈ ' + nb2(courante.rapport)));
-    setTimeout(etape4Angle, ok ? 350 : 1000);
-  }, true);
+    enchainer(etape4Angle, ok ? 350 : 1000);
+  });
 }
 
 /* Étape 4 (angle) — appliquer la touche inverse */
@@ -1096,30 +1213,54 @@ function etape4Angle(){
   var st = etape('Étape 4 — En déduire ∠' + p + ' (au degré)');
   ajouterEtape(st);
   contenu(st).appendChild(elem('div', 'hint-text',
-    'Utilise la touche ' + fn + '⁻¹ sur ta calculatrice, en mode degrés.'));
+    'Utilise la touche ' + fn + '⁻¹ sur ta calculatrice, en mode degrés. '
+    + courante.tolTexte + '.'));
   contenu(st).appendChild(elem('div', 'formula-built',
     '∠' + p + ' = ' + fn + '⁻¹(' + nb2(courante.rapport) + ')'));
-  saisie(st, courante.reponse, 1, '°', function(ok){
-    terminer(ok, st);
-  });
+  saisie(st, '°', reponseFinale(st));
 }
 
 /* Défi ⁺ — une seule étape, sans guidage */
 function etapeDirecte(){
-  var st = etape(courante.question);
+  var st = etape(courante.enonce);
   ajouterEtape(st);
   contenu(st).appendChild(elem('div', 'hint-text',
-    courante.fam === 'cote'
-      ? 'Réponse au dixième de centimètre. Calculatrice en mode degrés.'
-      : 'Réponse au degré près. Calculatrice en mode degrés.'));
-  saisie(st, courante.reponse, courante.fam === 'cote' ? 0.2 : 1,
-         courante.fam === 'cote' ? 'cm' : '°', function(ok){
-    terminer(ok, st);
-  });
+    (courante.fam === 'cote'
+      ? 'Réponse au dixième de centimètre. '
+      : 'Réponse au degré près. ')
+    + 'Calculatrice en mode degrés. ' + courante.tolTexte + '.'));
+  saisie(st, courante.unite, reponseFinale(st));
 }
 
-/* Champ de saisie + bouton Valider, réutilisé par toutes les étapes chiffrées */
-function saisie(st, attendu, tol, unite, apres, sansCloture){
+/* La réponse finale, la seule que le moteur arbitre. Premier essai raté :
+   l'étape reste ouverte, le champ est réarmé, l'indice s'affiche dans le
+   retour. Second essai, ou bonne réponse : le moteur clôt la question. */
+function reponseFinale(st){
+  return function(brut, s){
+    var res = defi.verifier(brut);
+    if (!res) return;
+    if (res.vide) { s.marquer(false); return; }   /* rien de lisible : aucun essai consommé */
+
+    s.marquer(res.ok);
+    if (res.verrou) {
+      s.verrouiller();
+      terminer(res, st);
+    } else {
+      var fb = document.getElementById('defi-feedback');
+      fb.className = 'feedback-box wrong';
+      fb.innerHTML = res.texte + ' <span class="defi-essai">Essai ' + res.essai
+                   + ' sur ' + defi.essaisMax + '</span>';
+      s.rearmer();
+    }
+  };
+}
+
+/* Champ de saisie + bouton Valider, réutilisé par toutes les étapes
+   chiffrées. Le rappel reçoit la chaîne brute : c'est LP.defi.lireNombre
+   qui la lit, virgule française, espaces de milliers et moins typographique
+   compris. Le champ est en type="text" inputmode="decimal" et non
+   type="number", qui vide sa propre valeur dès qu'on y tape une virgule. */
+function saisie(st, unite, onValider){
   var row = elem('div', 'input-row');
   var inp = document.createElement('input');
   inp.type = 'text';
@@ -1133,19 +1274,18 @@ function saisie(st, attendu, tol, unite, apres, sansCloture){
   row.appendChild(btn);
   contenu(st).appendChild(row);
 
-  btn.onclick = function(){
-    var v = parseFloat(String(inp.value).replace(',', '.'));
-    if (isNaN(v)) {
-      inp.className = 'num-input wrong';
-      return;
+  var api = {
+    marquer: function(ok){ inp.className = 'num-input ' + (ok ? 'correct' : 'wrong'); },
+    verrouiller: function(){ inp.disabled = true; btn.disabled = true; },
+    /* Second essai : la saisie reste en place pour être corrigée, et elle
+       est présélectionnée pour un remplacement rapide. */
+    rearmer: function(){
+      inp.disabled = false; btn.disabled = false;
+      try { inp.focus(); inp.select(); } catch (e) {}
     }
-    var ok = Math.abs(v - attendu) <= tol;
-    inp.className = 'num-input ' + (ok ? 'correct' : 'wrong');
-    inp.disabled = true;
-    btn.disabled = true;
-    if (!sansCloture) clore(st, ok);
-    apres(ok);
   };
+
+  btn.onclick = function(){ onValider(inp.value, api); };
   inp.addEventListener('keydown', function(e){
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -1153,94 +1293,79 @@ function saisie(st, attendu, tol, unite, apres, sansCloture){
       btn.click();
     }
   });
-  setTimeout(function(){ inp.focus(); }, 60);
+  setTimeout(function(){ try { inp.focus(); } catch (e) {} }, 60);
+  return api;
 }
 
-function terminer(ok, st){
-  if (fini) return;
-  fini = true;
-  instantFin = Date.now();
-  total++;
-  if (ok) bons++;
-  if (!ok) contenu(st).appendChild(elem('div', 'reveal',
-    courante.question + ' → ' + courante.reponseTexte));
+function terminer(res, st){
+  st.className = 'step ' + (res.ok ? 'done' : 'error');
+  instantFin = (new Date()).getTime();
+  if (!res.ok) contenu(st).appendChild(elem('div', 'reveal',
+    courante.enonce + ' → ' + courante.reponseTexte));
 
   /* La figure se complète : le « ? » est remplacé par la valeur trouvée. */
+  var f = courante.fig;
   var vue = {
-    pts:courante.pts, noms:courante.noms, ref:courante.ref, droit:courante.droit,
-    angleTexte:(courante.fam === 'angle') ? courante.reponseTexte : courante.angleTexte,
-    cotes:courante.cotes.map(function(c){
+    pts:f.pts, noms:f.noms, ref:f.ref, droit:f.droit,
+    angleTexte:(courante.fam === 'angle') ? courante.reponseTexte : f.angleTexte,
+    cotes:f.cotes.map(function(c){
       return { de:c.de, a:c.a, rel:c.rel,
                texte:(c.texte === '?' ? courante.reponseTexte : c.texte) };
     })
   };
   document.getElementById('defi-svg').innerHTML = dessin(vue, 320, 250, {});
 
+  /* res.texte est composé par le moteur : « Correct ! » ou « Pas tout à
+     fait. », suivi du detail du générateur. */
   var fb = document.getElementById('defi-feedback');
-  fb.className = 'feedback-box ' + (ok ? 'correct' : 'wrong') + ' show';
-  fb.innerHTML = (ok ? '<strong>Correct !</strong> ' : '<strong>Pas tout à fait.</strong> ') + courante.detail;
+  fb.className = 'feedback-box ' + (res.ok ? 'correct' : 'wrong');
+  fb.innerHTML = res.texte;
   document.getElementById('btn-next').style.display = 'block';
   majScore();
 }
 
 function majScore(){
-  document.getElementById('defi-score').textContent = bons + ' / ' + total + ' correct' + (total > 1 ? 's' : '');
-  document.getElementById('defi-progress').style.width = (total > 0 ? (bons/total*100) : 0) + '%';
+  document.getElementById('defi-score').textContent =
+    defi.bons + ' / ' + defi.total + ' correct' + (defi.total > 1 ? 's' : '');
+  document.getElementById('defi-progress').style.width =
+    (defi.total > 0 ? (defi.bons / defi.total * 100) : 0) + '%';
 }
 
 document.addEventListener('keydown', function(e){
   if (LP.ficheModal.isOpen()) return;
   if (currentMode === 'explo') return;
-  if (e.key !== 'Enter' || !fini) return;
+  if (e.key !== 'Enter' || !defi.verrou) return;
   if (e.target && e.target.tagName === 'INPUT') return;
   /* on laisse le temps de lire la correction avant d'enchaîner */
-  if (Date.now() - instantFin < 1200) return;
+  if ((new Date()).getTime() - instantFin < 1200) return;
   nextDefi();
 });
 
 /* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════ */
+/* Les questions de la fiche sortent du moteur : même générateur, même
+   objet, même figure au format papier. */
 LP.ficheModal.init({
   familles: [
     { value:'cote', label:"Calculer un côté" },
     { value:'angle', label:"Calculer un angle" }
   ],
-  onConfirm: function(plan, sel){ confirmFiche(plan, sel); }
+  onConfirm: function(plan, sel){
+    var isPlus = (currentMode === 'defiplus');
+    LP.fiche({
+      icon:'\u{1F4D0}',
+      title:(sel.length === 2) ? 'Trigonométrie' : 'Trigonométrie — ' + famNoms[sel[0]],
+      subtitle:'3e prépa-métiers · CAP · 2de Bac Pro',
+      modeLabel:isPlus ? 'Défi ⁺' : 'Mode défi',
+      isPlus:isPlus,
+      tolerance:'± 0,2 cm ou ± 1°',
+      accent:'#854F0B',
+      answerLabel:'Réponse :',
+      unit:'',
+      aide:sel.map(function(f){ return famAides[f]; }).join('<br>'),
+      questions:defi.questionsFiche(plan)
+    });
+  }
 });
-
-function confirmFiche(plan, sel){
-  var questions = [], num = 1;
-  plan.forEach(function(d){
-    for (var i = 0; i < d.n; i++) {
-      var ex = generateurs[d.fam]();
-      questions.push({
-        num:num++,
-        nom:famNoms[d.fam],
-        hint:famConsignes[d.fam],
-        svg:dessin(ex, 200, 160, { fs:11, offCote:11, offSom:12, tAngle:9, rArc:16 }),
-        cotes:ex.donnees + ' · ' + ex.question,
-        answerText:ex.reponseTexte
-      });
-    }
-  });
-
-  var isPlus = (currentMode === 'defiplus');
-  var aide = sel.map(function(f){ return famAides[f]; }).join('<br>');
-  var titre = (sel.length === 2) ? 'Trigonométrie' : 'Trigonométrie — ' + famNoms[sel[0]];
-
-  LP.fiche({
-    icon:'\u{1F4D0}',
-    title:titre,
-    subtitle:'3e prépa-métiers · CAP · 2de Bac Pro',
-    modeLabel:isPlus ? 'Défi ⁺' : 'Mode défi',
-    isPlus:isPlus,
-    tolerance:'± 0,2 cm ou ± 1°',
-    accent:'#854F0B',
-    answerLabel:'Réponse :',
-    unit:'',
-    aide:aide,
-    questions:questions
-  });
-}
 
 /* ═══ INITIALISATION ════════════════════════════════════════════════════ */
 calcRec();
