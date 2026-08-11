@@ -72,6 +72,15 @@ SOFTWARE.
   .defi-enonce .fr   { font-family: var(--font); font-size: var(--fs-md); font-weight: 500; }
   .defi-enonce .math { font-size: var(--fs-lg); }
 
+  /* Famille « Calculer » : l'expression est la donnée à lire, elle passe par
+     .defi-cotes et doit rester la chose la plus visible de la carte. */
+  .defi-cotes .math {
+    display: inline-block;
+    font-size: var(--fs-xl); font-weight: 700;
+    color: var(--accent);
+    padding: 4px 2px;
+  }
+
   .decomp .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 5px; }
   .decomp .lbl { font-size: var(--fs-xs); color: var(--text3); font-weight: 700; min-width: 150px; }
   .decomp .pos { color: var(--blue);  font-weight: 700; }
@@ -1084,6 +1093,9 @@ function adapter(fam){
     if (g.type === 'calc') {
       ex.type   = 'multi';
       ex.enonce = 'Calculer — remplace x par sa valeur';
+      /* L'expression elle-même part dans cotes : c'est la donnée que l'élève
+         doit lire, au même titre que les longueurs d'une figure chez Thalès. */
+      ex.cotes  = '<span class="math">'+g.expr+'</span>';
       var texteFiche = g.expr;
       ex.champs = [
         { label:'Pour x = '+fmtN(g.x1), reponse:g.a1, tol:0 },
