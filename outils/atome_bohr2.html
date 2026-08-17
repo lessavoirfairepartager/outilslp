@@ -2,8 +2,9 @@
 Atomes — modèle de Bohr
 Copyright (c) 2026 Moise Muller <lessavoirfairepartager@gmail.com>
 Harmonisation ES5 + LP.ficheModal + lien Casio du 17 août 2026 pour outilslp.netlify.app
-Boucle de défi encore locale (dom:false implicite) — migration vers assets/lp-defi.js
-prévue dans une séance suivante, une fois les indices du second essai rédigés.
+Boucle de défi migrée vers assets/lp-defi.js (dom: true) le 17 août 2026, séance 2.
+Indices du second essai : premier jet, à relire avec l'auteur (marqué en clair
+dans le fichier).
 
 MIT License
 
@@ -262,6 +263,8 @@ SOFTWARE.
   </div>
 
   <!-- ═══════════════ DÉFI + DÉFI ⁺ ═══════════════ -->
+  <!-- Balisage standard du moteur. Les onglets de familles et la zone de
+       réponse sont construits par lp-defi.js : rien à écrire ici. -->
   <div id="mode-defi">
     <div class="defi-card">
       <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI + — Règles masquées</div>
@@ -270,18 +273,25 @@ SOFTWARE.
         <div class="defi-score" id="defi-score">0 / 0 correct</div>
       </div>
       <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
-      <div class="defi-shape-display">
+
+      <div id="defi-familles" style="margin-bottom:1.25rem"></div>
+
+      <div class="defi-aide" id="defi-aide"></div>
+
+      <div class="defi-shape-display" id="defi-figure">
         <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:230px;width:100%;"></svg>
+        <div class="defi-enonce" id="defi-enonce"></div>
         <div class="defi-cotes" id="defi-cotes"></div>
       </div>
-      <div class="defi-input-row">
-        <label for="defi-input">Réponse =</label>
-        <input type="text" inputmode="decimal" autocomplete="off" id="defi-input" placeholder="?">
-      </div>
-      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;">Un nombre entier est attendu.</div>
-      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+
+      <div id="defi-reponse"></div>
+
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol"></div>
+
+      <button class="btn-check" id="btn-check">Vérifier ma réponse</button>
       <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
-      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Atome suivant →</button>
+      <button class="btn-next" id="btn-next" style="display:none">Atome suivant →</button>
+
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
         <button class="btn-fiche" onclick="LP.ficheModal.open()">📄 Générer une fiche d'exercices</button>
       </div>
@@ -292,6 +302,7 @@ SOFTWARE.
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
 <script>
 // ─── DONNÉES : 20 premiers éléments ──────────────────────────────────────────
 // a = nombre de masse de l'isotope le plus abondant · cfg = électrons par couche
@@ -351,9 +362,6 @@ function sumText(e){
 function plur(n){ return n > 1 ? 's' : ''; }
 function rnd(n){ return Math.floor(Math.random() * n); }
 function pick(list){ return list[rnd(list.length)]; }
-function shuffle(a){
-  for(var i=a.length-1;i>0;i--){ var j=rnd(i+1); var t=a[i]; a[i]=a[j]; a[j]=t; }
-}
 
 // ─── CROQUIS SVG (viewBox 0 0 200 160, fond clair) ───────────────────────────
 // Mêmes dessins à l'écran et sur la fiche imprimée : un seul jeu de fonctions.
@@ -705,23 +713,17 @@ function setMode(m, btn){
   btn.classList.add('active');
   document.getElementById('mode-explo').style.display = m === 'explo' ? 'block' : 'none';
 
-  var defi = document.getElementById('mode-defi');
   var isDefi = (m === 'defi' || m === 'defiplus');
-  defi.style.display = isDefi ? 'block' : 'none';
+  /* montrerBloc pose le display ET la classe active d'un seul geste : c'est
+     le piège #mode-defi de lp-ui.css, désormais impossible à rater. */
+  LP.defi.montrerBloc('#mode-defi', isDefi);
+
   if(isDefi){
-    defi.classList.add('active');
-    var badge = document.getElementById('defi-plus-badge');
-    if(m === 'defiplus'){
-      document.getElementById('defi-mode-title').textContent = 'Défi ⁺ — Atome mystère';
-      badge.classList.add('visible');
-    } else {
-      document.getElementById('defi-mode-title').textContent = 'Mode défi — Atome mystère';
-      badge.classList.remove('visible');
-    }
-    correct = 0; total = 0; defiIndex = 0;
-    shuffle(order);
-    updateScore();
-    nextDefi();
+    document.getElementById('defi-mode-title').textContent =
+      (m === 'defiplus') ? 'Défi ⁺ — Atome mystère' : 'Mode défi — Atome mystère';
+    /* Le badge « règles masquées » est posé par le moteur, qui interroge
+       modePlus() à chaque question. */
+    defi.ui.suivante();
   } else {
     resizeThree();
   }
@@ -864,101 +866,96 @@ var defiDefs = [
   }
 ];
 
-// ─── LOGIQUE DÉFI ────────────────────────────────────────────────────────────
-var defiIndex = 0, correct = 0, total = 0, answered = false;
-var curAnswer = 0, curHint = '', curSol = '';
-var order = defiDefs.map(function(_, i){ return i; });
-shuffle(order);
+// ─── MODE DÉFI ═══════════════════════════════════════════════════════════════
+// Toute la boucle est dans lp-defi.js. Ce qui reste ici est du contenu :
+// les générateurs (inchangés ci-dessus), les libellés, les indices.
 
-function nextDefi(){
-  if(defiIndex >= order.length){ defiIndex = 0; shuffle(order); }
-  var def = defiDefs[order[defiIndex]];
-  var g = def.generate();
-  curAnswer = g.answer;
-  curHint = def.hint;
-  curSol = g.sol;
+// ⚠ INDICES DU SECOND ESSAI — PREMIER JET, À RELIRE
+// Ce sont les seules phrases nouvelles de la migration. Elles sont données
+// après un premier essai raté, dans les deux modes, avant la correction.
+// Un indice doit désigner l'erreur probable sans donner la réponse.
+// Si tu en supprimes un, le moteur reste correct : il annonce simplement
+// qu'il reste un essai.
+var famIndices = {
+  neutrons: 'Tu cherches une SOUSTRACTION : N = A \u2212 Z, pas une addition. ' +
+    'A est le nombre total de nucl\u00e9ons (en haut de la carte), Z le nombre de ' +
+    'protons (en bas).',
+  bohr: 'Compte les \u00e9lectrons de TOUTES les couches, pas seulement de la ' +
+    'derni\u00e8re. Additionne les points de chaque cercle un par un.',
+  externe: 'La couche externe est la DERNI\u00c8RE couche occup\u00e9e, la plus ' +
+    '\u00e9loign\u00e9e du noyau \u2014 ce n\u2019est pas le total des \u00e9lectrons de l\u2019atome.',
+  nucleons: 'Tu cherches une ADDITION : A = Z + N. Additionne le nombre de ' +
+    'protons et le nombre de neutrons donn\u00e9s dans l\u2019\u00e9nonc\u00e9.',
+  couches: 'Compte le nombre de cercles qui contiennent au moins un \u00e9lectron, ' +
+    'pas le nombre total d\u2019\u00e9lectrons de l\u2019atome.',
+  octet: 'La capacit\u00e9 maximale est 2 \u00e9lectrons pour la couche K (duet), 8 ' +
+    'pour les autres (octet). Calcule capacit\u00e9 \u2212 \u00e9lectrons d\u00e9j\u00e0 pr\u00e9sents, ' +
+    'pas l\u2019inverse.',
+  retrouverZ: 'Additionne les nombres d\u2019\u00e9lectrons de chaque couche : ' +
+    'Z est la somme de TOUTES les couches, pas seulement de la derni\u00e8re.',
+  colonne: '1 ou 2 \u00e9lectrons externes \u2192 colonnes 1 ou 2. \u00c0 partir de 3 ' +
+    '\u00e9lectrons externes, le num\u00e9ro de colonne n\u2019est PAS le nombre ' +
+    'd\u2019\u00e9lectrons : ajoute 10 (3 e\u207b \u2192 colonne 13, 4 e\u207b \u2192 colonne 14\u2026).'
+};
 
-  document.getElementById('defi-svg').innerHTML = g.svg;
+// Code de comp\u00e9tence par famille : lecture directe sur le sch\u00e9ma (C1,
+// s'approprier) ou application d'une formule / d'une r\u00e8gle (C3, r\u00e9aliser).
+var famComp = {
+  neutrons:'C3', bohr:'C1', externe:'C1', nucleons:'C3',
+  couches:'C1', octet:'C3', retrouverZ:'C3', colonne:'C3'
+};
 
-  var html = '<strong>' + g.q + '</strong><br>' + g.data;
-  if(currentMode !== 'defiplus'){
-    html += '<br><span class="lp-hint">Règle : ' + def.hint + '</span>';
-  }
-  document.getElementById('defi-cotes').innerHTML = html;
+var famCouleurs = {
+  neutrons:'blue', bohr:'teal', externe:'amber', nucleons:'coral',
+  couches:'pink', octet:'green', retrouverZ:'red', colonne:'amber2'
+};
 
-  var inp = document.getElementById('defi-input');
-  inp.value = '';
-  var fb = document.getElementById('defi-feedback');
-  fb.className = 'feedback-box';
-  fb.textContent = '';
-  document.getElementById('btn-next').style.display = 'none';
-  inp.focus();
-  answered = false;
-  defiIndex++;
-  updateScore();
-}
-
-function checkDefi(){
-  if(answered) return;
-  var raw = document.getElementById('defi-input').value;
-  var val = parseFloat(raw.replace(',', '.'));
-  if(raw === '' || isNaN(val)){ alert('Entre un nombre entier.'); return; }
-  var ok = Math.abs(val - curAnswer) < 1e-9;
-  answered = true;
-  total++;
-  if(ok) correct++;
-  var fb = document.getElementById('defi-feedback');
-  fb.className = 'feedback-box ' + (ok ? 'correct' : 'wrong') + ' show';
-  if(ok){
-    fb.innerHTML = '<strong>Correct !</strong> ' + curSol + '.';
-  } else {
-    fb.innerHTML = '<strong>Pas tout à fait.</strong> La bonne réponse est <strong>' +
-                   curAnswer + '</strong>.<br>' + curSol + '.<br>Rappel : ' + curHint;
-  }
-  document.getElementById('btn-next').style.display = 'block';
-  updateScore();
-}
-
-function updateScore(){
-  document.getElementById('defi-score').textContent =
-    correct + ' / ' + total + ' correct' + (total > 1 ? 's' : '');
-  document.getElementById('defi-progress').style.width =
-    (total > 0 ? (correct / total * 100) : 0) + '%';
-}
-
-document.addEventListener('keydown', function(e){
-  if(currentMode === 'explo') return;
-  if(e.key !== 'Enter') return;
-  if(!answered) checkDefi();
-  else if(document.getElementById('btn-next').style.display !== 'none') nextDefi();
-});
-
-// ─── FICHE IMPRIMABLE ────────────────────────────────────────────────────────
-// La modale LP.ficheModal remplace l'ancien tirage à plat sur les 8 familles :
-// l'utilisateur choisit les familles à inclure, la répartition entre elles
-// est calculée par LP.ficheModal elle-même (voir lp-fiche.js).
 var defiDefsParValeur = {};
 defiDefs.forEach(function(def){ defiDefsParValeur[def.value] = def; });
 
-function questionsFiche(plan){
-  var out = [], j, k, def, g;
-  for(j = 0; j < plan.length; j++){
-    def = defiDefsParValeur[plan[j].fam];
-    for(k = 0; k < plan[j].n; k++){
-      g = def.generate();
-      out.push({
-        num: out.length + 1,
-        nom: def.nom,
-        hint: 'R\u00e8gle : ' + def.hint,
-        svg: g.svg,
-        cotes: g.q + ' \u00b7 ' + g.data,
-        answerText: String(g.answer)
-      });
-    }
-  }
-  return out;
+// Adapte un g\u00e9n\u00e9rateur existant \u00e0 l'objet question normalis\u00e9.
+// Les g\u00e9n\u00e9rateurs eux-m\u00eames n'ont pas boug\u00e9 d'une ligne.
+function adapter(fam){
+  var def = defiDefsParValeur[fam];
+  return function(){
+    var g = def.generate();
+    return {
+      svg:     g.svg,
+      enonce:  g.q,
+      cotes:   g.data,
+      reponse: g.answer,
+      detail:  g.sol,
+      rappel:  def.hint,          // la propri\u00e9t\u00e9, avant de r\u00e9pondre
+      hint:    famIndices[fam],   // l'indice, apr\u00e8s un essai rat\u00e9
+      type:    'nombre',
+      label:   'R\u00e9ponse =',
+      tol:     0                  // r\u00e9ponse enti\u00e8re : on compte, on ne mesure pas
+    };
+  };
 }
 
+var defi = LP.defi.creer({
+  outil:    'atome',
+  serie:    0,                        // flux continu ; mettre 10 pour une s\u00e9rie
+  essaisMax: 2,
+  melange:  { label:'M\u00e9lange', couleur:'purple' },
+  modePlus: function(){ return currentMode === 'defiplus'; },
+  familles: defiDefs.map(function(def){
+    return {
+      value:   def.value,
+      label:   def.nom,
+      couleur: famCouleurs[def.value],
+      gen:     adapter(def.value),
+      nom:     def.nom,
+      comp:    famComp[def.value]
+    };
+  })
+});
+
+// \u2500\u2500\u2500 FICHE IMPRIMABLE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// La modale LP.ficheModal remplace l'ancien tirage \u00e0 plat sur les 8 familles :
+// l'utilisateur choisit les familles \u00e0 inclure, la r\u00e9partition entre elles
+// est calcul\u00e9e par LP.ficheModal elle-m\u00eame (voir lp-fiche.js).
 LP.ficheModal.init({
   familles: defiDefs.map(function(def){ return { value: def.value, label: def.nom }; }),
   onConfirm: function(plan){
@@ -976,7 +973,7 @@ LP.ficheModal.init({
           + '&nbsp;|&nbsp; remplissage K (2 max) puis L (8 max) puis M (8 max) &nbsp;|&nbsp; '
           + 'couche externe satur\u00e9e : 2 e\u207b (duet) ou 8 e\u207b (octet) &nbsp;|&nbsp; '
           + 'colonnes 1 \u00e0 2 et 13 \u00e0 18',
-      questions: questionsFiche(plan)
+      questions: defi.questionsFiche(plan)      // m\u00eame objet que le d\u00e9fi
     });
   }
 });
@@ -989,6 +986,7 @@ if(THREE_OK){
   document.getElementById('no3d').hidden = false;
 }
 showAtom(8);   // oxygène : 2 couches, 8 nucléons, cas d'école
+defi.demarrer();
 </script>
 
 <footer class="lp-footer">
