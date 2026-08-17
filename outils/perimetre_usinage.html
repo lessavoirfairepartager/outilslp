@@ -1,3 +1,32 @@
+<!--
+Périmètre des pièces mécaniques — usinage / maintenance
+Copyright (c) 2026 Moise Muller <lessavoirfairepartager@gmail.com>
+Créé pour outilslp.netlify.app
+Harmonisation ES5 + LP.ficheModal + lien Casio du 17 août 2026 pour outilslp.netlify.app
+Boucle de défi migrée vers assets/lp-defi.js (dom: true) le 17 août 2026.
+Indices du second essai : premier jet, à relire avec l'auteur (marqué en clair
+dans le fichier).
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -321,7 +350,9 @@
     </div>
   </div>
 
-  <!-- MODE DÉFI (partagé défi + défi+) -->
+  <!-- ═══════════════ DÉFI + DÉFI ⁺ ═══════════════ -->
+  <!-- Balisage standard du moteur. Les onglets de familles et la zone de
+       réponse sont construits par lp-defi.js : rien à écrire ici. -->
   <div id="mode-defi">
     <div class="defi-card">
       <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI + — Formules masquées</div>
@@ -330,105 +361,116 @@
         <div class="defi-score" id="defi-score">0 / 0 correct</div>
       </div>
       <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
-      <div class="defi-shape-display">
-        <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:180px;width:100%;"></svg>
+
+      <div id="defi-familles" style="margin-bottom:1.25rem"></div>
+
+      <div class="defi-aide" id="defi-aide"></div>
+
+      <div class="defi-shape-display" id="defi-figure">
+        <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:230px;width:100%;"></svg>
+        <div class="defi-enonce" id="defi-enonce"></div>
         <div class="defi-cotes" id="defi-cotes"></div>
       </div>
-      <div class="defi-input-row">
-        <label for="defi-input">Périmètre =</label>
-        <input type="number" id="defi-input" placeholder="?" min="0" step="0.1">
-        <span class="unit">mm</span>
-      </div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:0.75rem;">Tolérance acceptée : ± 1 mm</div>
-      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+
+      <div id="defi-reponse"></div>
+
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol"></div>
+
+      <button class="btn-check" id="btn-check">Vérifier ma réponse</button>
       <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
-      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Pièce suivante →</button>
+      <button class="btn-next" id="btn-next" style="display:none">Pièce suivante →</button>
+
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
-        <button class="btn-fiche" onclick="generateFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+        <button class="btn-fiche" onclick="LP.ficheModal.open()">📄 Générer une fiche d'exercices</button>
       </div>
     </div>
   </div>
 
 </div>
 
+<!-- La modale de choix des familles est construite par LP.ficheModal -->
+
 <script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
 <script>
 // ─── UTILITAIRES ─────────────────────────────────────────────────────────────
 function v(id){ return parseFloat(document.getElementById(id).value)||0; }
 function fmt(n){ return n.toFixed(1).replace('.',','); }
 // Valeur aléatoire : rndV(min,max,0)=entier, rndV(min,max,1)=1 décimale
-function rndV(min,max,dec=1){
-  const f=Math.pow(10,dec);
+function rndV(min,max,dec){
+  dec = (dec === undefined) ? 1 : dec;
+  var f = Math.pow(10,dec);
   return Math.round((min+Math.random()*(max-min))*f)/f;
 }
 
 // ─── CALCULATEURS ────────────────────────────────────────────────────────────
 function calcRect(){
-  const L=v('rect-L'),l=v('rect-l'),P=2*(L+l);
-  document.getElementById('rect-detail').textContent=`P = 2 × (${L} + ${l}) = 2 × ${L+l}`;
+  var L=v('rect-L'), l=v('rect-l'), P=2*(L+l);
+  document.getElementById('rect-detail').textContent='P = 2 × (' + L + ' + ' + l + ') = 2 × ' + (L+l);
   document.getElementById('rect-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
 }
 function calcCercleD(){
-  const d=v('cercle-d');
+  var d=v('cercle-d');
   document.getElementById('cercle-r').value=(d/2).toFixed(1);
-  const P=Math.PI*d;
-  document.getElementById('cercle-detail').textContent=`P = π × ${d} ≈ 3,1416 × ${d}`;
+  var P=Math.PI*d;
+  document.getElementById('cercle-detail').textContent='P = π × ' + d + ' ≈ 3,1416 × ' + d;
   document.getElementById('cercle-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
 }
 function calcCercleR(){
-  const r=v('cercle-r');
+  var r=v('cercle-r');
   document.getElementById('cercle-d').value=(r*2).toFixed(1);
-  const P=2*Math.PI*r;
-  document.getElementById('cercle-detail').textContent=`P = 2 × π × ${r}`;
+  var P=2*Math.PI*r;
+  document.getElementById('cercle-detail').textContent='P = 2 × π × ' + r;
   document.getElementById('cercle-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
 }
 function calcCompose(){
-  const L=v('comp-L'),r=v('comp-r'),arc=2*Math.PI*r,P=2*L+arc;
-  document.getElementById('comp-detail').textContent=`2×${L} + 2×π×${r} = ${(2*L).toFixed(0)} + ${arc.toFixed(1)}`;
+  var L=v('comp-L'), r=v('comp-r'), arc=2*Math.PI*r, P=2*L+arc;
+  document.getElementById('comp-detail').textContent='2×' + L + ' + 2×π×' + r + ' = ' + (2*L).toFixed(0) + ' + ' + arc.toFixed(1);
   document.getElementById('comp-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
 }
 function calcL(){
-  const a=v('l-a'),b=v('l-b'),c=v('l-c'),d=v('l-d'),e=v('l-e'),f=v('l-f'),P=a+b+c+d+e+f;
-  document.getElementById('l-detail').textContent=`${a}+${b}+${c}+${d}+${e}+${f}`;
+  var a=v('l-a'), b=v('l-b'), c=v('l-c'), d=v('l-d'), e=v('l-e'), f=v('l-f'), P=a+b+c+d+e+f;
+  document.getElementById('l-detail').textContent=a+'+'+b+'+'+c+'+'+d+'+'+e+'+'+f;
   document.getElementById('l-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
 }
 function calcTri(){
-  const a=v('tri-a'),b=v('tri-b'),c=v('tri-c'),P=a+b+c;
-  document.getElementById('tri-detail').textContent=`P = ${a} + ${b} + ${c}`;
+  var a=v('tri-a'), b=v('tri-b'), c=v('tri-c'), P=a+b+c;
+  document.getElementById('tri-detail').textContent='P = ' + a + ' + ' + b + ' + ' + c;
   document.getElementById('tri-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
 }
 function calcTrap(){
-  const B=v('trap-B'),b=v('trap-b'),c=v('trap-c'),d=v('trap-d'),P=B+b+c+d;
-  document.getElementById('trap-detail').textContent=`P = ${B} + ${b} + ${c} + ${d}`;
+  var B=v('trap-B'), b=v('trap-b'), c=v('trap-c'), d=v('trap-d'), P=B+b+c+d;
+  document.getElementById('trap-detail').textContent='P = ' + B + ' + ' + b + ' + ' + c + ' + ' + d;
   document.getElementById('trap-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
 }
 function calcDc(){
-  const r=v('dc-r');
+  var r=v('dc-r');
   document.getElementById('dc-d').value=(r*2).toFixed(1);
-  const arc=Math.PI*r,P=arc+2*r;
-  document.getElementById('dc-detail').textContent=`π×${r} + 2×${r} = ${arc.toFixed(1)} + ${(2*r).toFixed(0)}`;
+  var arc=Math.PI*r, P=arc+2*r;
+  document.getElementById('dc-detail').textContent='π×' + r + ' + 2×' + r + ' = ' + arc.toFixed(1) + ' + ' + (2*r).toFixed(0);
   document.getElementById('dc-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
 }
 function calcDcD(){
-  const d=v('dc-d'),r=d/2;
+  var d=v('dc-d'), r=d/2;
   document.getElementById('dc-r').value=r.toFixed(1);
-  const P=Math.PI*r+2*r;
-  document.getElementById('dc-detail').textContent=`π×${r} + 2×${r} = ${(Math.PI*r).toFixed(1)} + ${(2*r).toFixed(0)}`;
+  var P=Math.PI*r+2*r;
+  document.getElementById('dc-detail').textContent='π×' + r + ' + 2×' + r + ' = ' + (Math.PI*r).toFixed(1) + ' + ' + (2*r).toFixed(0);
   document.getElementById('dc-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
 }
 function calcHex(){
-  const c=v('hex-c'),P=6*c,plats=(c*Math.sqrt(3));
-  document.getElementById('hex-detail').textContent=`P = 6 × ${c} = ${P}`;
+  var c=v('hex-c'), P=6*c, plats=(c*Math.sqrt(3));
+  document.getElementById('hex-detail').textContent='P = 6 × ' + c + ' = ' + P;
   document.getElementById('hex-result').innerHTML=fmt(P)+'<span class="result-unit">mm</span>';
-  document.getElementById('hex-sub').textContent=`Cote sur plats ≈ ${plats.toFixed(1)} mm (c × √3)`;
+  document.getElementById('hex-sub').textContent='Cote sur plats ≈ ' + plats.toFixed(1) + ' mm (c × √3)';
 }
 
 // ─── RANDOMISATION CALCULATEUR ───────────────────────────────────────────────
-let currentShape = 'rect';
+var currentShape = 'rect';
 
 function randomizeCurrent(){ randomizeShape(currentShape); }
 
 function randomizeShape(id){
+  var B, bb;
   switch(id){
     case 'rect':
       document.getElementById('rect-L').value = rndV(60,220);
@@ -454,14 +496,14 @@ function randomizeShape(id){
       document.getElementById('tri-b').value = rndV(45,160);
       document.getElementById('tri-c').value = rndV(55,180);
       calcTri(); break;
-    case 'trapeze':{
-      const B = rndV(100,220);
-      const b = rndV(35, Math.min(B-20, 140));
+    case 'trapeze':
+      B = rndV(100,220);
+      bb = rndV(35, Math.min(B-20, 140));
       document.getElementById('trap-B').value = B;
-      document.getElementById('trap-b').value = b;
+      document.getElementById('trap-b').value = bb;
       document.getElementById('trap-c').value = rndV(35,95);
       document.getElementById('trap-d').value = rndV(35,95);
-      calcTrap(); break;}
+      calcTrap(); break;
     case 'demicercle':
       document.getElementById('dc-r').value = rndV(18,90);
       calcDc(); break;
@@ -473,262 +515,315 @@ function randomizeShape(id){
 
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
 function setShape(id,btn){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.shape-tab').forEach(t=>t.classList.remove('active'));
+  var panels = document.querySelectorAll('.panel'), i;
+  for (i = 0; i < panels.length; i++) panels[i].classList.remove('active');
+  var tabs = document.querySelectorAll('.shape-tab');
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
   document.getElementById('panel-'+id).classList.add('active');
   btn.classList.add('active');
   currentShape = id;
   randomizeShape(id);
 }
 
-let currentMode = 'calc';
+var currentMode = 'calc';
 function setMode(m,btn){
   currentMode = m;
-  document.querySelectorAll('.mode-tab').forEach(t=>t.classList.remove('active'));
-  (btn || event.target).classList.add('active');
-  document.getElementById('mode-calc').style.display = m==='calc'?'block':'none';
-  const defi = document.getElementById('mode-defi');
-  const isDefi = m==='defi' || m==='defiplus';
-  defi.style.display = isDefi?'block':'none';
-  if(isDefi){
-    defi.classList.add('active');
-    const badge = document.getElementById('defi-plus-badge');
-    if(m==='defiplus'){
-      document.getElementById('defi-mode-title').textContent='Défi + — Pièce mystère';
-      badge.classList.add('visible');
-    } else {
-      document.getElementById('defi-mode-title').textContent='Mode défi — Pièce mystère';
-      badge.classList.remove('visible');
-    }
-    correct=0; total=0; defiIndex=0;
-    shuffle(order);
-    updateScore();
-    nextDefi();
-  }
+  var tabs = document.querySelectorAll('.mode-tab'), i;
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+  document.getElementById('mode-calc').style.display = (m==='calc') ? 'block' : 'none';
+
+  var isDefi = (m==='defi' || m==='defiplus');
+  /* montrerBloc pose le display ET la classe active d'un seul geste : c'est
+     le piège #mode-defi de lp-ui.css, désormais impossible à rater. */
+  LP.defi.montrerBloc('#mode-defi', isDefi);
+
+  document.getElementById('defi-mode-title').textContent =
+    (m==='defiplus') ? 'Défi + — Pièce mystère' : 'Mode défi — Pièce mystère';
+
+  /* Le badge « formules masquées » est posé par le moteur, qui interroge
+     modePlus() à chaque question. */
+  if (isDefi) defi.ui.suivante();
 }
 
 // ─── DÉFINITIONS DES DÉFIS (avec générateurs aléatoires) ─────────────────────
-const defiDefs = [
+// Les générateurs eux-mêmes n'ont pas bougé : mêmes plages de tirage, mêmes
+// figures. Seul « detail » est nouveau (le pas à pas de la correction).
+var defiDefs = [
   {
+    value:'rect',
     nom:'Plaque rectangulaire',
     hint:'P = 2 × (L + l)',
-    generate(){
-      const L=rndV(80,200,0), l=rndV(40,Math.min(L-10,130),0);
+    generate:function(){
+      var L=rndV(80,200,0), l=rndV(40,Math.min(L-10,130),0), P=2*(L+l);
       return {
-        svg:`<rect x="10" y="30" width="162" height="95" fill="#E6F1FB" stroke="#378ADD" stroke-width="2.5" rx="1"/>
-             <text x="91" y="22" text-anchor="middle" font-size="12" fill="#378ADD" font-weight="700">L = ${L} mm</text>
-             <line x1="180" y1="30" x2="180" y2="125" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>
-             <text x="198" y="80" text-anchor="end" font-size="11" fill="#378ADD" font-weight="700">l = ${l} mm</text>`,
-        cotes:`L = ${L} mm · l = ${l} mm`,
-        answer:2*(L+l)
+        svg:'<rect x="10" y="30" width="162" height="95" fill="#E6F1FB" stroke="#378ADD" stroke-width="2.5" rx="1"/>'
+          + '<text x="91" y="22" text-anchor="middle" font-size="12" fill="#378ADD" font-weight="700">L = ' + L + ' mm</text>'
+          + '<line x1="180" y1="30" x2="180" y2="125" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>'
+          + '<text x="198" y="80" text-anchor="end" font-size="11" fill="#378ADD" font-weight="700">l = ' + l + ' mm</text>',
+        cotes:'L = ' + L + ' mm · l = ' + l + ' mm',
+        answer:P,
+        detail:'P = 2 × (' + L + ' + ' + l + ') = 2 × ' + (L+l) + ' = ' + P + ' mm'
       };
     }
   },
   {
+    value:'cercle',
     nom:'Bride circulaire',
     hint:'P = π × d',
-    generate(){
-      const d=rndV(30,160,0);
+    generate:function(){
+      var d=rndV(30,160,0), P=Math.PI*d;
       return {
-        svg:`<circle cx="100" cy="83" r="58" fill="#E1F5EE" stroke="#1D9E75" stroke-width="2.5"/>
-             <line x1="100" y1="83" x2="158" y2="83" stroke="#555" stroke-width="1" stroke-dasharray="4,3"/>
-             <text x="131" y="76" text-anchor="middle" font-size="11" fill="#1D9E75" font-weight="700">r = ${d/2}</text>
-             <text x="100" y="156" text-anchor="middle" font-size="12" fill="#0F6E56" font-weight="700">Ø ${d} mm</text>`,
-        cotes:`Diamètre d = ${d} mm`,
-        answer:Math.PI*d
+        svg:'<circle cx="100" cy="83" r="58" fill="#E1F5EE" stroke="#1D9E75" stroke-width="2.5"/>'
+          + '<line x1="100" y1="83" x2="158" y2="83" stroke="#555" stroke-width="1" stroke-dasharray="4,3"/>'
+          + '<text x="131" y="76" text-anchor="middle" font-size="11" fill="#1D9E75" font-weight="700">r = ' + (d/2) + '</text>'
+          + '<text x="100" y="156" text-anchor="middle" font-size="12" fill="#0F6E56" font-weight="700">Ø ' + d + ' mm</text>',
+        cotes:'Diamètre d = ' + d + ' mm',
+        answer:P,
+        detail:'P = π × d = π × ' + d + ' ≈ ' + fmt(P) + ' mm'
       };
     }
   },
   {
+    value:'compose',
     nom:'Joint oblong',
     hint:'P = 2×L + 2×π×r',
-    generate(){
-      const L=rndV(50,160,0), r=rndV(15,55,0);
+    generate:function(){
+      var L=rndV(50,160,0), r=rndV(15,55,0), P=2*L+2*Math.PI*r;
       return {
-        svg:`<path d="M45,38 L155,38 A50,50 0 0,1 155,128 L45,128 A50,50 0 0,1 45,38 Z" fill="#FAEEDA" stroke="#BA7517" stroke-width="2.5"/>
-             <line x1="45" y1="27" x2="155" y2="27" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>
-             <text x="100" y="20" text-anchor="middle" font-size="11" fill="#854F0B" font-weight="700">L = ${L} mm</text>
-             <line x1="155" y1="83" x2="190" y2="83" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>
-             <text x="194" y="87" text-anchor="end" font-size="11" fill="#854F0B" font-weight="700">r = ${r} mm</text>`,
-        cotes:`L = ${L} mm (entre axes) · r = ${r} mm`,
-        answer:2*L+2*Math.PI*r
+        svg:'<path d="M45,38 L155,38 A50,50 0 0,1 155,128 L45,128 A50,50 0 0,1 45,38 Z" fill="#FAEEDA" stroke="#BA7517" stroke-width="2.5"/>'
+          + '<line x1="45" y1="27" x2="155" y2="27" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>'
+          + '<text x="100" y="20" text-anchor="middle" font-size="11" fill="#854F0B" font-weight="700">L = ' + L + ' mm</text>'
+          + '<line x1="155" y1="83" x2="190" y2="83" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>'
+          + '<text x="194" y="87" text-anchor="end" font-size="11" fill="#854F0B" font-weight="700">r = ' + r + ' mm</text>',
+        cotes:'L = ' + L + ' mm (entre axes) · r = ' + r + ' mm',
+        answer:P,
+        detail:'P = 2×L + 2×π×r = 2×' + L + ' + 2×π×' + r + ' = ' + (2*L) + ' + ' + fmt(2*Math.PI*r) + ' = ' + fmt(P) + ' mm'
       };
     }
   },
   {
+    value:'triangle',
     nom:'Triangle isocèle',
     hint:'P = a + b + c',
-    generate(){
-      const a=rndV(60,140,0), c=rndV(50,160,0);
+    generate:function(){
+      var a=rndV(60,140,0), c=rndV(50,160,0), P=a+a+c;
       return {
-        svg:`<polygon points="100,15 185,148 15,148" fill="#EEEDFE" stroke="#7F77DD" stroke-width="2.5"/>
-             <text x="46" y="90" text-anchor="middle" font-size="12" fill="#534AB7" font-weight="700">a=${a}</text>
-             <text x="157" y="90" text-anchor="middle" font-size="12" fill="#534AB7" font-weight="700">b=${a}</text>
-             <text x="100" y="158" text-anchor="middle" font-size="12" fill="#534AB7" font-weight="700">c = ${c} mm</text>`,
-        cotes:`Côtés égaux a = b = ${a} mm · base c = ${c} mm`,
-        answer:a+a+c
+        svg:'<polygon points="100,15 185,148 15,148" fill="#EEEDFE" stroke="#7F77DD" stroke-width="2.5"/>'
+          + '<text x="46" y="90" text-anchor="middle" font-size="12" fill="#534AB7" font-weight="700">a=' + a + '</text>'
+          + '<text x="157" y="90" text-anchor="middle" font-size="12" fill="#534AB7" font-weight="700">b=' + a + '</text>'
+          + '<text x="100" y="158" text-anchor="middle" font-size="12" fill="#534AB7" font-weight="700">c = ' + c + ' mm</text>',
+        cotes:'Côtés égaux a = b = ' + a + ' mm · base c = ' + c + ' mm',
+        answer:P,
+        detail:'P = a + b + c = ' + a + ' + ' + a + ' + ' + c + ' = ' + P + ' mm'
       };
     }
   },
   {
+    value:'demicercle',
     nom:'Demi-cercle',
     hint:'P = π×r + 2×r = r×(π+2)',
-    generate(){
-      const r=rndV(25,85,0);
+    generate:function(){
+      var r=rndV(25,85,0), P=Math.PI*r+2*r;
       return {
-        svg:`<path d="M10,120 A90,90 0 0,1 190,120 Z" fill="#EAF3DE" stroke="#639922" stroke-width="2.5"/>
-             <line x1="10" y1="120" x2="190" y2="120" stroke="#555" stroke-width="1.5" stroke-dasharray="5,3"/>
-             <line x1="100" y1="120" x2="100" y2="30" stroke="#888" stroke-width="1" stroke-dasharray="4,3"/>
-             <text x="130" y="76" font-size="13" fill="#3B6D11" font-weight="700">r = ${r} mm</text>`,
-        cotes:`Rayon r = ${r} mm`,
-        answer:Math.PI*r+2*r
+        svg:'<path d="M10,120 A90,90 0 0,1 190,120 Z" fill="#EAF3DE" stroke="#639922" stroke-width="2.5"/>'
+          + '<line x1="10" y1="120" x2="190" y2="120" stroke="#555" stroke-width="1.5" stroke-dasharray="5,3"/>'
+          + '<line x1="100" y1="120" x2="100" y2="30" stroke="#888" stroke-width="1" stroke-dasharray="4,3"/>'
+          + '<text x="130" y="76" font-size="13" fill="#3B6D11" font-weight="700">r = ' + r + ' mm</text>',
+        cotes:'Rayon r = ' + r + ' mm',
+        answer:P,
+        detail:'P = π×r + 2×r = π×' + r + ' + 2×' + r + ' = ' + fmt(Math.PI*r) + ' + ' + (2*r) + ' = ' + fmt(P) + ' mm'
       };
     }
   },
   {
+    value:'hexagone',
     nom:'Écrou hexagonal',
     hint:'P = 6 × c',
-    generate(){
-      const c=rndV(12,38,0);
+    generate:function(){
+      var c=rndV(12,38,0), P=6*c;
       return {
-        svg:`<polygon points="100,14 166,51 166,124 100,161 34,124 34,51" fill="#FAEEDA" stroke="#BA7517" stroke-width="2.5"/>
-             <line x1="100" y1="14" x2="166" y2="51" stroke="#555" stroke-width="1" stroke-dasharray="4,3"/>
-             <text x="148" y="35" font-size="13" fill="#854F0B" font-weight="700">c=${c}</text>
-             <text x="100" y="100" text-anchor="middle" font-size="11" fill="#633806">6 côtés égaux</text>`,
-        cotes:`Côté c = ${c} mm (hexagone régulier)`,
-        answer:6*c
+        svg:'<polygon points="100,14 166,51 166,124 100,161 34,124 34,51" fill="#FAEEDA" stroke="#BA7517" stroke-width="2.5"/>'
+          + '<line x1="100" y1="14" x2="166" y2="51" stroke="#555" stroke-width="1" stroke-dasharray="4,3"/>'
+          + '<text x="148" y="35" font-size="13" fill="#854F0B" font-weight="700">c=' + c + '</text>'
+          + '<text x="100" y="100" text-anchor="middle" font-size="11" fill="#633806">6 côtés égaux</text>',
+        cotes:'Côté c = ' + c + ' mm (hexagone régulier)',
+        answer:P,
+        detail:'P = 6 × c = 6 × ' + c + ' = ' + P + ' mm'
       };
     }
   },
   {
+    value:'lshape',
     nom:'Plaque en L',
     hint:'P = a + b + c + d + e + f',
-    generate(){
-      const a=rndV(60,150,0),b=rndV(40,100,0),c=rndV(30,90,0);
-      const d=rndV(40,100,0),e=rndV(80,160,0),f=rndV(40,100,0);
+    generate:function(){
+      var a=rndV(60,150,0), b=rndV(40,100,0), c=rndV(30,90,0);
+      var d=rndV(40,100,0), e=rndV(80,160,0), f=rndV(40,100,0);
+      var P=a+b+c+d+e+f;
       return {
-        svg:`<polygon points="15,15 130,15 130,75 75,75 75,148 15,148" fill="#FAECE7" stroke="#D85A30" stroke-width="2.5"/>
-             <text x="73" y="10" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">a=${a}</text>
-             <text x="138" y="48" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">b=${b}</text>
-             <text x="103" y="70" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">c=${c}</text>
-             <text x="80" y="113" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">d=${d}</text>
-             <text x="10" y="85" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">e=${e}</text>
-             <text x="45" y="155" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">f=${f}</text>`,
-        cotes:`a=${a} · b=${b} · c=${c} · d=${d} · e=${e} · f=${f} (mm)`,
-        answer:a+b+c+d+e+f
+        svg:'<polygon points="15,15 130,15 130,75 75,75 75,148 15,148" fill="#FAECE7" stroke="#D85A30" stroke-width="2.5"/>'
+          + '<text x="73" y="10" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">a=' + a + '</text>'
+          + '<text x="138" y="48" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">b=' + b + '</text>'
+          + '<text x="103" y="70" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">c=' + c + '</text>'
+          + '<text x="80" y="113" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">d=' + d + '</text>'
+          + '<text x="10" y="85" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">e=' + e + '</text>'
+          + '<text x="45" y="155" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">f=' + f + '</text>',
+        cotes:'a=' + a + ' · b=' + b + ' · c=' + c + ' · d=' + d + ' · e=' + e + ' · f=' + f + ' (mm)',
+        answer:P,
+        detail:'P = a+b+c+d+e+f = ' + a+'+'+b+'+'+c+'+'+d+'+'+e+'+'+f + ' = ' + P + ' mm'
       };
     }
   },
   {
+    value:'trapeze',
     nom:'Trapèze isocèle',
     hint:'P = B + b + c + d',
-    generate(){
-      const B=rndV(110,200,0), b=rndV(50,Math.min(B-30,130),0), cd=rndV(35,75,0);
+    generate:function(){
+      var B=rndV(110,200,0), b=rndV(50,Math.min(B-30,130),0), cd=rndV(35,75,0);
+      var P=B+b+cd+cd;
       return {
-        svg:`<polygon points="30,25 170,25 195,140 5,140" fill="#FBEAF0" stroke="#D4537E" stroke-width="2.5"/>
-             <text x="100" y="17" text-anchor="middle" font-size="11" fill="#993556" font-weight="700">b = ${b} mm</text>
-             <text x="100" y="155" text-anchor="middle" font-size="11" fill="#993556" font-weight="700">B = ${B} mm</text>
-             <text x="14" y="88" text-anchor="start" font-size="11" fill="#993556" font-weight="700">c=${cd}</text>
-             <text x="186" y="88" text-anchor="end" font-size="11" fill="#993556" font-weight="700">d=${cd}</text>`,
-        cotes:`Grande base B = ${B} mm · Petite base b = ${b} mm · Côtés c = d = ${cd} mm`,
-        answer:B+b+cd+cd
+        svg:'<polygon points="30,25 170,25 195,140 5,140" fill="#FBEAF0" stroke="#D4537E" stroke-width="2.5"/>'
+          + '<text x="100" y="17" text-anchor="middle" font-size="11" fill="#993556" font-weight="700">b = ' + b + ' mm</text>'
+          + '<text x="100" y="155" text-anchor="middle" font-size="11" fill="#993556" font-weight="700">B = ' + B + ' mm</text>'
+          + '<text x="14" y="88" text-anchor="start" font-size="11" fill="#993556" font-weight="700">c=' + cd + '</text>'
+          + '<text x="186" y="88" text-anchor="end" font-size="11" fill="#993556" font-weight="700">d=' + cd + '</text>',
+        cotes:'Grande base B = ' + B + ' mm · Petite base b = ' + b + ' mm · Côtés c = d = ' + cd + ' mm',
+        answer:P,
+        detail:'P = B + b + c + d = ' + B + ' + ' + b + ' + ' + cd + ' + ' + cd + ' = ' + P + ' mm'
       };
     }
   }
 ];
 
-// ─── LOGIQUE DÉFI ─────────────────────────────────────────────────────────────
-let defiIndex=0, correct=0, total=0, answered=false;
-let currentDefiAnswer=0, currentDefiHint='';
-const order=[...Array(defiDefs.length).keys()];
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
-shuffle(order);
+// ─── MODE DÉFI ═══════════════════════════════════════════════════════════════
+// Toute la boucle est dans lp-defi.js. Ce qui reste ici est du contenu :
+// les générateurs (inchangés ci-dessus), les libellés, les indices.
 
-function nextDefi(){
-  if(defiIndex>=order.length){defiIndex=0;shuffle(order);}
-  const def=defiDefs[order[defiIndex]];
-  const gen=def.generate();
-  currentDefiAnswer=gen.answer;
-  currentDefiHint=def.hint;
+// ⚠ INDICES DU SECOND ESSAI — PREMIER JET, À RELIRE
+// Ce sont les seules phrases nouvelles de la migration. Elles sont données
+// après un premier essai raté, dans les deux modes, avant la correction.
+// Un indice doit désigner l'erreur probable sans donner la réponse.
+// Si tu en supprimes un, le moteur reste correct : il annonce simplement
+// qu'il reste un essai.
+var famIndices = {
+  rect: 'Le périmètre, c\u2019est le tour complet de la pièce : il faut compter DEUX '
+      + 'longueurs ET deux largeurs, pas une seule de chaque. Vérifie que tu as bien '
+      + 'calculé 2 × (L + l), pas L + l.',
+  cercle: 'Vérifie que tu utilises bien le DIAMètre d dans la formule P = π × d. Si tu '
+      + 'ne connais que le rayon r, la circonférence est 2 × π × r, ce qui revient au '
+      + 'même — ne divise pas par 2 en plus.',
+  compose: 'Les deux demi-cercles des extrémités forment ensemble un cercle COMPLET : '
+      + 'leur longueur totale vaut 2 × π × r, pas π × r. N\u2019oublie pas non plus les deux '
+      + 'parties droites 2 × L.',
+  triangle: 'Ce triangle est isocèle : le côté a est compté DEUX fois (les côtés égaux a '
+      + 'et b), plus la base c. Vérifie que tu additionnes bien a + a + c, pas seulement a + c.',
+  demicercle: 'Le périmètre d\u2019un demi-cercle comprend l\u2019arc ET le segment de base (le '
+      + 'diamètre) : P = π × r + 2 × r. N\u2019oublie pas d\u2019ajouter la base droite à l\u2019arc.',
+  hexagone: 'Le côté c donné est la longueur d\u2019UN SEUL côté : un hexagone régulier a 6 '
+      + 'côtés égaux, donc P = 6 × c. Ne confonds pas avec la cote sur plats (c × √3), qui '
+      + 'n\u2019est pas le périmètre.',
+  lshape: 'Il y a bien 6 côtés à additionner sur cette plaque en L, y compris le petit '
+      + 'côté rentrant de l\u2019angle intérieur. Recompte les 6 longueurs une par une sur '
+      + 'le croquis avant d\u2019additionner.',
+  trapeze: 'Ce trapèze est isocèle : les deux côtés obliques c et d ont la même longueur, '
+      + 'mais il faut quand même les additionner TOUS LES DEUX. Vérifie que tu as bien 4 '
+      + 'termes : B + b + c + d.'
+};
 
-  document.getElementById('defi-svg').innerHTML=gen.svg;
+// Code de compétence par famille : les 8 familles appliquent une formule à
+// partir de cotes données (C3, réaliser) ; aucune ne se limite à une lecture
+// directe sur un schéma.
+var famComp = {
+  rect:'C3', cercle:'C3', compose:'C3', triangle:'C3',
+  demicercle:'C3', hexagone:'C3', lshape:'C3', trapeze:'C3'
+};
 
-  let cotesHTML=gen.cotes;
-  if(currentMode!=='defiplus'){
-    cotesHTML+='<br><span style="font-size:11px;color:var(--text3)">Formule : '+def.hint+'</span>';
-  }
-  document.getElementById('defi-cotes').innerHTML=cotesHTML;
+var famCouleurs = {
+  rect:'blue', cercle:'teal', compose:'amber', triangle:'purple',
+  demicercle:'green', hexagone:'amber2', lshape:'coral', trapeze:'pink'
+};
 
-  document.getElementById('defi-input').value='';
-  document.getElementById('defi-feedback').className='feedback-box';
-  document.getElementById('defi-feedback').textContent='';
-  document.getElementById('btn-next').style.display='none';
-  document.getElementById('defi-input').focus();
-  answered=false;
-  defiIndex++;
-  updateScore();
+var defiDefsParValeur = {};
+defiDefs.forEach(function(def){ defiDefsParValeur[def.value] = def; });
+
+// Adapte un générateur existant à l'objet question normalisé.
+// Les générateurs eux-mêmes n'ont pas bougé d'une ligne.
+function adapter(fam){
+  var def = defiDefsParValeur[fam];
+  return function(){
+    var g = def.generate();
+    return {
+      svg:     g.svg,
+      enonce:  'Calcule le périmètre de cette pièce.',
+      cotes:   g.cotes,
+      reponse: g.answer,
+      detail:  g.detail,
+      rappel:  def.hint,          // la formule, avant de répondre
+      hint:    famIndices[fam],   // l'indice, après un essai raté
+      type:    'nombre',
+      label:   'Périmètre =',
+      unite:   'mm',
+      tol:     1                  // ± 1 mm, comme dans l'ancienne boucle
+    };
+  };
 }
 
-function checkDefi(){
-  if(answered)return;
-  const inp=parseFloat(document.getElementById('defi-input').value);
-  if(isNaN(inp)){alert('Entre une valeur numérique.');return;}
-  const expected=currentDefiAnswer;
-  const ok=Math.abs(inp-expected)<=1;
-  answered=true; total++;
-  if(ok)correct++;
-  const fb=document.getElementById('defi-feedback');
-  fb.className='feedback-box '+(ok?'correct':'wrong')+' show';
-  if(ok){
-    fb.innerHTML='<strong>Correct !</strong> P = '+fmt(expected)+' mm. Bien joué.';
-  } else {
-    fb.innerHTML='<strong>Pas tout à fait.</strong> La bonne réponse est <strong>'+fmt(expected)+' mm</strong>.<br>Rappel : '+currentDefiHint;
-  }
-  document.getElementById('btn-next').style.display='block';
-  updateScore();
-}
-
-function updateScore(){
-  document.getElementById('defi-score').textContent=correct+' / '+total+' correct'+(total>1?'s':'');
-  const pct=total>0?(correct/total*100):0;
-  document.getElementById('defi-progress').style.width=pct+'%';
-}
-
-document.addEventListener('keydown',e=>{
-  if(e.key==='Enter'){
-    if(!answered)checkDefi();
-    else if(document.getElementById('btn-next').style.display!=='none')nextDefi();
-  }
+var defi = LP.defi.creer({
+  outil:    'perimetre_usinage',
+  serie:    0,                        // flux continu ; mettre 10 pour une série
+  essaisMax: 2,
+  melange:  { label:'Mélange', couleur:'purple' },
+  modePlus: function(){ return currentMode === 'defiplus'; },
+  familles: defiDefs.map(function(def){
+    return {
+      value:   def.value,
+      label:   def.nom,
+      couleur: famCouleurs[def.value],
+      gen:     adapter(def.value),
+      nom:     def.nom,
+      comp:    famComp[def.value]
+    };
+  })
 });
 
-// ─── GÉNÉRATION FICHE PDF ─────────────────────────────────────────────────────
-function generateFiche(){
-  const isPlus = (currentMode === 'defiplus');
-  LP.fiche({
-    icon: '\u{1F4D0}',
-    title: 'P\u00e9rim\u00e8tres des pi\u00e8ces m\u00e9caniques',
-    subtitle: 'Usinage \u00b7 Maintenance \u00b7 2nde Bac Pro',
-    modeLabel: isPlus ? 'D\u00e9fi +' : 'Mode d\u00e9fi',
-    isPlus: isPlus,
-    tolerance: '\u00b1 1 mm',
-    accent: '#185FA5',
-    answerLabel: 'P =',
-    unit: 'mm',
-    aide: 'Rectangle : P = 2\u00d7(L+l) &nbsp;|&nbsp; Cercle : P = \u03c0\u00d7d &nbsp;|&nbsp; '
-        + 'Oblong : P = 2L+2\u03c0r &nbsp;|&nbsp; Triangle / Trap\u00e8ze : somme des c\u00f4t\u00e9s &nbsp;|&nbsp; '
-        + 'Demi-cercle : P = r\u00d7(\u03c0+2) &nbsp;|&nbsp; Hexagone : P = 6\u00d7c',
-    questions: LP.pickQuestions(defiDefs, 10).map(function(q){
-      q.answerText = fmt(q.answer); return q;
-    })
-  });
-}
+// ─── FICHE IMPRIMABLE ─────────────────────────────────────────────────────
+// La modale LP.ficheModal remplace l'ancien tirage à plat sur les 8 familles :
+// l'utilisateur choisit les familles à inclure, la répartition entre elles
+// est calculée par LP.ficheModal elle-même (voir lp-fiche.js).
+LP.ficheModal.init({
+  familles: defiDefs.map(function(def){ return { value: def.value, label: def.nom }; }),
+  onConfirm: function(plan){
+    var isPlus = (currentMode === 'defiplus');
+    LP.fiche({
+      icon: '\u{1F4D0}',
+      title: 'Périmètres des pièces mécaniques',
+      subtitle: 'Usinage · Maintenance · 2nde Bac Pro',
+      modeLabel: isPlus ? 'Défi +' : 'Mode défi',
+      isPlus: isPlus,
+      tolerance: '± 1 mm',
+      accent: '#185FA5',
+      answerLabel: 'P =',
+      unit: '',                 // reponseTexte porte déjà « mm » (q.unite dans l'adapter) :
+                                 // cfg.unit à vide évite le doublon « mm mm » du corrigé.
+      aide: 'Rectangle : P = 2×(L+l) &nbsp;|&nbsp; Cercle : P = π×d &nbsp;|&nbsp; '
+          + 'Oblong : P = 2L+2πr &nbsp;|&nbsp; Triangle isocèle : P = 2a+c &nbsp;|&nbsp; '
+          + 'Demi-cercle : P = r×(π+2) &nbsp;|&nbsp; Hexagone : P = 6c &nbsp;|&nbsp; '
+          + 'Plaque en L : somme des 6 côtés &nbsp;|&nbsp; Trapèze isocèle : P = B+b+2c',
+      questions: defi.questionsFiche(plan)      // même objet que le défi
+    });
+  }
+});
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 randomizeShape('rect');
 calcCercleD(); calcCompose(); calcL(); calcTri(); calcTrap(); calcDc(); calcHex();
+defi.demarrer();
 </script>
 <footer class="lp-footer">
-  <a href="/">← Tous les outils</a> &nbsp;·&nbsp; Licence MIT &nbsp;·&nbsp;
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio collège</a> &nbsp;·&nbsp;
+  Licence MIT · © 2026 Moïse Muller &nbsp;·&nbsp;
   <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
 </footer>
 </body>
