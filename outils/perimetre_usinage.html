@@ -629,7 +629,7 @@ var defiDefs = [
         svg:'<path d="M10,120 A90,90 0 0,1 190,120 Z" fill="#EAF3DE" stroke="#639922" stroke-width="2.5"/>'
           + '<line x1="10" y1="120" x2="190" y2="120" stroke="#555" stroke-width="1.5" stroke-dasharray="5,3"/>'
           + '<line x1="100" y1="120" x2="100" y2="30" stroke="#888" stroke-width="1" stroke-dasharray="4,3"/>'
-          + '<text x="130" y="76" font-size="13" fill="#3B6D11" font-weight="700">r = ' + r + ' mm</text>',
+          + '<text x="130" y="76" font-size="13" fill="#3B6D11" font-weight="700">r = ' + r + '</text>',
         cotes:'Rayon r = ' + r + ' mm',
         answer:P,
         detail:'P = π×r + 2×r = π×' + r + ' + 2×' + r + ' = ' + fmt(Math.PI*r) + ' + ' + (2*r) + ' = ' + fmt(P) + ' mm'
@@ -663,7 +663,7 @@ var defiDefs = [
       var P=a+b+c+d+e+f;
       return {
         svg:'<polygon points="15,15 130,15 130,75 75,75 75,148 15,148" fill="#FAECE7" stroke="#D85A30" stroke-width="2.5"/>'
-          + '<text x="73" y="10" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">a=' + a + '</text>'
+          + '<text x="73" y="12" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">a=' + a + '</text>'
           + '<text x="138" y="48" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">b=' + b + '</text>'
           + '<text x="103" y="70" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">c=' + c + '</text>'
           + '<text x="80" y="113" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">d=' + d + '</text>'
