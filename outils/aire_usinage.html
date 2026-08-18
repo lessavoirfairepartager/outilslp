@@ -550,8 +550,9 @@ var defiDefs = [
       return {
         svg:'<rect x="10" y="30" width="162" height="95" fill="#E6F1FB" stroke="#378ADD" stroke-width="2.5" rx="1"/>'
           + '<text x="91" y="22" text-anchor="middle" font-size="12" fill="#378ADD" font-weight="700">L = ' + L + ' mm</text>'
-          + '<line x1="180" y1="30" x2="180" y2="125" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>'
-          + '<text x="198" y="80" text-anchor="end" font-size="11" fill="#378ADD" font-weight="700">l = ' + l + ' mm</text>',
+          + '<line x1="172" y1="77" x2="172" y2="128" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>'
+          + '<line x1="172" y1="128" x2="190" y2="128" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>'
+          + '<text x="190" y="142" text-anchor="end" font-size="11" fill="#378ADD" font-weight="700">l = ' + l + ' mm</text>',
         cotes:'L = ' + L + ' mm · l = ' + l + ' mm',
         answer:A,
         detail:'A = L × l = ' + L + ' × ' + l + ' = ' + fmtA(A) + ' mm²'
@@ -567,7 +568,7 @@ var defiDefs = [
       return {
         svg:'<circle cx="100" cy="83" r="58" fill="#E1F5EE" stroke="#1D9E75" stroke-width="2.5"/>'
           + '<line x1="100" y1="83" x2="158" y2="83" stroke="#555" stroke-width="1" stroke-dasharray="4,3"/>'
-          + '<text x="131" y="76" text-anchor="middle" font-size="11" fill="#1D9E75" font-weight="700">r = ' + r + ' mm</text>'
+          + '<text x="100" y="66" text-anchor="middle" font-size="11" fill="#1D9E75" font-weight="700">r = ' + r + ' mm</text>'
           + '<text x="100" y="156" text-anchor="middle" font-size="12" fill="#0F6E56" font-weight="700">Ø ' + d + ' mm</text>',
         cotes:'Diamètre d = ' + d + ' mm · rayon r = ' + r + ' mm',
         answer:A,
@@ -585,8 +586,9 @@ var defiDefs = [
         svg:'<path d="M45,38 L155,38 A50,50 0 0,1 155,128 L45,128 A50,50 0 0,1 45,38 Z" fill="#FAEEDA" stroke="#BA7517" stroke-width="2.5"/>'
           + '<line x1="45" y1="27" x2="155" y2="27" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>'
           + '<text x="100" y="20" text-anchor="middle" font-size="11" fill="#854F0B" font-weight="700">L = ' + L + ' mm</text>'
-          + '<line x1="155" y1="83" x2="190" y2="83" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>'
-          + '<text x="194" y="87" text-anchor="end" font-size="11" fill="#854F0B" font-weight="700">r = ' + r + ' mm</text>',
+          + '<line x1="183" y1="83" x2="183" y2="130" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>'
+          + '<line x1="183" y1="130" x2="192" y2="130" stroke="#888" stroke-width="1" stroke-dasharray="3,3"/>'
+          + '<text x="192" y="144" text-anchor="end" font-size="11" fill="#854F0B" font-weight="700">r = ' + r + '</text>',
         cotes:'L = ' + L + ' mm (entre axes) · r = ' + r + ' mm',
         answer:A,
         detail:'A = 2×L×r + π×r² = 2×' + L + '×' + r + ' + π×' + r + '² = ' + fmtA(2*L*r) + ' + ' + fmtA(Math.PI*r*r) + ' = ' + fmtA(A) + ' mm²'
@@ -603,8 +605,8 @@ var defiDefs = [
       var A=W*H-cw*ch;
       return {
         svg:'<polygon points="10,10 140,10 140,75 80,75 80,150 10,150" fill="#FAECE7" stroke="#D85A30" stroke-width="2.5"/>'
-          + '<text x="75" y="12" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">W=' + W + '</text>'
-          + '<text x="6" y="82" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">H=' + H + '</text>'
+          + '<text x="75" y="24" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">W=' + W + '</text>'
+          + '<text x="14" y="82" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">H=' + H + '</text>'
           + '<text x="110" y="70" text-anchor="middle" font-size="10" fill="#993C1D" font-weight="700">cw=' + cw + '</text>'
           + '<text x="147" y="44" text-anchor="start" font-size="10" fill="#993C1D" font-weight="700">ch=' + ch + '</text>',
         cotes:'W = ' + W + ' mm · H = ' + H + ' mm<br>Découpe : cw = ' + cw + ' mm · ch = ' + ch + ' mm',
@@ -622,8 +624,8 @@ var defiDefs = [
       return {
         svg:'<polygon points="100,15 185,145 15,145" fill="#EEEDFE" stroke="#7F77DD" stroke-width="2.5"/>'
           + '<line x1="100" y1="15" x2="100" y2="145" stroke="#888" stroke-width="1.2" stroke-dasharray="4,3"/>'
-          + '<text x="113" y="90" font-size="11" fill="#534AB7" font-weight="700">h = ' + h + '</text>'
-          + '<text x="100" y="158" text-anchor="middle" font-size="12" fill="#534AB7" font-weight="700">b = ' + b + ' mm</text>',
+          + '<text x="106" y="120" font-size="11" fill="#534AB7" font-weight="700">h = ' + h + '</text>'
+          + '<text x="100" y="161" text-anchor="middle" font-size="12" fill="#534AB7" font-weight="700">b = ' + b + ' mm</text>',
         cotes:'Base b = ' + b + ' mm · Hauteur h = ' + h + ' mm',
         answer:A,
         detail:'A = (b × h) / 2 = (' + b + ' × ' + h + ') / 2 = ' + fmtA(b*h) + ' / 2 = ' + fmtA(A) + ' mm²'
@@ -674,8 +676,7 @@ var defiDefs = [
       var A=3*Math.sqrt(3)/2*c*c;
       return {
         svg:'<polygon points="100,14 166,51 166,124 100,161 34,124 34,51" fill="#FAEEDA" stroke="#BA7517" stroke-width="2.5"/>'
-          + '<line x1="100" y1="107" x2="166" y2="65" stroke="#555" stroke-width="1" stroke-dasharray="4,3"/>'
-          + '<text x="148" y="79" font-size="12" fill="#854F0B" font-weight="700">c = ' + c + '</text>'
+          + '<text x="100" y="45" text-anchor="middle" font-size="12" fill="#854F0B" font-weight="700">c = ' + c + '</text>'
           + '<text x="100" y="100" text-anchor="middle" font-size="10" fill="#633806">6 côtés égaux</text>',
         cotes:'Côté c = ' + c + ' mm (hexagone régulier)',
         answer:A,
