@@ -2,6 +2,10 @@
 Diviseurs et facteurs — nombres premiers, décomposition, diviseurs
 Copyright (c) 2025 Moise Muller <moise.muller@ac-dijon.fr>
 Version harmonisée du 3 août 2026 pour outilslp.netlify.app
+Boucle de défi migrée vers assets/lp-defi.js (dom: true) et fiche imprimable
+vers LP.ficheModal le 18 août 2026 pour outilslp.netlify.app.
+Indices du second essai : premier jet, à relire avec l'auteur (marqué en clair
+dans le fichier).
 
 MIT License
 
@@ -272,6 +276,8 @@ SOFTWARE.
   </div>
 
   <!-- ══ MODE DÉFI (défi + défi⁺) ═════════════════════════════════════ -->
+  <!-- Balisage standard du moteur. Les onglets de familles et la zone de
+       réponse sont construits par lp-defi.js : rien à écrire ici. -->
   <div id="mode-defi">
     <div class="defi-card">
       <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI + — Aides masquées</div>
@@ -280,27 +286,37 @@ SOFTWARE.
         <div class="defi-score" id="defi-score">0 / 0 correct</div>
       </div>
       <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
-      <div class="defi-shape-display">
+
+      <div id="defi-familles" style="margin-bottom:1.25rem"></div>
+
+      <div class="defi-aide" id="defi-aide"></div>
+
+      <div class="defi-shape-display" id="defi-figure">
         <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:200px;width:100%;"></svg>
+        <div class="defi-enonce" id="defi-enonce"></div>
         <div class="defi-cotes" id="defi-cotes"></div>
       </div>
-      <div class="defi-input-row">
-        <label>Réponse =</label>
-        <input type="number" id="defi-input" placeholder="?" step="1">
-      </div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:0.75rem;">La réponse est toujours un nombre entier.</div>
-      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+
+      <div id="defi-reponse"></div>
+
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol"></div>
+
+      <button class="btn-check" id="btn-check">Vérifier ma réponse</button>
       <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
-      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Question suivante →</button>
+      <button class="btn-next" id="btn-next" style="display:none">Question suivante →</button>
+
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
-        <button class="btn-fiche" onclick="generateFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+        <button class="btn-fiche" onclick="LP.ficheModal.open()">📄 Générer une fiche d'exercices</button>
       </div>
     </div>
   </div>
 
 </div>
 
+<!-- La modale de choix des familles est construite par LP.ficheModal -->
+
 <script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
 <script>
 /* ═══ ARITHMÉTIQUE ══════════════════════════════════════════════════════ */
 function rnd(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
@@ -573,27 +589,22 @@ function majHisto(){
 var currentMode = "explo";
 function setMode(m, btn){
   currentMode = m;
-  var tabs = document.querySelectorAll(".mode-tab");
-  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
+  var tabs = document.querySelectorAll(".mode-tab"), i;
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
   if (btn) btn.classList.add("active");
   document.getElementById("mode-explo").style.display = (m === "explo") ? "block" : "none";
-  var defi = document.getElementById("mode-defi");
+
   var isDefi = (m === "defi" || m === "defiplus");
-  defi.classList.toggle("active", isDefi);
-  if (isDefi) {
-    var badge = document.getElementById("defi-plus-badge");
-    if (m === "defiplus") {
-      document.getElementById("defi-mode-title").textContent = "Défi + — Diviseurs et facteurs";
-      badge.classList.add("visible");
-    } else {
-      document.getElementById("defi-mode-title").textContent = "Mode défi — Diviseurs et facteurs";
-      badge.classList.remove("visible");
-    }
-    correct = 0; total = 0; defiIndex = 0;
-    melange(ordre);
-    majScore();
-    nextDefi();
-  }
+  /* montrerBloc pose le display ET la classe active d'un seul geste : c'est
+     le piège #mode-defi de lp-ui.css, désormais impossible à rater. */
+  LP.defi.montrerBloc("#mode-defi", isDefi);
+
+  document.getElementById("defi-mode-title").textContent =
+    (m === "defiplus") ? "Défi + — Diviseurs et facteurs" : "Mode défi — Diviseurs et facteurs";
+
+  /* Le badge « aides masquées » est posé par le moteur, qui interroge
+     modePlus() à chaque question. */
+  if (isDefi) defi.ui.suivante();
 }
 
 /* ═══ MODE DÉFI ═════════════════════════════════════════════════════════ */
@@ -640,32 +651,50 @@ function compose(min, max){
   return n;
 }
 
+// ─── DÉFINITIONS DES DÉFIS (avec générateurs aléatoires) ─────────────────────
+// Les générateurs eux-mêmes n'ont pas bougé : mêmes plages de tirage, mêmes
+// figures (svgUn/svgDeux/svgListe/svgProduit, inchangées ci-dessus). Seuls
+// « value », « enonce » et « detail » sont nouveaux (le pas-à-pas de la
+// correction, construit à partir des mêmes fonctions arithmétiques que le
+// mode Explorateur : facteurs(), grouper(), ecrirePuissances()).
 var defiDefs = [
   {
+    value: "nbdiv",
     nom: "Compter les diviseurs",
-    hint: "Lister les diviseurs par paires : 1 et n, puis 2 et n\u00f72, etc.",
+    hint: "Lister les diviseurs par paires : 1 et n, puis 2 et n÷2, etc.",
     generate: function(){
       var n = rnd(12, 90);
+      var f = facteurs(n);
       return {
         svg: svgUn(n, "Combien de diviseurs ?"),
-        cotes: "Nombre étudié : " + n + " · Question : combien ce nombre a-t-il de diviseurs au total ?",
-        answer: diviseurs(n).length
+        enonce: "Combien ce nombre a-t-il de diviseurs au total ?",
+        cotes: "Nombre étudié : " + n,
+        answer: diviseurs(n).length,
+        detail: n + " = " + ecrirePuissances(f, false) + " → " +
+          grouper(f).map(function(p){ return "(" + p[1] + "+1)"; }).join(" × ") +
+          " = " + diviseurs(n).length + " diviseurs"
       };
     }
   },
   {
+    value: "petitfacteur",
     nom: "Plus petit facteur premier",
-    hint: "Essayer 2, puis 3, puis 5, puis 7\u2026 le premier qui divise est le bon.",
+    hint: "Essayer 2, puis 3, puis 5, puis 7… le premier qui divise est le bon.",
     generate: function(){
       var n = compose(20, 300);
+      var f = facteurs(n);
       return {
         svg: svgUn(n, "Plus petit facteur premier"),
-        cotes: "Nombre étudié : " + n + " · Question : quel est son plus petit facteur premier ?",
-        answer: facteurs(n)[0]
+        enonce: "Quel est son plus petit facteur premier ?",
+        cotes: "Nombre étudié : " + n,
+        answer: f[0],
+        detail: n + " n\u2019est pas premier ; en essayant 2, puis 3, puis 5… le premier " +
+          "diviseur trouvé est " + f[0] + " (" + n + " ÷ " + f[0] + " = " + (n / f[0]) + ")."
       };
     }
   },
   {
+    value: "grandfacteur",
     nom: "Plus grand facteur premier",
     hint: "Décomposer entièrement, puis regarder le dernier facteur obtenu.",
     generate: function(){
@@ -673,36 +702,46 @@ var defiDefs = [
       var f = facteurs(n);
       return {
         svg: svgUn(n, "Plus grand facteur premier"),
-        cotes: "Nombre étudié : " + n + " · Question : quel est son plus grand facteur premier ?",
-        answer: f[f.length - 1]
+        enonce: "Quel est son plus grand facteur premier ?",
+        cotes: "Nombre étudié : " + n,
+        answer: f[f.length - 1],
+        detail: n + " = " + ecrirePuissances(f, false) + " → le plus grand facteur premier est " +
+          f[f.length - 1] + "."
       };
     }
   },
   {
+    value: "complement",
     nom: "Diviseur complémentaire",
     hint: "Les diviseurs vont par paires : il suffit de diviser n par le diviseur donné.",
     generate: function(){
       var a = rnd(3, 15), b = rnd(4, 20), n = a * b;
       return {
         svg: svgProduit(n + " = " + a + " × ?", "Trouver le facteur manquant"),
-        cotes: "On sait que " + a + " est un diviseur de " + n + " · Question : quel est le diviseur qui lui est associé dans la même paire ?",
-        answer: b
+        enonce: "Quel est le diviseur qui lui est associé dans la même paire ?",
+        cotes: "On sait que " + a + " est un diviseur de " + n,
+        answer: b,
+        detail: n + " ÷ " + a + " = " + b + " : le diviseur complémentaire de " + a + " est " + b + "."
       };
     }
   },
   {
+    value: "racine",
     nom: "Racine d\u2019un carré parfait",
     hint: "Chercher le nombre qui, multiplié par lui-même, redonne n.",
     generate: function(){
       var k = rnd(4, 22), n = k * k;
       return {
         svg: svgUn(n, "Carré parfait : sa racine ?"),
-        cotes: "Nombre étudié : " + n + " · Ce nombre est un carré parfait · Question : quelle est sa racine carrée ?",
-        answer: k
+        enonce: "Ce nombre est un carré parfait. Quelle est sa racine carrée ?",
+        cotes: "Nombre étudié : " + n,
+        answer: k,
+        detail: k + " × " + k + " = " + n + ", donc la racine carrée de " + n + " est " + k + "."
       };
     }
   },
   {
+    value: "premiers",
     nom: "Repérer les nombres premiers",
     hint: "Un nombre premier n\u2019a que deux diviseurs : 1 et lui-même. 1 n\u2019est pas premier.",
     generate: function(){
@@ -716,25 +755,35 @@ var defiDefs = [
       for (i = 0; i < liste.length; i++) if (estPremier(liste[i])) nb++;
       return {
         svg: svgListe(liste, "Combien de premiers ?"),
-        cotes: "Nombres proposés : " + liste.join(", ") + " · Question : combien y a-t-il de nombres premiers dans cette liste ?",
-        answer: nb
+        enonce: "Combien y a-t-il de nombres premiers dans cette liste ?",
+        cotes: "Nombres proposés : " + liste.join(", "),
+        answer: nb,
+        detail: liste.map(function(x){
+          return x + (estPremier(x) ? " (premier)" : "");
+        }).join(", ") + " → " + nb + " nombre" + (nb > 1 ? "s" : "") + " premier" + (nb > 1 ? "s" : "") + "."
       };
     }
   },
   {
+    value: "longueur",
     nom: "Longueur de la décomposition",
     hint: "Compter tous les facteurs premiers, en comptant les répétitions.",
     generate: function(){
       var n = compose(24, 250);
       while (facteurs(n).length < 2) n = compose(24, 250);
+      var f = facteurs(n);
       return {
         svg: svgUn(n, "Combien de facteurs ?"),
-        cotes: "Nombre étudié : " + n + " · Question : combien de facteurs premiers compte sa décomposition, répétitions comprises ?",
-        answer: facteurs(n).length
+        enonce: "Combien de facteurs premiers compte sa décomposition, répétitions comprises ?",
+        cotes: "Nombre étudié : " + n,
+        answer: f.length,
+        detail: n + " = " + ecrirePuissances(f, false) + " → " + f.length +
+          " facteurs premiers en tout (répétitions comprises)."
       };
     }
   },
   {
+    value: "produit",
     nom: "Produit reconstitué",
     hint: "Effectuer le produit des facteurs premiers proposés.",
     generate: function(){
@@ -748,12 +797,15 @@ var defiDefs = [
       if (txt.length < 2) { n = 12; txt = ["2^2", "3"]; }
       return {
         svg: svgProduit(txt.join(" × "), "Quel est ce nombre ?"),
-        cotes: "Décomposition donnée : " + txt.join(" × ") + " · Question : quel nombre a cette décomposition en facteurs premiers ?",
-        answer: n
+        enonce: "Quel nombre a cette décomposition en facteurs premiers ?",
+        cotes: "Décomposition donnée : " + txt.join(" × "),
+        answer: n,
+        detail: txt.join(" × ") + " = " + n + "."
       };
     }
   },
   {
+    value: "pgcd",
     nom: "Plus grand diviseur commun",
     hint: "PGCD : garder les facteurs premiers communs aux deux nombres.",
     generate: function(){
@@ -761,99 +813,137 @@ var defiDefs = [
       while (b === a) b = g * rnd(2, 7);
       return {
         svg: svgDeux(a, b, "PGCD des deux nombres ?"),
-        cotes: "Nombres étudiés : " + a + " et " + b + " · Question : quel est leur plus grand diviseur commun ?",
-        answer: pgcd(a, b)
+        enonce: "Quel est leur plus grand diviseur commun ?",
+        cotes: "Nombres étudiés : " + a + " et " + b,
+        answer: pgcd(a, b),
+        detail: "PGCD(" + a + ", " + b + ") = " + pgcd(a, b) +
+          " (le plus grand nombre qui divise à la fois " + a + " et " + b + ")."
       };
     }
   }
 ];
 
-var defiIndex = 0, correct = 0, total = 0, repondu = false;
-var reponseAttendue = 0, aideCourante = "";
-var ordre = [];
-for (var z = 0; z < defiDefs.length; z++) ordre.push(z);
-melange(ordre);
+// ─── MODE DÉFI ═══════════════════════════════════════════════════════════════
+// Toute la boucle est dans lp-defi.js. Ce qui reste ici est du contenu :
+// les générateurs (inchangés ci-dessus), les libellés, les indices.
 
-function nextDefi(){
-  if (defiIndex >= ordre.length) { defiIndex = 0; melange(ordre); }
-  var def = defiDefs[ordre[defiIndex]];
-  var gen = def.generate();
-  reponseAttendue = gen.answer;
-  aideCourante = def.hint;
+// ⚠ INDICES DU SECOND ESSAI — PREMIER JET, À RELIRE
+// Ce sont les seules phrases nouvelles de la migration, avec « detail »
+// ci-dessus. Elles sont données après un premier essai raté, dans les deux
+// modes, avant la correction. Un indice doit désigner l'erreur probable sans
+// donner la réponse. Si tu en supprimes un, le moteur reste correct : il
+// annonce simplement qu'il reste un essai.
+var famIndices = {
+  nbdiv: "Décompose d\u2019abord n en facteurs premiers, puis ajoute 1 à chaque exposant et " +
+      "multiplie les résultats entre eux : c\u2019est plus fiable que de lister les diviseurs un " +
+      "par un, où l\u2019on risque d\u2019en oublier.",
+  petitfacteur: "Teste les nombres premiers dans l\u2019ordre à partir de 2 : 2, puis 3, puis 5, " +
+      "puis 7… Le premier qui divise n exactement (reste nul) est la réponse, pas besoin " +
+      "d\u2019aller plus loin.",
+  grandfacteur: "Décompose n complètement en facteurs premiers (divise par 2 tant que possible, " +
+      "puis 3, puis 5…) : c\u2019est le DERNIER facteur obtenu qui est le plus grand, pas le " +
+      "premier.",
+  complement: "Le diviseur complémentaire s\u2019obtient en divisant n par le diviseur donné : " +
+      "n ÷ (diviseur donné). Vérifie que ta division tombe juste, sans reste.",
+  racine: "Cherche le nombre entier qui, multiplié par lui-même, redonne exactement n. Essaie " +
+      "quelques carrés proches (10 × 10 = 100, 15 × 15 = 225…) pour t\u2019approcher.",
+  premiers: "Vérifie chaque nombre de la liste un par un : un nombre premier n\u2019a que deux " +
+      "diviseurs, 1 et lui-même. Attention, 1 n\u2019est jamais premier.",
+  longueur: "Décompose n entièrement en facteurs premiers, puis compte chaque facteur autant de " +
+      "fois qu\u2019il apparaît : les répétitions comptent, ne compte pas seulement les facteurs " +
+      "différents.",
+  produit: "Effectue le produit des facteurs premiers proposés, en tenant compte des puissances " +
+      "(un facteur au carré compte deux fois dans le produit).",
+  pgcd: "Décompose les deux nombres en facteurs premiers et ne garde que les facteurs communs, " +
+      "avec la plus petite puissance commune. Le produit de ces facteurs communs est le PGCD."
+};
 
-  document.getElementById("defi-svg").innerHTML = gen.svg;
-  var txt = gen.cotes;
-  if (currentMode !== "defiplus") {
-    txt += '<br><span class="lp-hint">Aide : ' + def.hint + "</span>";
-  }
-  document.getElementById("defi-cotes").innerHTML = txt;
+// Code de compétence par famille : lecture/reconnaissance directe (C1,
+// s'approprier) ou application d'une méthode de calcul (C3, réaliser).
+var famComp = {
+  nbdiv: "C3", petitfacteur: "C3", grandfacteur: "C3", complement: "C3",
+  racine: "C3", premiers: "C1", longueur: "C3", produit: "C3", pgcd: "C3"
+};
 
-  document.getElementById("defi-input").value = "";
-  document.getElementById("defi-feedback").className = "feedback-box";
-  document.getElementById("defi-feedback").textContent = "";
-  document.getElementById("btn-next").style.display = "none";
-  document.getElementById("defi-input").focus();
-  repondu = false;
-  defiIndex++;
-  majScore();
+var famCouleurs = {
+  nbdiv: "blue", petitfacteur: "teal", grandfacteur: "coral", complement: "amber",
+  racine: "green", premiers: "purple", longueur: "pink", produit: "amber2", pgcd: "red"
+};
+
+var defiDefsParValeur = {};
+defiDefs.forEach(function(def){ defiDefsParValeur[def.value] = def; });
+
+// Adapte un générateur existant à l'objet question normalisé.
+// Les générateurs eux-mêmes n'ont pas bougé d'une ligne.
+function adapter(fam){
+  var def = defiDefsParValeur[fam];
+  return function(){
+    var g = def.generate();
+    return {
+      svg:     g.svg,
+      enonce:  g.enonce,
+      cotes:   g.cotes,
+      reponse: g.answer,
+      detail:  g.detail,
+      rappel:  def.hint,          // le rappel de méthode, avant de répondre
+      hint:    famIndices[fam],   // l'indice, après un essai raté
+      type:    "nombre",
+      label:   "Réponse =",
+      unite:   "",
+      tol:     0                  // réponse entière exacte, comme dans l'ancienne boucle
+    };
+  };
 }
 
-function checkDefi(){
-  if (repondu) return;
-  var v = parseInt(document.getElementById("defi-input").value, 10);
-  if (isNaN(v)) { alert("Entre un nombre entier."); return; }
-  var ok = (v === reponseAttendue);
-  repondu = true; total++;
-  if (ok) correct++;
-  var fb = document.getElementById("defi-feedback");
-  fb.className = "feedback-box " + (ok ? "correct" : "wrong") + " show";
-  fb.innerHTML = ok
-    ? "<strong>Correct !</strong> La réponse est bien " + reponseAttendue + "."
-    : "<strong>Pas tout à fait.</strong> La bonne réponse est <strong>" + reponseAttendue +
-      "</strong>.<br>Rappel : " + aideCourante;
-  document.getElementById("btn-next").style.display = "block";
-  majScore();
-}
+var defi = LP.defi.creer({
+  outil:    "quiz_diviseurs",
+  serie:    0,                        // flux continu ; mettre 10 pour une série
+  essaisMax: 2,
+  melange:  { label: "Mélange", couleur: "purple" },
+  modePlus: function(){ return currentMode === "defiplus"; },
+  familles: defiDefs.map(function(def){
+    return {
+      value:   def.value,
+      label:   def.nom,
+      couleur: famCouleurs[def.value],
+      gen:     adapter(def.value),
+      nom:     def.nom,
+      comp:    famComp[def.value]
+    };
+  })
+});
 
-function majScore(){
-  document.getElementById("defi-score").textContent =
-    correct + " / " + total + " correct" + (total > 1 ? "s" : "");
-  var pct = total > 0 ? (correct / total * 100) : 0;
-  document.getElementById("defi-progress").style.width = pct + "%";
-}
-
-document.addEventListener("keydown", function(e){
-  if (currentMode === "explo") return;
-  if (e.key === "Enter") {
-    if (!repondu) checkDefi();
-    else if (document.getElementById("btn-next").style.display !== "none") nextDefi();
+// ─── FICHE IMPRIMABLE ─────────────────────────────────────────────────────
+// La modale LP.ficheModal remplace l'ancien tirage à plat sur les 9 familles :
+// l'utilisateur choisit les familles à inclure, la répartition entre elles
+// est calculée par LP.ficheModal elle-même (voir lp-fiche.js).
+LP.ficheModal.init({
+  familles: defiDefs.map(function(def){ return { value: def.value, label: def.nom }; }),
+  onConfirm: function(plan){
+    var isPlus = (currentMode === "defiplus");
+    LP.fiche({
+      icon: "➗",
+      title: "Diviseurs et facteurs",
+      subtitle: "Nombres premiers · Décomposition · CAP · Bac Pro",
+      modeLabel: isPlus ? "Défi +" : "Mode défi",
+      isPlus: isPlus,
+      tolerance: "réponse entière exacte",
+      accent: "#534AB7",
+      answerLabel: "Réponse =",
+      unit: "",
+      aide: "Diviseur : la division tombe juste &nbsp;|&nbsp; Nombre premier : exactement deux " +
+          "diviseurs, 1 et lui-même &nbsp;|&nbsp; Décomposition : produit de facteurs " +
+          "premiers &nbsp;|&nbsp; Nombre de diviseurs : (exposant+1) multipliés entre eux " +
+          "&nbsp;|&nbsp; Carré parfait : sa racine est un entier &nbsp;|&nbsp; PGCD : facteurs " +
+          "premiers communs, à la plus petite puissance commune",
+      questions: defi.questionsFiche(plan)      // même objet que le défi
+    });
   }
 });
 
-/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
-function generateFiche(){
-  var isPlus = (currentMode === "defiplus");
-  LP.fiche({
-    icon: "\u2797",
-    title: "Diviseurs et facteurs",
-    subtitle: "Nombres premiers \u00b7 D\u00e9composition \u00b7 CAP \u00b7 Bac Pro",
-    modeLabel: isPlus ? "D\u00e9fi +" : "Mode d\u00e9fi",
-    isPlus: isPlus,
-    tolerance: "r\u00e9ponse enti\u00e8re exacte",
-    accent: "#534AB7",
-    answerLabel: "R\u00e9ponse =",
-    unit: "",
-    aide: "Diviseur : la division tombe juste &nbsp;|&nbsp; Premier : exactement deux diviseurs, "
-        + "1 et lui-m\u00eame &nbsp;|&nbsp; D\u00e9composition : produit de facteurs premiers &nbsp;|&nbsp; "
-        + "Les diviseurs vont par paires &nbsp;|&nbsp; Carr\u00e9 parfait : sa racine est un entier",
-    questions: LP.pickQuestions(defiDefs, 10).map(function(q){
-      q.answerText = String(q.answer); return q;
-    })
-  });
-}
-
-/* ═══ INITIALISATION ════════════════════════════════════════════════════ */
+/* ═══ INITIALISATION ═════════════════════════════════════════════════════════════════════════ */
 analyser();
+defi.demarrer();
 </script>
 <footer class="lp-footer">
   <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
