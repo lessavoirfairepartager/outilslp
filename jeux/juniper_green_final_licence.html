@@ -23,6 +23,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Version harmonisée pour outilslp.netlify.app (design system lp-ui).
+Boucle de défi migrée vers assets/lp-defi.js (dom: true) et fiche imprimable
+vers LP.ficheModal le 19 août 2026 pour outilslp.netlify.app.
+Indices du second essai : premier jet, à relire avec l'auteur (marqué en clair
+dans le fichier).
 -->
 <!DOCTYPE html>
 <html lang="fr">
@@ -332,6 +336,8 @@ Version harmonisée pour outilslp.netlify.app (design system lp-ui).
   </div>
 
   <!-- ══ MODE DÉFI (défi + défi⁺) ═════════════════════════════════════ -->
+  <!-- Balisage standard du moteur. Les onglets de familles et la zone de
+       réponse sont construits par lp-defi.js : rien à écrire ici. -->
   <div id="mode-defi">
     <div class="defi-card">
       <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI + — Aides masquées</div>
@@ -340,27 +346,37 @@ Version harmonisée pour outilslp.netlify.app (design system lp-ui).
         <div class="defi-score" id="defi-score">0 / 0 correct</div>
       </div>
       <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
-      <div class="defi-shape-display">
+
+      <div id="defi-familles" style="margin-bottom:1.25rem"></div>
+
+      <div class="defi-aide" id="defi-aide"></div>
+
+      <div class="defi-shape-display" id="defi-figure">
         <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:200px;width:100%;"></svg>
+        <div class="defi-enonce" id="defi-enonce"></div>
         <div class="defi-cotes" id="defi-cotes"></div>
       </div>
-      <div class="defi-input-row">
-        <label>Réponse =</label>
-        <input type="number" id="defi-input" placeholder="?" step="1">
-      </div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:0.75rem;">La réponse est toujours un nombre entier. Grille de référence : 1 à 50.</div>
-      <button class="btn-check" onclick="checkDefi()">Vérifier ma réponse</button>
+
+      <div id="defi-reponse"></div>
+
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol"></div>
+
+      <button class="btn-check" id="btn-check">Vérifier ma réponse</button>
       <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
-      <button class="btn-next" id="btn-next" onclick="nextDefi()" style="display:none">Question suivante →</button>
+      <button class="btn-next" id="btn-next" style="display:none">Question suivante →</button>
+
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
-        <button class="btn-fiche" onclick="generateFiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+        <button class="btn-fiche" onclick="LP.ficheModal.open()">📄 Générer une fiche d'exercices</button>
       </div>
     </div>
   </div>
 
 </div>
 
+<!-- La modale de choix des familles est construite par LP.ficheModal -->
+
 <script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
 <script>
 /* ═══ OUTILS ARITHMÉTIQUES ══════════════════════════════════════════════ */
 function rnd(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
@@ -635,30 +651,28 @@ function construireTableMult(){
 var currentMode = "jeu";
 function setMode(m, btn){
   currentMode = m;
-  var tabs = document.querySelectorAll(".mode-tab");
-  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
+  var tabs = document.querySelectorAll(".mode-tab"), i;
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
   if (btn) btn.classList.add("active");
   document.getElementById("mode-jeu").style.display = (m === "jeu") ? "block" : "none";
-  var defi = document.getElementById("mode-defi");
+
   var isDefi = (m === "defi" || m === "defiplus");
-  defi.classList.toggle("active", isDefi);
-  if (isDefi) {
-    var badge = document.getElementById("defi-plus-badge");
-    if (m === "defiplus") {
-      document.getElementById("defi-mode-title").textContent = "Défi + — Diviseurs et multiples";
-      badge.classList.add("visible");
-    } else {
-      document.getElementById("defi-mode-title").textContent = "Mode défi — Diviseurs et multiples";
-      badge.classList.remove("visible");
-    }
-    correct = 0; total = 0; defiIndex = 0;
-    melange(ordre);
-    majScore();
-    nextDefi();
-  }
+  /* montrerBloc pose le display ET la classe active d'un seul geste : c'est
+     le piège #mode-defi de lp-ui.css, désormais impossible à rater. */
+  LP.defi.montrerBloc("#mode-defi", isDefi);
+
+  document.getElementById("defi-mode-title").textContent =
+    (m === "defiplus") ? "Défi + — Diviseurs et multiples" : "Mode défi — Diviseurs et multiples";
+
+  /* Le badge « aides masquées » est posé par le moteur, qui interroge
+     modePlus() à chaque question. */
+  if (isDefi) defi.ui.suivante();
 }
 
 /* ═══ MODE DÉFI ═════════════════════════════════════════════════════════ */
+// Toute la boucle est dans lp-defi.js. Ce qui reste ici est du contenu :
+// les générateurs (inchangés dans leur logique de tirage), les figures, les
+// libellés, les indices.
 var MAXG = 50;   /* grille de référence des défis */
 
 function svgUn(n, sous){
@@ -685,47 +699,81 @@ function svgListe(n, liste, sous){
   }
   return s;
 }
+/* Petite aide pour le PGCD par les facteurs premiers, sur le modèle de
+   communs() dans quizz_pgcd_licence.html : intersection de deux listes de
+   facteurs premiers (avec répétition), pour un « detail » lisible. */
+function facteursCommuns(fa, fb){
+  var reste = fb.slice(), out = [], j;
+  for (var i = 0; i < fa.length; i++) {
+    j = reste.indexOf(fa[i]);
+    if (j > -1) { out.push(fa[i]); reste.splice(j, 1); }
+  }
+  return out;
+}
 
+// ─── DÉFINITIONS DES DÉFIS (avec générateurs aléatoires) ─────────────────────
+// Les générateurs eux-mêmes n'ont pas bougé dans leur logique de tirage :
+// mêmes plages de valeurs, mêmes figures (svgUn/svgDeux/svgListe, inchangées
+// ci-dessus, désormais appelées avec un « sous » vide : le texte de question
+// vit dans #defi-enonce, affiché nativement par le moteur — on ne le
+// duplique plus en dur dans un SVG à viewBox fixe, voir §3/§9ter du dossier
+// de migration). « value », « enonce » et « detail » sont nouveaux (le
+// pas-à-pas de la correction, construit à partir des fonctions arithmétiques
+// déjà présentes plus haut, jamais réécrites).
 var defiDefs = [
   {
+    value: "diviseurs",
     nom: "Compter les diviseurs",
     hint: "Chercher tous les nombres qui divisent n, y compris 1 et n.",
     generate: function(){
       var n = rnd(12, 48);
+      var d = diviseurs(n);
       return {
-        svg: svgUn(n, "Combien de diviseurs ?"),
-        cotes: "Nombre étudié : " + n + " · Question : combien ce nombre a-t-il de diviseurs au total ?",
-        answer: diviseurs(n).length
+        svg: svgUn(n, ""),
+        enonce: "Combien ce nombre a-t-il de diviseurs, au total ?",
+        cotes: "Nombre étudié : " + n,
+        answer: d.length,
+        detail: "Diviseurs de " + n + " : " + d.join(", ") + " → " + d.length + " diviseurs."
       };
     }
   },
   {
+    value: "multiples",
     nom: "Compter les multiples",
     hint: "Multiples de n dans la grille : n, 2n, 3n... sans compter n lui-même.",
     generate: function(){
       var n = rnd(3, 16);
+      var mul = multiples(n, MAXG).filter(function(m){ return m !== n; });
       return {
-        svg: svgUn(n, "Multiples de 1 à 50"),
-        cotes: "Nombre étudié : " + n + " · Question : combien de multiples de ce nombre, autres que lui-même, dans la grille de 1 à 50 ?",
-        answer: multiples(n, MAXG).length - 1
+        svg: svgUn(n, ""),
+        enonce: "Combien de multiples de ce nombre, autres que lui-même, y a-t-il dans la grille de 1 à 50 ?",
+        cotes: "Nombre étudié : " + n,
+        answer: mul.length,
+        detail: "Multiples de " + n + " dans la grille, hors " + n + " lui-même : "
+              + (mul.length ? mul.join(", ") : "aucun") + " → " + mul.length + "."
       };
     }
   },
   {
+    value: "coups",
     nom: "Coups possibles",
     hint: "Coups = diviseurs de n + multiples de n, sans compter n lui-même.",
     generate: function(){
       var n = rnd(6, 30);
       while (diviseurs(n).length < 3) n = rnd(6, 30);
-      var nb = (diviseurs(n).length - 1) + (multiples(n, MAXG).length - 1);
+      var dv = diviseurs(n).length - 1, mv = multiples(n, MAXG).length - 1;
       return {
-        svg: svgUn(n, "Grille vide, 1 à 50"),
-        cotes: "La grille de 1 à 50 est vide et le premier joueur pose " + n + " · Question : combien de cases sont jouables juste après ?",
-        answer: nb
+        svg: svgUn(n, ""),
+        enonce: "Combien de cases sont jouables juste après ?",
+        cotes: "La grille de 1 à 50 est vide et le premier joueur pose " + n + ".",
+        answer: dv + mv,
+        detail: dv + " diviseur(s) de " + n + " autre(s) que lui-même, plus " + mv
+              + " multiple(s) dans la grille → " + dv + " + " + mv + " = " + (dv + mv) + " coups possibles."
       };
     }
   },
   {
+    value: "grandDiv",
     nom: "Plus grand diviseur",
     hint: "Le plus grand diviseur d\u2019un nombre, autre que lui-même, vaut n divisé par son plus petit facteur premier.",
     generate: function(){
@@ -733,68 +781,90 @@ var defiDefs = [
       while (diviseurs(n).length < 3) n = rnd(14, 49);
       var d = diviseurs(n);
       return {
-        svg: svgUn(n, "Plus grand diviseur strict"),
-        cotes: "Nombre étudié : " + n + " · Question : quel est son plus grand diviseur, autre que lui-même ?",
-        answer: d[d.length - 2]
+        svg: svgUn(n, ""),
+        enonce: "Quel est son plus grand diviseur, autre que lui-même ?",
+        cotes: "Nombre étudié : " + n,
+        answer: d[d.length - 2],
+        detail: "Diviseurs de " + n + " : " + d.join(", ") + " → le plus grand, autre que "
+              + n + " lui-même, est " + d[d.length - 2] + "."
       };
     }
   },
   {
+    value: "petitMult",
     nom: "Plus petit multiple",
     hint: "Le plus petit multiple de n plus grand que n, c\u2019est 2 × n.",
     generate: function(){
       var n = rnd(4, 24);
       return {
-        svg: svgUn(n, "Multiple suivant"),
-        cotes: "Nombre étudié : " + n + " · Question : quel est le plus petit multiple de ce nombre strictement supérieur à lui ?",
-        answer: 2 * n
+        svg: svgUn(n, ""),
+        enonce: "Quel est le plus petit multiple de ce nombre strictement supérieur à lui ?",
+        cotes: "Nombre étudié : " + n,
+        answer: 2 * n,
+        detail: "Le premier multiple de " + n + " après lui-même est 2 × " + n + " = " + (2 * n) + "."
       };
     }
   },
   {
+    value: "coupForce",
     nom: "Coup forcé",
     hint: "Un nombre premier plus grand que 25 n\u2019a que deux diviseurs et aucun multiple dans la grille.",
     generate: function(){
       var premiers = [29, 31, 37, 41, 43, 47];
       var p = premiers[rnd(0, premiers.length - 1)];
       return {
-        svg: svgUn(p, "Nombre premier"),
-        cotes: "Un joueur pose " + p + " dans une grille de 1 à 50 encore vide · Question : quelle est la seule case jouable ensuite ?",
-        answer: 1
+        svg: svgUn(p, ""),
+        enonce: "Quelle est alors la seule case encore jouable ?",
+        cotes: "Un joueur pose " + p + " dans une grille de 1 à 50 encore vide.",
+        answer: 1,
+        detail: p + " est premier et supérieur à 25 : son seul diviseur autre que lui-même est 1, "
+              + "et 2 × " + p + " dépasse 50, donc aucun multiple ne tient dans la grille. La seule case jouable est 1."
       };
     }
   },
   {
+    value: "pgcd",
     nom: "Plus grand diviseur commun",
     hint: "PGCD : le plus grand nombre qui divise les deux nombres à la fois.",
     generate: function(){
       var g = rnd(3, 9), a = g * rnd(2, 5), b = g * rnd(2, 5);
       while (b === a) b = g * rnd(2, 5);
+      var fa = facteursPremiers(a), fb = facteursPremiers(b);
+      var comm = facteursCommuns(fa, fb);
       return {
-        svg: svgDeux(a, b, "PGCD des deux nombres ?"),
-        cotes: "Nombres étudiés : " + a + " et " + b + " · Question : quel est leur plus grand diviseur commun ?",
-        answer: pgcd(a, b)
+        svg: svgDeux(a, b, ""),
+        enonce: "Quel est leur plus grand diviseur commun ?",
+        cotes: "Nombres étudiés : " + a + " et " + b,
+        answer: pgcd(a, b),
+        detail: a + " = " + fa.join(" × ") + " et " + b + " = " + fb.join(" × ")
+              + " → facteurs communs : " + (comm.join(" × ") || "aucun")
+              + " → PGCD = " + pgcd(a, b) + "."
       };
     }
   },
   {
+    value: "ppcm",
     nom: "Plus petit multiple commun",
     hint: "PPCM : le plus petit nombre qui est multiple des deux à la fois.",
     generate: function(){
       var a, b;
       do { a = rnd(2, 12); b = rnd(2, 12); } while (a === b || ppcm(a, b) > MAXG);
       return {
-        svg: svgDeux(a, b, "PPCM des deux nombres ?"),
-        cotes: "Nombres étudiés : " + a + " et " + b + " · Question : quel est leur plus petit multiple commun ?",
-        answer: ppcm(a, b)
+        svg: svgDeux(a, b, ""),
+        enonce: "Quel est leur plus petit multiple commun ?",
+        cotes: "Nombres étudiés : " + a + " et " + b,
+        answer: ppcm(a, b),
+        detail: a + " × " + b + " = " + (a * b) + " ; PGCD = " + pgcd(a, b)
+              + " → PPCM = " + (a * b) + " ÷ " + pgcd(a, b) + " = " + ppcm(a, b) + "."
       };
     }
   },
   {
+    value: "coupsValides",
     nom: "Coups valides",
     hint: "Un coup est valide si le nombre est un diviseur ou un multiple du nombre posé.",
     generate: function(){
-      var n = rnd(6, 30), liste = [], k, x, nb = 0;
+      var n = rnd(6, 30), liste = [], k, x, nb = 0, valides = [];
       var bons = diviseurs(n).concat(multiples(n, MAXG)).filter(function(v){ return v !== n; });
       melange(bons);
       var cible = Math.min(rnd(1, 3), bons.length);
@@ -804,103 +874,132 @@ var defiDefs = [
         if (x !== n && liste.indexOf(x) === -1) liste.push(x);
       }
       melange(liste);
-      for (k = 0; k < liste.length; k++) if (estLie(liste[k], n)) nb++;
+      for (k = 0; k < liste.length; k++) if (estLie(liste[k], n)) { nb++; valides.push(liste[k]); }
       return {
-        svg: svgListe(n, liste, "Combien de coups valides ?"),
-        cotes: "Le nombre posé est " + n + " · Nombres proposés : " + liste.join(", ") +
-               " · Question : combien de ces nombres peut-on jouer juste après ?",
-        answer: nb
+        svg: svgListe(n, liste, ""),
+        enonce: "Combien de ces nombres peut-on jouer juste après ?",
+        cotes: "Le nombre posé est " + n + " · Nombres proposés : " + liste.join(", "),
+        answer: nb,
+        detail: "Parmi " + liste.join(", ") + ", les coups valides (diviseurs ou multiples de " + n
+              + ") sont : " + (valides.length ? valides.join(", ") : "aucun") + " → " + nb + "."
       };
     }
   }
 ];
 
-var defiIndex = 0, correct = 0, total = 0, repondu = false;
-var reponseAttendue = 0, aideCourante = "";
-var ordre = [];
-for (var z = 0; z < defiDefs.length; z++) ordre.push(z);
-melange(ordre);
+// ⚠ INDICES DU SECOND ESSAI — PREMIER JET, À RELIRE
+// Ce sont, avec « detail » ci-dessus, les seules phrases nouvelles de la
+// migration. Elles sont données après un premier essai raté, dans les deux
+// modes, avant la correction. Un indice doit désigner l'erreur probable sans
+// donner la réponse. Si tu en supprimes un, le moteur reste correct : il
+// annonce simplement qu'il reste un essai.
+var famIndices = {
+  diviseurs: "Reprends un par un les nombres de 1 à n et teste s\u2019ils divisent n sans reste : "
+      + "n\u2019oublie ni 1 ni n lui-même dans le compte.",
+  multiples: "Les multiples de n sont n, 2n, 3n… jusqu\u2019à 50. La question porte sur les multiples "
+      + "AUTRES que n lui-même : vérifie que tu ne l\u2019as pas compté.",
+  coups: "Additionne le nombre de diviseurs de n (sauf n lui-même) et le nombre de multiples de n "
+      + "dans la grille (sauf n lui-même) : ce sont les deux seules façons de continuer la partie.",
+  grandDiv: "Liste tous les diviseurs de n dans l\u2019ordre croissant : le plus grand diviseur autre "
+      + "que n lui-même est l\u2019avant-dernier de la liste, pas le dernier.",
+  petitMult: "Un multiple de n s\u2019obtient en multipliant n par un entier. Le premier multiple après "
+      + "n lui-même correspond au plus petit entier suivant 1, c\u2019est-à-dire 2.",
+  coupForce: "Un nombre premier n\u2019a que deux diviseurs : 1 et lui-même. Vérifie aussi qu\u2019aucun "
+      + "multiple de ce nombre ne tient dans une grille de 1 à 50.",
+  pgcd: "Décompose les deux nombres en facteurs premiers et repère ceux qui apparaissent dans LES "
+      + "DEUX décompositions : leur produit est le PGCD.",
+  ppcm: "Calcule d\u2019abord le PGCD des deux nombres, puis utilise PPCM = (a × b) ÷ PGCD.",
+  coupsValides: "Pour chaque nombre proposé, vérifie s\u2019il divise n OU si n le divise : ce sont les "
+      + "deux seules conditions pour qu\u2019un coup soit valide."
+};
 
-function nextDefi(){
-  if (defiIndex >= ordre.length) { defiIndex = 0; melange(ordre); }
-  var def = defiDefs[ordre[defiIndex]];
-  var gen = def.generate();
-  reponseAttendue = gen.answer;
-  aideCourante = def.hint;
+// Code de compétence par famille : les 9 familles appliquent une méthode de
+// calcul à partir d'un ou deux nombres donnés (C3, réaliser) ; aucune ne se
+// limite à une lecture ou reconnaissance directe.
+var famComp = {
+  diviseurs: "C3", multiples: "C3", coups: "C3", grandDiv: "C3", petitMult: "C3",
+  coupForce: "C3", pgcd: "C3", ppcm: "C3", coupsValides: "C3"
+};
 
-  document.getElementById("defi-svg").innerHTML = gen.svg;
-  var txt = gen.cotes;
-  if (currentMode !== "defiplus") {
-    txt += '<br><span class="lp-hint">Aide : ' + def.hint + "</span>";
-  }
-  document.getElementById("defi-cotes").innerHTML = txt;
+var famCouleurs = {
+  diviseurs: "blue", multiples: "teal", coups: "coral", grandDiv: "amber",
+  petitMult: "green", coupForce: "purple", pgcd: "pink", ppcm: "amber2", coupsValides: "red"
+};
 
-  document.getElementById("defi-input").value = "";
-  document.getElementById("defi-feedback").className = "feedback-box";
-  document.getElementById("defi-feedback").textContent = "";
-  document.getElementById("btn-next").style.display = "none";
-  document.getElementById("defi-input").focus();
-  repondu = false;
-  defiIndex++;
-  majScore();
+var defiDefsParValeur = {};
+defiDefs.forEach(function(def){ defiDefsParValeur[def.value] = def; });
+
+// Adapte un générateur existant à l'objet question normalisé.
+// Les générateurs eux-mêmes n'ont pas bougé dans leur logique de tirage.
+function adapter(fam){
+  var def = defiDefsParValeur[fam];
+  return function(){
+    var g = def.generate();
+    return {
+      svg:     g.svg,
+      enonce:  g.enonce,
+      cotes:   g.cotes,
+      reponse: g.answer,
+      detail:  g.detail,
+      rappel:  def.hint,          // le rappel de méthode, avant de répondre
+      hint:    famIndices[fam],   // l'indice, après un essai raté
+      type:    "nombre",
+      label:   "Réponse =",
+      unite:   "",
+      tol:     0                  // réponse entière exacte, comme dans l'ancienne boucle
+    };
+  };
 }
 
-function checkDefi(){
-  if (repondu) return;
-  var v = parseInt(document.getElementById("defi-input").value, 10);
-  if (isNaN(v)) { alert("Entre un nombre entier."); return; }
-  var ok = (v === reponseAttendue);
-  repondu = true; total++;
-  if (ok) correct++;
-  var fb = document.getElementById("defi-feedback");
-  fb.className = "feedback-box " + (ok ? "correct" : "wrong") + " show";
-  fb.innerHTML = ok
-    ? "<strong>Correct !</strong> La réponse est bien " + reponseAttendue + "."
-    : "<strong>Pas tout à fait.</strong> La bonne réponse est <strong>" + reponseAttendue + "</strong>.<br>Rappel : " + aideCourante;
-  document.getElementById("btn-next").style.display = "block";
-  majScore();
-}
-
-function majScore(){
-  document.getElementById("defi-score").textContent = correct + " / " + total + " correct" + (total > 1 ? "s" : "");
-  var pct = total > 0 ? (correct / total * 100) : 0;
-  document.getElementById("defi-progress").style.width = pct + "%";
-}
-
-document.addEventListener("keydown", function(e){
-  if (currentMode === "jeu") return;
-  if (e.key === "Enter") {
-    if (!repondu) checkDefi();
-    else if (document.getElementById("btn-next").style.display !== "none") nextDefi();
-  }
+var defi = LP.defi.creer({
+  outil:    "juniper_green_final_licence",
+  serie:    0,                        // flux continu ; mettre 10 pour une série
+  essaisMax: 2,
+  melange:  { label: "Mélange", couleur: "purple" },
+  modePlus: function(){ return currentMode === "defiplus"; },
+  familles: defiDefs.map(function(def){
+    return {
+      value:   def.value,
+      label:   def.nom,
+      couleur: famCouleurs[def.value],
+      gen:     adapter(def.value),
+      nom:     def.nom,
+      comp:    famComp[def.value]
+    };
+  })
 });
 
-/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
-function generateFiche(){
-  var isPlus = (currentMode === "defiplus");
-  LP.fiche({
-    icon: "\u{1F522}",
-    title: "Juniper Green \u2014 diviseurs et multiples",
-    subtitle: "Grille de 1 \u00e0 50 \u00b7 CAP \u00b7 Bac Pro",
-    modeLabel: isPlus ? "D\u00e9fi +" : "Mode d\u00e9fi",
-    isPlus: isPlus,
-    tolerance: "r\u00e9ponse enti\u00e8re exacte",
-    accent: "#3B6D11",
-    answerLabel: "R\u00e9ponse =",
-    unit: "",
-    aide: "Diviseur de n : il divise n sans reste &nbsp;|&nbsp; Multiple de n : n, 2n, 3n\u2026 &nbsp;|&nbsp; "
-        + "Coup valide : diviseur OU multiple du nombre pos\u00e9 &nbsp;|&nbsp; "
-        + "PGCD : plus grand diviseur commun &nbsp;|&nbsp; PPCM : plus petit multiple commun",
-    questions: LP.pickQuestions(defiDefs, 10).map(function(q){
-      q.answerText = String(q.answer); return q;
-    })
-  });
-}
+// ─── FICHE IMPRIMABLE ─────────────────────────────────────────────────────
+// La modale LP.ficheModal remplace l'ancien tirage à plat sur les 9 familles :
+// l'utilisateur choisit les familles à inclure, la répartition entre elles
+// est calculée par LP.ficheModal elle-même (voir lp-fiche.js).
+LP.ficheModal.init({
+  familles: defiDefs.map(function(def){ return { value: def.value, label: def.nom }; }),
+  onConfirm: function(plan){
+    var isPlus = (currentMode === "defiplus");
+    LP.fiche({
+      icon: "\u{1F522}",
+      title: "Juniper Green — diviseurs et multiples",
+      subtitle: "Grille de 1 à 50 · CAP · Bac Pro",
+      modeLabel: isPlus ? "Défi +" : "Mode défi",
+      isPlus: isPlus,
+      tolerance: "réponse entière exacte",
+      accent: "#3B6D11",
+      answerLabel: "Réponse =",
+      unit: "",
+      aide: "Diviseur de n : il divise n sans reste &nbsp;|&nbsp; Multiple de n : n, 2n, 3n… &nbsp;|&nbsp; "
+          + "Coup valide : diviseur OU multiple du nombre posé &nbsp;|&nbsp; "
+          + "PGCD : plus grand diviseur commun &nbsp;|&nbsp; PPCM : plus petit multiple commun",
+      questions: defi.questionsFiche(plan)      // même objet que le défi
+    });
+  }
+});
 
 /* ═══ INITIALISATION ════════════════════════════════════════════════════ */
 rendreJoueurs();
 construireTableMult();
 reinit();
+defi.demarrer();
 </script>
 <footer class="lp-footer">
   <a href="/">← Tous les outils</a> &nbsp;·&nbsp; <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio collège</a> &nbsp;·&nbsp;
