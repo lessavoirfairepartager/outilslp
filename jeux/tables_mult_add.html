@@ -186,42 +186,7 @@ SOFTWARE.
   .tb-fold[open] > summary { margin-bottom: 12px; }
   .tb-fold p { font-size: var(--fs-xs); color: var(--text2); line-height: 1.6; }
 
-  /* ── Modale de fiche ───────────────────────────────────────────────── */
-  .tb-modal-bg {
-    display: none; position: fixed; inset: 0; z-index: 200;
-    background: rgba(10, 9, 8, .6);
-    align-items: center; justify-content: center; padding: 1rem;
-  }
-  .tb-modal-bg.show { display: flex; }
-  .tb-modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: var(--pad-card);
-    width: 100%; max-width: 27rem;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
-  }
-  .tb-modal h2 { font-size: var(--fs-lg); color: var(--text); margin-bottom: .4rem; }
-  .tb-modal > p { font-size: var(--fs-xs); color: var(--text2); margin-bottom: 1rem; line-height: 1.5; }
-  .tb-checks { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1rem; }
-  .tb-checks label {
-    display: flex; align-items: center; gap: .7rem;
-    padding: .7rem .85rem;
-    border: 2px solid var(--border);
-    border-radius: var(--radius);
-    cursor: pointer; font-weight: 700; font-size: var(--fs-xs);
-    color: var(--text2);
-    transition: background-color .15s, border-color .15s, color .15s;
-  }
-  .tb-checks label.on { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
-  .tb-checks input { width: 1.15rem; height: 1.15rem; accent-color: var(--coral); cursor: pointer; }
-  .tb-dist {
-    padding: .7rem; border-radius: var(--radius); text-align: center;
-    font-weight: 700; font-size: var(--fs-xs); margin-bottom: 1rem;
-    background: var(--green-bg); color: var(--green);
-  }
-  .tb-dist.vide { background: var(--red-bg); color: var(--red); }
-  .tb-modal-actions { display: flex; gap: .6rem; justify-content: flex-end; }
+  /* La modale de fiche est fournie par LP.ficheModal (styles dans lp-ui.css). */
 
   /* ── Téléphone : tout doit tenir sans défilement ────────────────────── */
   @media (max-width: 720px) {
@@ -247,7 +212,7 @@ SOFTWARE.
   }
 
   @media print {
-    .tb-bar, .tb-play, .mode-tabs, .tb-fold, .tb-modal-bg { display: none !important; }
+    .tb-bar, .tb-play, .mode-tabs, .tb-fold { display: none !important; }
   }
 </style>
 </head>
@@ -270,9 +235,10 @@ SOFTWARE.
 <div class="main">
 
   <div class="mode-tabs">
-    <button class="mode-tab active" onclick="setMode('jeu',this)">Entraînement</button>
-    <button class="mode-tab" onclick="setMode('ref',this)">Table</button>
-    <button class="mode-tab defiplus-tab" onclick="setMode('chrono',this)">Contre la montre</button>
+    <button class="mode-tab active" onclick="setMode('ref',this)">Table</button>
+    <button class="mode-tab" onclick="setMode('jeu',this)">Entraînement</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('chrono',this)">Défi ⁺</button>
   </div>
 
   <!-- ══ BANDEAU ══════════════════════════════════════════════════════ -->
@@ -299,7 +265,7 @@ SOFTWARE.
   </div>
 
   <!-- ══ ENTRAÎNEMENT ═════════════════════════════════════════════════ -->
-  <div id="mode-jeu">
+  <div id="mode-jeu" style="display:none">
     <div class="panel active">
 
       <div class="sketch-card">
@@ -321,7 +287,7 @@ SOFTWARE.
 
         <details class="tb-fold" style="margin-top:4px">
           <summary>Fiche imprimable et aide</summary>
-          <button class="btn-fiche" onclick="ouvrirModal()">📄 Générer une fiche d'exercices (10 questions)</button>
+          <button class="btn-fiche" onclick="LP.ficheModal.open()">📄 Générer une fiche d'exercices (10 questions)</button>
           <p style="margin-top:10px">Une case ratée revient plus tard : il faut la réussir <strong>deux fois</strong> pour qu'elle passe au vert. On peut aussi toucher une case de la table pour la travailler tout de suite.</p>
           <p style="margin-top:8px">La progression est enregistrée dans le navigateur : fermer la page ou changer d'onglet ne l'efface pas. Seul le bouton « Remettre à zéro » efface le compteur.</p>
         </details>
@@ -330,7 +296,7 @@ SOFTWARE.
   </div>
 
   <!-- ══ TABLE DE RÉFÉRENCE ═══════════════════════════════════════════ -->
-  <div id="mode-ref" style="display:none">
+  <div id="mode-ref" style="display:block">
     <div class="tb-fold" style="margin-top:0">
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
         <button class="tb-btn" id="tb-masque-btn" onclick="basculerMasque()">👁 Masquer les résultats</button>
@@ -384,26 +350,39 @@ SOFTWARE.
     </div>
   </div>
 
-</div>
+  <!-- ══ DÉFI (essais + indices, sans chrono) ═════════════════════════ -->
+  <div id="mode-df" style="display:none">
+    <div class="panel active">
+      <div class="sketch-card">
+        <div class="tb-wrap"><div class="tb-grid" id="tb-table3"></div></div>
+        <div class="context-label">Deux essais par calcul : un indice apparaît si le premier est raté.</div>
+      </div>
 
-<!-- ══ MODALE DE FICHE ═══════════════════════════════════════════════ -->
-<div class="tb-modal-bg" id="tb-modal" onclick="clicFond(event)">
-  <div class="tb-modal">
-    <h2>📄 Générer une fiche d'exercices</h2>
-    <p>Choisis les tables à inclure. Les 10 questions seront réparties entre elles, en priorité sur les cases pas encore sues.</p>
-    <div class="tb-checks">
-      <label class="on" id="lab-x"><input type="checkbox" id="chk-x" checked onchange="majRepartition()"> ✖️ Tables de multiplication</label>
-      <label id="lab-p"><input type="checkbox" id="chk-p" onchange="majRepartition()"> ➕ Tables d'addition</label>
-    </div>
-    <div class="tb-dist" id="tb-dist">→ 10 questions de multiplication</div>
-    <div class="tb-modal-actions">
-      <button class="tb-btn" onclick="fermerModal()">Annuler</button>
-      <button class="btn-check" style="width:auto" id="btn-gen" onclick="confirmerFiche()">Générer la fiche</button>
+      <div class="controls-card">
+        <div class="tb-play">
+          <div class="tb-pad" id="tb-pad3"></div>
+          <div class="tb-ask">
+            <div class="tb-question" id="tb-q3">—</div>
+            <div class="tb-display vide" id="tb-rep3">?</div>
+            <div class="tb-feedback" id="tb-fb3" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <details class="tb-fold" style="margin-top:4px">
+          <summary>Fiche imprimable et aide</summary>
+          <button class="btn-fiche" onclick="LP.ficheModal.open()">📄 Générer une fiche d'exercices (10 questions)</button>
+          <p style="margin-top:10px">Choisis l'opération (× ou +) et la taille de la table dans le bandeau du haut. Chaque calcul raté une première fois donne un indice, puis la correction complète.</p>
+        </details>
+      </div>
     </div>
   </div>
+
 </div>
 
+<!-- La modale de choix des familles est construite par LP.ficheModal (voir lp-fiche.js) -->
+
 <script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
 <script>
 /* ═══ ÉTAT ══════════════════════════════════════════════════════════════
    statut : 0 = jamais vue, 1 = ratée (à revoir), 2 = sue
@@ -476,6 +455,7 @@ function setOp(o){
   construireTables();
   majTout();
   if (currentMode === "jeu") poser();
+  else if (currentMode === "defi") poserDefi();
 }
 function setTaille(){
   N = parseInt(document.getElementById("tb-taille").value, 10);
@@ -484,6 +464,7 @@ function setTaille(){
   construireTables();
   majTout();
   if (currentMode === "jeu") poser();
+  else if (currentMode === "defi") poserDefi();
 }
 function recommencer(){
   var e = etat(), fait = 0, i, j;
@@ -496,16 +477,18 @@ function recommencer(){
   }
   delete etats[cle()];
   sauver();
-  courante = null; recentes = []; saisie = "";
+  courante = null; recentes = []; saisie = ""; verrou = false;
   document.getElementById("tb-fini").classList.remove("show");
   document.getElementById("tb-fb").className = "tb-feedback";
+  document.getElementById("tb-fb3").className = "tb-feedback";
   majTout();
   if (currentMode === "jeu") poser();
+  else if (currentMode === "defi") poserDefi();
 }
 
 /* ═══ CONSTRUCTION DES TABLES ═══════════════════════════════════════════ */
 function construireTables(){
-  ["tb-table", "tb-table2", "tb-ref"].forEach(function(id){
+  ["tb-table", "tb-table2", "tb-table3", "tb-ref"].forEach(function(id){
     var g = document.getElementById(id);
     g.className = "tb-grid" + (N > 10 ? " serre" : "");
     g.style.gridTemplateColumns = "repeat(" + (N + 1) + ", minmax(0,1fr))";
@@ -555,7 +538,7 @@ document.addEventListener("mouseover", function(e){
 
 /* ═══ CLAVIER INTÉGRÉ ═══════════════════════════════════════════════════ */
 function construirePads(){
-  ["tb-pad", "tb-pad2"].forEach(function(id){
+  ["tb-pad", "tb-pad2", "tb-pad3"].forEach(function(id){
     var g = document.getElementById(id), touches = ["1","2","3","4","5","6","7","8","9","C","0","OK"], k;
     g.innerHTML = "";
     for (k = 0; k < touches.length; k++) {
@@ -584,24 +567,25 @@ function frapper(t){
   majSaisie();
 }
 function majSaisie(){
-  var id = (currentMode === "chrono") ? "tb-rep2" : "tb-rep";
+  var id = (currentMode === "chrono") ? "tb-rep2" : (currentMode === "defi") ? "tb-rep3" : "tb-rep";
   var d = document.getElementById(id);
   d.textContent = saisie === "" ? "?" : saisie;
   d.className = "tb-display" + (saisie === "" ? " vide" : "");
 }
 function validerCourant(){
   if (currentMode === "chrono") validerChrono();
+  else if (currentMode === "defi") validerDefi();
   else valider();
 }
 function padActif(actif){
-  ["tb-pad", "tb-pad2"].forEach(function(id){
+  ["tb-pad", "tb-pad2", "tb-pad3"].forEach(function(id){
     var b = document.getElementById(id).getElementsByTagName("button"), k;
     for (k = 0; k < b.length; k++) b[k].disabled = !actif;
   });
 }
 
 /* ═══ AFFICHAGE ═════════════════════════════════════════════════════════ */
-function majTout(){ majTable("tb-table"); majTable("tb-table2"); majStats(); }
+function majTout(){ majTable("tb-table"); majTable("tb-table2"); majTable("tb-table3"); majStats(); }
 
 function majTable(id){
   var e = etat(), i, j, c;
@@ -618,7 +602,11 @@ function majTable(id){
     }
   }
 }
-function tableCourante(){ return currentMode === "chrono" ? "tb-table2" : "tb-table"; }
+function tableCourante(){
+  if (currentMode === "chrono") return "tb-table2";
+  if (currentMode === "defi") return "tb-table3";
+  return "tb-table";
+}
 
 function majStats(){
   var e = etat(), tot = N * N, ok = 0, ko = 0, i, j;
@@ -659,6 +647,7 @@ function pt(cx, cy, r, deg){
 
 /* ═══ ENTRAÎNEMENT ══════════════════════════════════════════════════════ */
 function poser(){
+  verrou = false;
   var e = etat(), neuves = [], revoir = [], i, j;
   for (i = 1; i <= N; i++) for (j = 1; j <= N; j++) {
     if (e.statut[i][j] === 2) continue;
@@ -798,6 +787,7 @@ function validerChrono(){
     fb.className = "tb-feedback rate show";
     fb.innerHTML = "✘ " + courante.i + " " + signe() + " " + courante.j + " = <b>" + bon + "</b>";
   }
+  emettreReponse(op === "x" ? "x" : "p", v === bon);
   sauver(); majStats();
   poserChrono();
 }
@@ -833,12 +823,15 @@ function setMode(m, btn){
   var tabs = document.querySelectorAll(".mode-tab");
   for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
   if (btn) btn.classList.add("active");
-  document.getElementById("mode-jeu").style.display    = (m === "jeu")    ? "block" : "none";
   document.getElementById("mode-ref").style.display    = (m === "ref")    ? "block" : "none";
+  document.getElementById("mode-jeu").style.display    = (m === "jeu")    ? "block" : "none";
+  document.getElementById("mode-df").style.display     = (m === "defi")   ? "block" : "none";
   document.getElementById("mode-chrono").style.display = (m === "chrono") ? "block" : "none";
   document.getElementById("tb-bar").style.display      = (m === "ref")    ? "none"  : "flex";
   if (m !== "chrono") arreterManche();
-  if (m === "jeu") { padActif(true); poser(); }
+  verrou = false;
+  if (m === "jeu")   { padActif(true); poser(); }
+  if (m === "defi")  { padActif(true); poserDefi(); }
   if (m === "chrono") padActif(false);
   if (m === "ref") appliquerMasque();
   majTout();
@@ -846,45 +839,147 @@ function setMode(m, btn){
 
 /* Clavier physique : chiffres, effacement, entrée */
 document.addEventListener("keydown", function(e){
-  if (document.getElementById("tb-modal").classList.contains("show")) {
-    if (e.key === "Escape") fermerModal();
-    return;
-  }
+  if (window.LP && LP.ficheModal && LP.ficheModal.isOpen && LP.ficheModal.isOpen()) return;
   if (currentMode === "ref") return;
   if (e.key >= "0" && e.key <= "9") { frapper(e.key); e.preventDefault(); }
   else if (e.key === "Backspace") { frapper("C"); e.preventDefault(); }
   else if (e.key === "Enter") { frapper("OK"); e.preventDefault(); }
 });
 
-/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
-function ouvrirModal(){
-  document.getElementById("chk-x").checked = (op === "x");
-  document.getElementById("chk-p").checked = (op === "p");
-  majRepartition();
-  document.getElementById("tb-modal").classList.add("show");
-}
-function fermerModal(){ document.getElementById("tb-modal").classList.remove("show"); }
-function clicFond(e){ if (e.target && e.target.id === "tb-modal") fermerModal(); }
+/* ═══ DÉFI : moteur lp-defi.js (dom:false) + indices du 2e essai ═════════
+   Indices calculés à partir des nombres, validés par Moïse le 19 août 2026.
+   Chaque indice montre le chemin puis s'arrête AVANT le résultat, pour que
+   l'élève termine le calcul lui-même. */
 
-function majRepartition(){
-  var x = document.getElementById("chk-x").checked;
-  var p = document.getElementById("chk-p").checked;
-  document.getElementById("lab-x").className = x ? "on" : "";
-  document.getElementById("lab-p").className = p ? "on" : "";
-  var d = document.getElementById("tb-dist"), g = document.getElementById("btn-gen");
-  if (!x && !p) {
-    d.className = "tb-dist vide";
-    d.textContent = "Coche au moins une table.";
-    g.disabled = true;
+function astuceMul(s, a){
+  switch (s) {
+    case 1:  return "Multiplier par 1 ne change rien : " + a + " × 1 = " + a + ".";
+    case 10: return "× 10 : le nombre suivi d'un zéro. " + a + " × 10 = " + a + "0.";
+    case 2:  return "× 2, c'est doubler : " + a + " × 2 = " + a + " + " + a + ".";
+    case 5:  return "× 5, c'est la moitié de × 10 : " + a + " × 10 = " + (a * 10) + ", prends-en la moitié…";
+    case 9:  return "× 9 = × 10 puis on enlève une fois : " + a + " × 10 − " + a + " = " + (a * 10) + " − " + a + "…";
+    case 4:  return "× 4, c'est doubler deux fois : " + a + " → " + (a * 2) + " → puis encore le double…";
+    case 3:  return "× 3 = deux fois plus une fois : " + a + " × 2 + " + a + " = " + (a * 2) + " + " + a + "…";
+    case 6:  return "× 6 = × 5 plus une fois : " + a + " × 5 + " + a + " = " + (a * 5) + " + " + a + "…";
+    case 8:  return "× 8, c'est doubler trois fois : " + a + " → " + (a * 2) + " → " + (a * 4) + " → puis encore le double…";
+    case 7:  return "× 7 = × 5 plus × 2 : " + a + " × 5 + " + a + " × 2 = " + (a * 5) + " + " + (a * 2) + "…";
+    case 11: return "× 11 = × 10 plus une fois : " + a + " × 10 + " + a + " = " + (a * 10) + " + " + a + "…";
+    case 12: return "× 12 = × 10 plus × 2 : " + a + " × 10 + " + a + " × 2 = " + (a * 10) + " + " + (a * 2) + "…";
+  }
+  return "Décompose l'un des deux nombres pour te ramener à un calcul plus simple.";
+}
+function indiceMul(i, j){
+  var priorite = [1, 10, 2, 5, 9, 4, 3, 6, 8, 7, 11, 12], k, s, txt = null;
+  for (k = 0; k < priorite.length && txt === null; k++) {
+    s = priorite[k];
+    if (i === s)      txt = astuceMul(s, j);
+    else if (j === s) txt = astuceMul(s, i);
+  }
+  if (txt === null) txt = astuceMul(0, i);
+  if (i !== j) txt += " (au fait : " + i + " × " + j + " = " + j + " × " + i + ", choisis l'ordre le plus simple).";
+  return txt;
+}
+function indiceAdd(i, j){
+  var L = Math.max(i, j), S = Math.min(i, j), som = i + j;
+  if (i === j)       return "Un double : " + i + " + " + i + ". Ces résultats reviennent souvent, apprends-les.";
+  if (L - S === 1)   return "Presque un double : " + S + " + " + S + " puis + 1…";
+  if (L === 9)       return "+ 9 : ajoute 10 puis enlève 1 : " + S + " + 10 − 1…";
+  if (L === 10)      return "+ 10 : ajoute 1 à la dizaine : " + S + " + 10 = " + (S + 10) + ".";
+  if (L === 11)      return "+ 11 = + 10 puis + 1 : " + S + " + 10 + 1…";
+  if (L === 12)      return "+ 12 = + 10 puis + 2 : " + S + " + 10 + 2…";
+  if (som > 10)      return "Passe par 10 : complète " + L + " à 10 (+" + (10 - L) + "), il reste " + (som - 10) + "…";
+  return "Pars du plus grand et compte : " + L + ", puis avance de " + S + "…";
+}
+function detailMul(i, j){ return i + " × " + j + " = " + (i * j) + "."; }
+function detailAdd(i, j){ return i + " + " + j + " = " + (i + j) + "."; }
+
+function genDefi(o){
+  return function(){
+    var i = 1 + Math.floor(Math.random() * N);
+    var j = 1 + Math.floor(Math.random() * N);
+    var rep = calculDe(o, i, j);
+    return {
+      i: i, j: j, op: o,
+      type: "nombre", reponse: rep, tol: 0, unite: "",
+      enonce: "",
+      cotes: "Calcule : " + i + " " + signeDe(o) + " " + j,
+      figure: function(){ return svgOp(o, i, j); },
+      hint:   (o === "x") ? indiceMul(i, j) : indiceAdd(i, j),
+      detail: (o === "x") ? detailMul(i, j) : detailAdd(i, j),
+      comp: "C3",
+      nom: (o === "x") ? "Multiplication" : "Addition",
+      reponseTexte: String(rep)
+    };
+  };
+}
+
+var defi = LP.defi.creer({
+  outil:     "tables_mult_add",
+  dom:       false,
+  serie:     0,
+  essaisMax: 2,
+  melange:   false,
+  familles: [
+    { value: "x", label: "Multiplication", nom: "Multiplication", comp: "C3", unite: "", tol: 0, gen: genDefi("x") },
+    { value: "p", label: "Addition",       nom: "Addition",       comp: "C3", unite: "", tol: 0, gen: genDefi("p") }
+  ]
+});
+
+function poserDefi(){
+  verrou = false;
+  padActif(true);
+  document.getElementById("tb-fb3").className = "tb-feedback";
+  var q = defi.tirer(op === "x" ? "x" : "p");
+  courante = { i: q.i, j: q.j };
+  saisie = "";
+  document.getElementById("tb-q3").innerHTML = q.i + " " + signe() + " " + q.j + " =";
+  majSaisie();
+  majTable("tb-table3");
+}
+function validerDefi(){
+  if (verrou || !courante || saisie === "") return;
+  var res = defi.verifier(saisie);
+  if (!res || res.vide) return;
+  var fb = document.getElementById("tb-fb3");
+
+  /* Premier essai raté : on montre l'indice et on rejoue la même question. */
+  if (!res.verrou) {
+    fb.className = "tb-feedback rate show";
+    fb.innerHTML = res.texte;
+    saisie = "";
+    majSaisie();
     return;
   }
-  d.className = "tb-dist";
-  g.disabled = false;
-  if (x && p) d.textContent = "→ 5 multiplications + 5 additions = 10 questions";
-  else if (x) d.textContent = "→ 10 questions de multiplication";
-  else d.textContent = "→ 10 questions d'addition";
+
+  /* Question close : réussite, ou second essai (correction). */
+  verrou = true;
+  padActif(false);
+  var e = etat(), i = courante.i, j = courante.j;
+  if (res.ok) {
+    e.statut[i][j] = 2; e.besoin[i][j] = 0;
+    fb.className = "tb-feedback bon show";
+  } else {
+    if (e.statut[i][j] !== 2) { e.statut[i][j] = 1; e.besoin[i][j] = 2; }
+    fb.className = "tb-feedback rate show";
+  }
+  fb.innerHTML = res.texte;
+  sauver(); majStats(); majTable("tb-table3");
+  setTimeout(function(){ verrou = false; poserDefi(); }, res.ok ? 1100 : 2600);
 }
 
+/* Contribution au suivi d'acquis pour le mode Défi ⁺ (contre la montre) :
+   il ne passe pas par le moteur, on émet donc l'événement à la main, avec la
+   même forme que lp-defi.js (outil, fam, comp, ok, essais, premier). */
+function emettreReponse(fam, ok){
+  var info = { outil: "tables_mult_add", fam: fam, comp: "C3", ok: !!ok,
+               essais: 1, premier: !!ok, enonce: "", reponse: "" };
+  var ev;
+  try { ev = new CustomEvent("lp:defi:reponse", { detail: info, bubbles: true }); }
+  catch (e) { ev = document.createEvent("CustomEvent"); ev.initCustomEvent("lp:defi:reponse", true, false, info); }
+  document.dispatchEvent(ev);
+}
+
+/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════════ */
 function svgOp(o, a, b){
   return '<rect x="18" y="34" width="164" height="66" rx="10" fill="#FAECE7" stroke="#993C1D" stroke-width="2.5"/>' +
          '<text x="100" y="80" text-anchor="middle" font-size="34" font-weight="700" fill="#993C1D">' +
@@ -899,55 +994,60 @@ function tirerCases(o, combien){
   melange(aRevoir); melange(autres);
   return aRevoir.concat(autres).slice(0, combien);
 }
-function confirmerFiche(){
-  var x = document.getElementById("chk-x").checked;
-  var p = document.getElementById("chk-p").checked;
-  if (!x && !p) return;
-  var choix = [], k;
-  if (x && p) {
-    var a = tirerCases("x", 5), b = tirerCases("p", 5);
-    for (k = 0; k < 5; k++) { choix.push(a[k]); choix.push(b[k]); }
-  } else {
-    choix = tirerCases(x ? "x" : "p", 10);
+LP.ficheModal.init({
+  familles: [
+    { value: "x", label: "Tables de multiplication" },
+    { value: "p", label: "Tables d\u2019addition", checked: false }
+  ],
+  titre: "\ud83d\udcc4 G\u00e9n\u00e9rer une fiche d'exercices",
+  texte: "Choisis les tables \u00e0 inclure. Les 10 questions sont r\u00e9parties entre elles, "
+       + "en priorit\u00e9 sur les cases pas encore sues.",
+  onConfirm: function(plan){
+    var x = false, p = false, choix = [], i;
+    for (i = 0; i < plan.length; i++) {
+      if (plan[i].fam === "x") x = true;
+      else if (plan[i].fam === "p") p = true;
+      choix = choix.concat(tirerCases(plan[i].fam, plan[i].n));
+    }
+    melange(choix);
+    var titre = (x && p) ? "Tables \u00d7 et +"
+              : (x ? "Tables de multiplication" : "Tables d\u2019addition");
+    var aide;
+    if (x && p) {
+      aide = "Multiplication : 7 \u00d7 8 = 8 \u00d7 7, la table est sym\u00e9trique &nbsp;|&nbsp; "
+           + "Addition : passer par 10, 8 + 5 = 8 + 2 + 3 &nbsp;|&nbsp; Les doubles se retiennent vite";
+    } else if (x) {
+      aide = "La table est sym\u00e9trique : 7 \u00d7 8 = 8 \u00d7 7 &nbsp;|&nbsp; Tables de 1, 2, 5 et 10 : les plus faciles "
+           + "&nbsp;|&nbsp; Table de 9 : la somme des chiffres du r\u00e9sultat vaut 9";
+    } else {
+      aide = "L\u2019addition est commutative : 7 + 8 = 8 + 7 &nbsp;|&nbsp; Passer par 10 : 8 + 5 = 8 + 2 + 3 = 13 "
+           + "&nbsp;|&nbsp; Les doubles se retiennent vite : 6 + 6, 7 + 7, 8 + 8";
+    }
+    LP.fiche({
+      icon: (x && p) ? "\u{1F522}" : (x ? "\u2716\uFE0F" : "\u2795"),
+      title: titre,
+      subtitle: "Table de 1 \u00e0 " + N + " \u00b7 calcul mental",
+      modeLabel: "D\u00e9fi",
+      isPlus: false,
+      tolerance: "r\u00e9ponse enti\u00e8re exacte",
+      accent: "#993C1D",
+      answerLabel: "R\u00e9ponse =",
+      unit: "",
+      aide: aide,
+      questions: choix.map(function(c, k2){
+        return {
+          num: k2 + 1,
+          nom: (c.o === "x") ? "Multiplication" : "Addition",
+          hint: "",
+          svg: svgOp(c.o, c.i, c.j),
+          cotes: "Calcule : " + c.i + " " + signeDe(c.o) + " " + c.j,
+          answer: calculDe(c.o, c.i, c.j),
+          answerText: String(calculDe(c.o, c.i, c.j))
+        };
+      })
+    });
   }
-  var titre = (x && p) ? "Tables \u00d7 et +"
-            : (x ? "Tables de multiplication" : "Tables d\u2019addition");
-  var aide;
-  if (x && p) {
-    aide = "Multiplication : 7 \u00d7 8 = 8 \u00d7 7, la table est sym\u00e9trique &nbsp;|&nbsp; "
-         + "Addition : passer par 10, 8 + 5 = 8 + 2 + 3 &nbsp;|&nbsp; Les doubles se retiennent vite";
-  } else if (x) {
-    aide = "La table est sym\u00e9trique : 7 \u00d7 8 = 8 \u00d7 7 &nbsp;|&nbsp; Tables de 1, 2, 5 et 10 : les plus faciles "
-         + "&nbsp;|&nbsp; Table de 9 : la somme des chiffres du r\u00e9sultat vaut 9";
-  } else {
-    aide = "L\u2019addition est commutative : 7 + 8 = 8 + 7 &nbsp;|&nbsp; Passer par 10 : 8 + 5 = 8 + 2 + 3 = 13 "
-         + "&nbsp;|&nbsp; Les doubles se retiennent vite : 6 + 6, 7 + 7, 8 + 8";
-  }
-  fermerModal();
-  LP.fiche({
-    icon: (x && p) ? "\u{1F522}" : (x ? "\u2716\uFE0F" : "\u2795"),
-    title: titre,
-    subtitle: "Table de 1 \u00e0 " + N + " \u00b7 calcul mental",
-    modeLabel: "Entra\u00eenement",
-    isPlus: false,
-    tolerance: "r\u00e9ponse enti\u00e8re exacte",
-    accent: "#993C1D",
-    answerLabel: "R\u00e9ponse =",
-    unit: "",
-    aide: aide,
-    questions: choix.map(function(c, k2){
-      return {
-        num: k2 + 1,
-        nom: (c.o === "x") ? "Multiplication" : "Addition",
-        hint: "",
-        svg: svgOp(c.o, c.i, c.j),
-        cotes: "Calcule : " + c.i + " " + signeDe(c.o) + " " + c.j,
-        answer: calculDe(c.o, c.i, c.j),
-        answerText: String(calculDe(c.o, c.i, c.j))
-      };
-    })
-  });
-}
+});
 function melange(t){
   for (var i = t.length - 1; i > 0; i--) {
     var j = Math.floor(Math.random() * (i + 1));
@@ -961,7 +1061,7 @@ charger();
 construireTables();
 construirePads();
 majTout();
-poser();
+setMode("ref", document.querySelector(".mode-tab"));   // on ouvre sur la Table
 </script>
 <footer class="lp-footer">
   <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
