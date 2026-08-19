@@ -329,6 +329,8 @@ SOFTWARE.
             <option value="90">90 s</option>
             <option value="120">120 s</option>
             <option value="180">180 s</option>
+            <option value="240">240 s</option>
+            <option value="360">360 s</option>
           </select>
           <div><span class="tb-chrono-num" id="tb-temps">60</span> <span class="tb-note">s restantes</span></div>
           <div style="margin-left:auto"><span class="tb-note">Score</span> <span class="tb-chrono-num" id="tb-score">0</span></div>
@@ -827,7 +829,7 @@ function setMode(m, btn){
   document.getElementById("mode-jeu").style.display    = (m === "jeu")    ? "block" : "none";
   document.getElementById("mode-df").style.display     = (m === "defi")   ? "block" : "none";
   document.getElementById("mode-chrono").style.display = (m === "chrono") ? "block" : "none";
-  document.getElementById("tb-bar").style.display      = (m === "ref")    ? "none"  : "flex";
+  document.getElementById("tb-bar").style.display      = "flex";   // bandeau (× / +, taille) visible partout, Table comprise
   if (m !== "chrono") arreterManche();
   verrou = false;
   if (m === "jeu")   { padActif(true); poser(); }
