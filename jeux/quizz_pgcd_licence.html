@@ -524,17 +524,30 @@ function cercles(la, sousA, lb, sousB){
          '<circle cx="130" cy="155" r="82" fill="var(--blue-bg)" stroke="var(--blue)" stroke-width="2" opacity=".85"/>' +
          '<circle cx="210" cy="155" r="82" fill="var(--teal-bg)" stroke="var(--teal)" stroke-width="2" opacity=".85"/>';
 }
+/* Les libellés sont posés au-dessus des cercles (y=58), zone entièrement
+   dégagée : les deux cercles (cy=155, r=82) ne commencent qu'à y=73, donc
+   aucun trait ne peut croiser un texte placé au-dessus de cette limite.
+   Avant : libellés à y=104, à l'intérieur des cercles, croisant leur trait
+   à cette hauteur (signalé par Moïse, corrigé ici avec une marge large). */
 function legendes(){
-  return '<text x="80" y="104" text-anchor="middle" font-size="12" fill="var(--text3)">propres à A</text>' +
-         '<text x="170" y="104" text-anchor="middle" font-size="12" fill="var(--text3)">communs</text>' +
-         '<text x="260" y="104" text-anchor="middle" font-size="12" fill="var(--text3)">propres à B</text>';
+  return '<text x="80" y="58" text-anchor="middle" font-size="12" fill="var(--text3)">propres à A</text>' +
+         '<text x="170" y="58" text-anchor="middle" font-size="12" fill="var(--text3)">communs</text>' +
+         '<text x="260" y="58" text-anchor="middle" font-size="12" fill="var(--text3)">propres à B</text>';
 }
+/* Espacement adaptatif : à 22 px d'écart fixe, une liste de 7 facteurs ou
+   plus (nombres très composés en mode « avancé », jusqu'à 1000) dépasse la
+   bande verticale dégagée à l'intérieur des cercles (cy=155, r=82) et son
+   premier élément vient croiser leur trait vers le haut — signalé par
+   Moïse. Corrigé en resserrant l'écartement pour les listes longues, tout
+   en gardant 22 px (confortable) pour le cas courant à 6 éléments ou moins. */
 function zone(x, liste, vide){
   var items = (liste && liste.length) ? liste : [vide];
-  var y = 162 - (items.length - 1) * 11;
+  var n = items.length;
+  var pas = (n > 1) ? Math.max(8, Math.min(22, 78 / (n - 1))) : 22;
+  var y = 155 - (n - 1) * pas / 2;
   return items.map(function(v){
     var t = '<text x="' + x + '" y="' + y + '" text-anchor="middle" font-size="17" font-weight="700" fill="var(--text)">' + v + "</text>";
-    y += 22;
+    y += pas;
     return t;
   }).join("");
 }
@@ -659,7 +672,7 @@ var defiDefs = [
     generate: function(){
       var p = paire(3, 15, 2, 9);
       return {
-        svg: svgDeux(p.a, p.b, "PGCD des deux nombres ?"),
+        svg: svgDeux(p.a, p.b, ""),
         enonce: "Quel est leur PGCD ?",
         cotes: "Nombres étudiés : " + p.a + " et " + p.b,
         answer: p.g,
@@ -677,7 +690,7 @@ var defiDefs = [
       var p = paire(4, 24, 2, 7);
       var d = diviseurs(pgcd(p.a, p.b));
       return {
-        svg: svgDeux(p.a, p.b, "Combien de diviseurs communs ?"),
+        svg: svgDeux(p.a, p.b, ""),
         enonce: "Combien ont-ils de diviseurs communs ?",
         cotes: "Nombres étudiés : " + p.a + " et " + p.b,
         answer: d.length,
@@ -693,7 +706,7 @@ var defiDefs = [
     generate: function(){
       var p = paire(2, 8, 2, 7);
       return {
-        svg: svgDeux(p.a, p.b, "PPCM des deux nombres ?"),
+        svg: svgDeux(p.a, p.b, ""),
         enonce: "Quel est leur PPCM ?",
         cotes: "Nombres étudiés : " + p.a + " et " + p.b,
         answer: ppcm(p.a, p.b),
@@ -709,7 +722,7 @@ var defiDefs = [
     generate: function(){
       var p = paire(3, 14, 2, 11);
       return {
-        svg: svgFraction(p.a, p.b, "Fraction irréductible : numérateur ?"),
+        svg: svgFraction(p.a, p.b, ""),
         enonce: "Quel est le numérateur de la fraction irréductible ?",
         cotes: "Fraction à simplifier : " + p.a + " / " + p.b,
         answer: p.x,
@@ -725,7 +738,7 @@ var defiDefs = [
     generate: function(){
       var p = paire(4, 18, 3, 12);
       return {
-        svg: svgDeux(p.a, p.b, "Combien de paquets au maximum ?", "vis", "écrous"),
+        svg: svgDeux(p.a, p.b, "", "vis", "écrous"),
         enonce: "Combien de sachets peut-il faire au maximum ?",
         cotes: "Un magasinier range " + p.a + " vis et " + p.b + " écrous dans des sachets tous identiques, " +
                "sans qu\u2019il reste rien.",
@@ -741,7 +754,7 @@ var defiDefs = [
     generate: function(){
       var p = paire(4, 15, 3, 12);
       return {
-        svg: svgDeux(p.a, p.b, "Combien de vis par sachet ?", "vis", "écrous"),
+        svg: svgDeux(p.a, p.b, "", "vis", "écrous"),
         enonce: "Combien de vis dans chaque sachet ?",
         cotes: "Un magasinier répartit " + p.a + " vis et " + p.b + " écrous en sachets identiques, " +
                "en faisant le plus de sachets possible.",
@@ -759,7 +772,7 @@ var defiDefs = [
       var p = paire(4, 16, 3, 9);
       var L = Math.max(p.a, p.b), l = Math.min(p.a, p.b);
       return {
-        svg: svgPlaque(L, l, "Côté du plus grand carré ?"),
+        svg: svgPlaque(L, l, ""),
         enonce: "Quel est le côté de ces carrés, en cm ?",
         cotes: "Une plaque mesure " + L + " cm sur " + l + " cm. On la découpe en carrés identiques, " +
                "les plus grands possible, sans perte.",
@@ -776,7 +789,7 @@ var defiDefs = [
       var a = rnd(4, 15), b = rnd(4, 15);
       while (b === a || ppcm(a, b) > 200) { a = rnd(4, 15); b = rnd(4, 15); }
       return {
-        svg: svgDeux(a, b, "Dans combien de minutes ?", "bus 1", "bus 2"),
+        svg: svgDeux(a, b, "", "bus 1", "bus 2"),
         enonce: "Dans combien de minutes repartiront-ils ensemble ?",
         cotes: "Deux bus partent ensemble du dépôt. Le premier revient toutes les " + a +
                " minutes, le second toutes les " + b + " minutes.",
