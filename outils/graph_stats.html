@@ -29,7 +29,7 @@ outilslp.netlify.app — MIT License
   .choice-card:disabled { cursor: default; }
   .choice-card.correct { border-color: var(--teal); background: var(--teal-bg); }
   .choice-card.wrong { border-color: var(--red); background: var(--red-bg); }
-  .choice-card svg { width: 100%; height: auto; max-width: 175px; background: var(--sketch-bg); border-radius: 6px; }
+  .choice-card svg { width: 100%; height: auto; max-width: 262px; background: var(--sketch-bg); border-radius: 6px; }
   .mini-table { width: 100%; border-collapse: collapse; font-size: 12px; }
   .mini-table th, .mini-table td { border: 1px solid var(--border); padding: 4px 6px; text-align: center; }
   .mini-table th { background: var(--surface2); font-weight: 700; }
@@ -59,6 +59,11 @@ outilslp.netlify.app — MIT License
   #defi3-chart-wrap svg, #defi2-chart-wrap svg { touch-action: none; }
   .defi-readout { text-align: center; font-size: var(--fs-xs); color: var(--text2); margin: 6px 0 4px; min-height: 1.4em; }
   .defi-total { text-align: center; font-weight: 700; margin-bottom: 8px; }
+  .defi-aide-inline { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 8px 10px; border-radius: 6px; margin: 4px 0 12px; font-size: var(--fs-xs); color: var(--text2); }
+  /* Diagrammes des défis agrandis (~50 %) — surcharge locale du plafond partagé (lp-ui.css : max-width 260px). */
+  #mode-defi2 .defi-shape-display svg, #mode-defi3 .defi-shape-display svg { max-width: 390px; }
+  html[data-size="projection"] #mode-defi2 .defi-shape-display svg,
+  html[data-size="projection"] #mode-defi3 .defi-shape-display svg { max-width: 560px; }
 
   /* ── Générateur (onglet "Générateur") ─────────────────────────────── */
   .gen-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--pad-card); }
@@ -195,6 +200,10 @@ outilslp.netlify.app — MIT License
 
   <canvas id="graphCanvas" width="820" height="430" role="img" aria-label="Graphique statistique"></canvas>
 
+  <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
+    <button class="btn-fiche" onclick="imprimerGenerateur()">🖨️ Imprimer / PDF (caractéristiques + tableau + graphique)</button>
+  </div>
+
   </div>
   </div>
 
@@ -208,8 +217,11 @@ outilslp.netlify.app — MIT License
       <div class="progress-bar"><div class="progress-fill" id="defi1-progress" style="width:0%"></div></div>
       <div id="defi1-prompt" class="defi-prompt"></div>
       <div id="defi1-options" class="qcm-grid"></div>
-      <div class="feedback-box" id="defi1-feedback"></div>
+      <div class="feedback-box" id="defi1-feedback" role="status" aria-live="polite"></div>
       <button class="btn-next" id="defi1-next" style="display:none" onclick="defi1Next()">Question suivante →</button>
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="ouvrirFicheStats()">📄 Générer une fiche d'exercices (10 questions)</button>
+      </div>
     </div>
   </div>
 
@@ -221,6 +233,7 @@ outilslp.netlify.app — MIT License
         <div class="defi-score" id="defi2-score">0 / 0 correct</div>
       </div>
       <div class="progress-bar"><div class="progress-fill" id="defi2-progress" style="width:0%"></div></div>
+      <div class="defi-aide-inline" id="defi2-aide" style="display:none"></div>
       <div id="defi2-chart-wrap" class="defi-shape-display"></div>
       <div class="defi-total" id="defi2-total"></div>
       <p class="section-label" style="margin-bottom:8px;">Quel est le type de ce caractère ?</p>
@@ -232,10 +245,10 @@ outilslp.netlify.app — MIT License
         </table>
       </div>
       <button class="btn-check" onclick="defi2Check()">Vérifier mes réponses</button>
-      <div class="feedback-box" id="defi2-feedback"></div>
+      <div class="feedback-box" id="defi2-feedback" role="status" aria-live="polite"></div>
       <button class="btn-next" id="defi2-next" style="display:none" onclick="defi2Next()">Diagramme suivant →</button>
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
-        <button class="btn-fiche" onclick="defi2Fiche()">📄 Générer une fiche d'exercices (10 questions)</button>
+        <button class="btn-fiche" onclick="ouvrirFicheStats()">📄 Générer une fiche d'exercices (10 questions)</button>
       </div>
     </div>
   </div>
@@ -248,18 +261,23 @@ outilslp.netlify.app — MIT License
         <div class="defi-score" id="defi3-score">0 / 0 correct</div>
       </div>
       <div class="progress-bar"><div class="progress-fill" id="defi3-progress" style="width:0%"></div></div>
+      <div class="defi-aide-inline" id="defi3-aide" style="display:none"></div>
       <div id="defi3-table-wrap" class="defi3-tablebox"></div>
       <div id="defi3-chart-wrap" class="defi-shape-display"></div>
       <div class="defi-readout" id="defi3-readout"></div>
       <button class="btn-check" onclick="defi3Check()">Valider ma construction</button>
-      <div class="feedback-box" id="defi3-feedback"></div>
+      <div class="feedback-box" id="defi3-feedback" role="status" aria-live="polite"></div>
       <button class="btn-next" id="defi3-next" style="display:none" onclick="defi3Next()">Diagramme suivant →</button>
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="ouvrirFicheStats()">📄 Générer une fiche d'exercices (10 questions)</button>
+      </div>
     </div>
   </div>
 
 </div>
 
 <script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
 <script>
 /* ══════════════════════════════════════════════════════════════════════
    UTILITAIRES PARTAGÉS (défis 1/2/3)
@@ -497,7 +515,7 @@ function chartSVGString(dist, diagType, opts) {
   var W = opts.W, H = opts.H, geo;
   if (diagType === 'circulaire') geo = renderPieSVG(dist, opts);
   else geo = renderBarSVG(dist, diagType, opts);
-  var full = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" width="100%" height="auto">' + geo.svg + '</svg>';
+  var full = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" width="100%" style="width:100%;height:auto;display:block">' + geo.svg + '</svg>';
   return { full: full, geo: geo };
 }
 
@@ -528,29 +546,83 @@ function updateScoreUI(prefix, st) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   DÉFI 1 — Identifier (diagramme ↔ distribution)
+   MOTEUR PARTAGÉ (lp-defi.js) — les trois défis en dom:false
+   ══════════════════════════════════════════════════════════════════════
+   Chaque défi est une instance indépendante de LP.defi.creer({dom:false}).
+   L'outil garde son affichage (cartes QCM, tableau, construction SVG) et
+   appelle lui-même defi.tirer()/defi.verifier(). Le moteur tient le second
+   essai, l'indice, le score, le journal et les événements lp:defi:reponse.
+   Trois familles communes : caractère qualitatif / discret / continu.
+   Compétences (suivi d'acquis) : Défi 1 = C2 (analyser / raisonner),
+   Défi 2 = C3 (réaliser / calculer), Défi 3 = C5 (communiquer / représenter).
+   ⚠ INDICES / RAPPELS / DÉTAILS — PREMIER JET, À RELIRE (pédagogie). */
+
+var TYPES3 = [
+  { value: 'qual', label: 'Qualitatif',          force: 'qualitatif' },
+  { value: 'disc', label: 'Quantitatif discret', force: 'discret' },
+  { value: 'cont', label: 'Quantitatif continu', force: 'continu' }
+];
+function forceOf(fam) { return fam === 'qual' ? 'qualitatif' : (fam === 'disc' ? 'discret' : 'continu'); }
+function typeCodeOf(t) { return t === 'qualitatif' ? 0 : (t === 'discret' ? 1 : 2); }
+function famsFor(genFactory, comp) {
+  return TYPES3.map(function (t) {
+    return { value: t.value, label: t.label, nom: t.label, comp: comp, gen: genFactory(t.force) };
+  });
+}
+function majScore3(prefix, M) {
+  updateScoreUI(prefix, { correct: M.bons, total: M.total });
+}
+
+/* Les générateurs (genD1/2/3) sont des déclarations de fonction hoistées :
+   les trois moteurs peuvent donc être créés ici, avant leur définition. */
+var eD1 = LP.defi.creer({ outil: 'graph_stats', dom: false, serie: 0, familles: famsFor(genD1, 'C2'), familleParDefaut: 'mix' });
+var eD2 = LP.defi.creer({ outil: 'graph_stats', dom: false, serie: 0, familles: famsFor(genD2, 'C3'), familleParDefaut: 'mix' });
+var eD3 = LP.defi.creer({ outil: 'graph_stats', dom: false, serie: 0, familles: famsFor(genD3, 'C5'), familleParDefaut: 'mix' });
+
+/* ══════════════════════════════════════════════════════════════════════
+   DÉFI 1 — Identifier (diagramme ↔ distribution) — type "choix"
    ══════════════════════════════════════════════════════════════════════ */
-var defi1State = { correct: 0, total: 0 };
-var defi1Cur = {};
+function genD1(force) {
+  return function () {
+    var direction = Math.random() < 0.5 ? 'tableToChart' : 'chartToTable';
+    var dist = genDistribution(force);
+    var diagType = pickDiagType(dist);
+    var decoy1 = makeDecoy(dist);
+    var decoy2 = makeDecoy(dist, decoy1);
+    var variants = shuffleArr([{ d: dist, correct: true }, { d: decoy1, correct: false }, { d: decoy2, correct: false }]);
+    var correctIdx = 0;
+    variants.forEach(function (v, i) { if (v.correct) correctIdx = i; });
+    return {
+      type: 'choix',
+      choix: variants.map(function (_, i) { return { val: String(i), label: 'Proposition ' + (i + 1) }; }),
+      reponse: String(correctIdx),
+      dist: dist, diagType: diagType, direction: direction, variants: variants,
+      nomCaractere: dist.nomCaractere,
+      enonce: direction === 'tableToChart'
+        ? 'Quel diagramme représente correctement cette distribution ?'
+        : 'Quel tableau correspond à ce diagramme ?',
+      rappel: "La plus grande valeur du tableau correspond à la plus grande part (ou barre) du diagramme, et inversement.",
+      hint: direction === 'tableToChart'
+        ? "Classe les effectifs du plus grand au plus petit, puis cherche le diagramme dont les hauteurs (ou les parts) suivent le même ordre."
+        : "Repère la plus grande part (ou barre) du diagramme, puis le tableau où c'est cette même modalité qui a le plus grand effectif.",
+      detail: "La bonne réponse est surlignée en vert."
+    };
+  };
+}
 
 function defi1NewQuestion() {
-  var direction = Math.random() < 0.5 ? 'tableToChart' : 'chartToTable';
-  var dist = genDistribution();
-  var diagType = pickDiagType(dist);
-  var decoy1 = makeDecoy(dist);
-  var decoy2 = makeDecoy(dist, decoy1);
-  var variants = shuffleArr([{ d: dist, correct: true }, { d: decoy1, correct: false }, { d: decoy2, correct: false }]);
-
-  defi1Cur = { direction: direction, dist: dist, diagType: diagType, variants: variants, answered: false };
-
+  var q = eD1.tirer();
+  var dist = q.dist, diagType = q.diagType, direction = q.direction, variants = q.variants;
   var promptEl = document.getElementById('defi1-prompt');
   var optsEl = document.getElementById('defi1-options');
   optsEl.innerHTML = '';
+  var aide = q.rappel ? '<div class="defi-aide-inline"><b>Rappel :</b> ' + q.rappel + '</div>' : '';
 
   if (direction === 'tableToChart') {
-    promptEl.innerHTML = '<p style="font-weight:700;margin-bottom:6px;">' + esc(dist.nomCaractere) + '</p>' +
+    promptEl.innerHTML = aide +
+      '<p style="font-weight:700;margin-bottom:6px;">' + esc(dist.nomCaractere) + '</p>' +
       tableHTML(dist) +
-      '<p style="margin-top:10px;font-weight:600;">Quel diagramme représente correctement cette distribution ?</p>';
+      '<p style="margin-top:10px;font-weight:600;">' + esc(q.enonce) + '</p>';
     variants.forEach(function (v, i) {
       var btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'choice-card';
@@ -560,10 +632,11 @@ function defi1NewQuestion() {
       optsEl.appendChild(btn);
     });
   } else {
-    promptEl.innerHTML = '<p style="font-weight:700;margin-bottom:6px;">' + esc(dist.nomCaractere) + '</p>' +
+    promptEl.innerHTML = aide +
+      '<p style="font-weight:700;margin-bottom:6px;">' + esc(dist.nomCaractere) + '</p>' +
       chartSVGString(dist, diagType, { W: 260, H: 200, showPct: diagType === 'circulaire' }).full +
       legendHTML(dist, []) +
-      '<p style="margin-top:10px;font-weight:600;">Quel tableau correspond à ce diagramme ?</p>';
+      '<p style="margin-top:10px;font-weight:600;">' + esc(q.enonce) + '</p>';
     variants.forEach(function (v, i) {
       var btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'choice-card';
@@ -579,38 +652,135 @@ function defi1NewQuestion() {
 }
 
 function defi1Answer(i) {
-  if (defi1Cur.answered) return;
-  defi1Cur.answered = true;
+  if (eD1.verrou) return;
+  var res = eD1.verifier(String(i));
+  if (!res) return;
   var cards = document.querySelectorAll('#defi1-options .choice-card');
-  cards.forEach(function (c) { c.disabled = true; });
-  var chosen = defi1Cur.variants[i];
-  var correctIdx = defi1Cur.variants.findIndex(function (v) { return v.correct; });
-  cards[i].classList.add(chosen.correct ? 'correct' : 'wrong');
-  if (!chosen.correct) cards[correctIdx].classList.add('correct');
-
-  defi1State.total++; if (chosen.correct) defi1State.correct++;
   var fb = document.getElementById('defi1-feedback');
-  fb.className = 'feedback-box ' + (chosen.correct ? 'correct' : 'wrong') + ' show';
-  fb.innerHTML = chosen.correct ? '<strong>Correct !</strong> Bien vu.' : '<strong>Pas tout à fait.</strong> La bonne réponse est surlignée en vert.';
-  document.getElementById('defi1-next').style.display = 'block';
-  updateScoreUI('defi1', defi1State);
+  fb.className = 'feedback-box ' + (res.ok ? 'correct' : 'wrong') + ' show';
+  fb.innerHTML = res.texte;
+
+  if (res.verrou) {
+    cards.forEach(function (c) { c.disabled = true; });
+    var correctIdx = parseInt(eD1.q.reponse, 10);
+    cards[i].classList.add(res.ok ? 'correct' : 'wrong');
+    if (!res.ok) cards[correctIdx].classList.add('correct');
+    document.getElementById('defi1-next').style.display = 'block';
+    majScore3('defi1', eD1);
+  } else {
+    /* Premier essai raté : on élimine la carte choisie, l'élève rejoue sur
+       ce qui reste, la bonne réponse n'est pas dévoilée. */
+    cards[i].classList.add('wrong'); cards[i].disabled = true;
+  }
 }
 function defi1Next() { defi1NewQuestion(); }
 
-/* ══════════════════════════════════════════════════════════════════════
-   DÉFI 2 — Compléter le tableau à partir du diagramme
-   ══════════════════════════════════════════════════════════════════════ */
-var defi2State = { correct: 0, total: 0 };
-var defi2 = {};
-
-function defi2NewQuestion() {
+/* ── Fiche imprimable commune aux trois défis ──────────────────────────
+   Un seul bouton (présent dans les trois modes) ouvre la modale ; on y coche
+   le ou les défis à inclure (1 et/ou 2 et/ou 3). Les 10 exercices sont
+   répartis entre les défis cochés ; chaque question tire un type de caractère
+   au hasard. Answer label et aide génériques, chaque carte portant sa propre
+   consigne (champ hint) et son corrigé (answerText). */
+function ficheQ_D1(num) {
   var dist = genDistribution();
   var diagType = pickDiagType(dist);
-  var fields = diagType === 'circulaire' ? ['eff'] : ['eff', 'freq'];
-  var idxs = shuffleArr(dist.data.map(function (_, i) { return i; })).slice(0, 2);
-  var missing = idxs.map(function (idx) { return { idx: idx, field: pickArr(fields) }; });
+  var decoy1 = makeDecoy(dist);
+  var decoy2 = makeDecoy(dist, decoy1);
+  var variants = shuffleArr([{ d: dist, correct: true }, { d: decoy1, correct: false }, { d: decoy2, correct: false }]);
+  var correctIdx = 0; variants.forEach(function (v, i) { if (v.correct) correctIdx = i; });
+  var built = chartSVGString(dist, diagType, { W: 200, H: 150, showPct: diagType === 'circulaire' });
+  var letters = ['A', 'B', 'C'];
+  var cotes = variants.map(function (v, i) {
+    var line = v.d.data.map(function (d) { return esc(d.label) + ' ' + d.eff; }).join(', ');
+    return '<b>' + letters[i] + '.</b> ' + line;
+  }).join(' · ');
+  return { num: num, nom: '[Défi 1] ' + dist.nomCaractere,
+    hint: 'Quel tableau (A, B ou C) correspond à ce diagramme ?',
+    svg: built.geo.svg, cotes: cotes, answerText: 'Tableau ' + letters[correctIdx] };
+}
 
-  defi2 = { dist: dist, diagType: diagType, missing: missing, pickedType: null, answered: false };
+function ouvrirFicheStats() {
+  LP.ficheModal.init({
+    familles: [
+      { value: 'd1', label: 'Défi 1 · Identifier le bon tableau' },
+      { value: 'd2', label: 'Défi 2 · Compléter le tableau' },
+      { value: 'd3', label: 'Défi 3 · Construire le diagramme' }
+    ],
+    titre: "\u{1F4C4} Fiche d'exercices — Diagrammes statistiques",
+    texte: 'Coche le ou les défis à inclure. Les 10 exercices seront répartis entre les défis sélectionnés.',
+    onConfirm: function (plan, sel, opt) {
+      var qs = [], num = 1, j, k;
+      for (j = 0; j < plan.length; j++) {
+        var build = plan[j].fam === 'd1' ? ficheQ_D1 : (plan[j].fam === 'd2' ? ficheQ_D2 : ficheQ_D3);
+        for (k = 0; k < plan[j].n; k++) qs.push(build(num++));
+      }
+      LP.fiche({
+        icon: '\u{1F4CA}', title: 'Diagrammes statistiques',
+        subtitle: 'Lecture, tableaux et construction de diagrammes',
+        modeLabel: 'Fiche défis', isPlus: false, tolerance: 'lecture graphique',
+        accent: '#0F6E56', answerLabel: 'Réponse :', unit: '',
+        aide: "Fréquence (%) = Effectif ÷ Total × 100. Angle d'une part = Fréquence ÷ 100 × 360°.",
+        questions: qs, avecCorrige: opt.avecCorrige
+      });
+    }
+  });
+  LP.ficheModal.open();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DÉFI 2 — Compléter le tableau à partir du diagramme — type "multi"
+   ──────────────────────────────────────────────────────────────────────
+   Réponse composite : le type de caractère (encodé numériquement au champ 0)
+   + les cases manquantes (champs suivants). Un seul contrôle du moteur, donc
+   un seul second essai unifié. En dom:false, le moteur ne rend rien : les
+   labels des champs sont ignorés, seule la comparaison des valeurs compte.
+   ══════════════════════════════════════════════════════════════════════ */
+var defi2 = {};
+var d2pickedType = null;
+
+function genD2(force) {
+  return function () {
+    var dist = genDistribution(force);
+    var diagType = pickDiagType(dist);
+    var fields = diagType === 'circulaire' ? ['eff'] : ['eff', 'freq'];
+    var idxs = shuffleArr(dist.data.map(function (_, i) { return i; })).slice(0, 2);
+    var missing = idxs.map(function (idx) { return { idx: idx, field: pickArr(fields) }; });
+
+    var champs = [{ reponse: typeCodeOf(dist.type), tol: 0 }];   // champ 0 = type
+    missing.forEach(function (m) {
+      var d = dist.data[m.idx];
+      champs.push({
+        reponse: m.field === 'eff' ? d.eff : d.freq,
+        tol: m.field === 'eff' ? Math.max(1, Math.round(dist.total * 0.06)) : 3
+      });
+    });
+
+    var detail = 'Type : ' + typeLabelFR(dist.type) + '. ' + missing.map(function (m) {
+      var d = dist.data[m.idx];
+      return esc(d.label) + ' : ' + (m.field === 'eff' ? d.eff + ' (effectif)' : fmtPct(d.freq) + ' % (fréquence)');
+    }).join(' ; ') + '.';
+
+    return {
+      type: 'multi', champs: champs,
+      dist: dist, diagType: diagType, missing: missing,
+      nomCaractere: dist.nomCaractere,
+      enonce: 'Indique le type de caractère puis complète les cases manquantes.',
+      rappel: "Fréquence (%) = Effectif ÷ Total × 100. Une hauteur de barre ou une taille de part se lit sur la graduation.",
+      hint: "Pour un effectif : lis la hauteur de la barre sur l'axe. Pour une fréquence : divise l'effectif par le total (" + dist.total + ") puis multiplie par 100.",
+      detail: detail
+    };
+  };
+}
+
+function defi2NewQuestion() {
+  var q = eD2.tirer();
+  var dist = q.dist, diagType = q.diagType, missing = q.missing;
+  defi2 = { dist: dist, diagType: diagType, missing: missing };
+  d2pickedType = null;
+
+  var aideEl = document.getElementById('defi2-aide');
+  aideEl.innerHTML = q.rappel ? '<b>Rappel :</b> ' + q.rappel : '';
+  aideEl.style.display = aideEl.innerHTML ? 'block' : 'none';
 
   var built = chartSVGString(dist, diagType, { W: 280, H: 210, showPct: diagType === 'circulaire' });
   document.getElementById('defi2-chart-wrap').innerHTML = built.full + (diagType !== 'circulaire' ? legendHTML(dist, []) : '');
@@ -623,9 +793,10 @@ function defi2NewQuestion() {
     var b = document.createElement('button');
     b.type = 'button'; b.className = 'choice-btn'; b.textContent = o[1]; b.dataset.type = o[0];
     b.onclick = function () {
+      if (eD2.verrou) return;
       typeWrap.querySelectorAll('.choice-btn').forEach(function (x) { x.classList.remove('picked'); });
       b.classList.add('picked');
-      defi2.pickedType = o[0];
+      d2pickedType = o[0];
     };
     typeWrap.appendChild(b);
   });
@@ -637,8 +808,8 @@ function defi2NewQuestion() {
     var missFreq = missing.some(function (m) { return m.idx === i && m.field === 'freq'; });
     var tr = document.createElement('tr');
     tr.innerHTML = '<td>' + esc(d.label) + '</td>' +
-      '<td>' + (missEff ? '<input type="number" step="any" class="d2-input" data-idx="' + i + '" data-field="eff">' : d.eff) + '</td>' +
-      '<td>' + (missFreq ? '<input type="number" step="any" class="d2-input" data-idx="' + i + '" data-field="freq">' : fmtPct(d.freq)) + '</td>';
+      '<td>' + (missEff ? '<input type="text" inputmode="decimal" autocomplete="off" class="d2-input" data-idx="' + i + '" data-field="eff">' : d.eff) + '</td>' +
+      '<td>' + (missFreq ? '<input type="text" inputmode="decimal" autocomplete="off" class="d2-input" data-idx="' + i + '" data-field="freq">' : fmtPct(d.freq)) + '</td>';
     tbody.appendChild(tr);
   });
   var trT = document.createElement('tr');
@@ -649,102 +820,146 @@ function defi2NewQuestion() {
   document.getElementById('defi2-feedback').className = 'feedback-box';
   document.getElementById('defi2-feedback').textContent = '';
   document.getElementById('defi2-next').style.display = 'none';
+  var chk = document.querySelector('#mode-defi2 .btn-check');
+  if (chk) { chk.style.display = ''; chk.disabled = false; }
 }
 
 function defi2Check() {
-  if (defi2.answered) return;
-  if (!defi2.pickedType) { alert('Choisis le type de caractère avant de valider.'); return; }
-  var dist = defi2.dist;
-  var allOk = (defi2.pickedType === dist.type);
-  var parts = ['(' + (defi2.pickedType === dist.type ? '✓' : '✗') + ') Type : ' + typeLabelFR(dist.type)];
+  if (eD2.verrou) return;
+  if (!d2pickedType) { alert('Choisis le type de caractère avant de valider.'); return; }
+  var q = eD2.q, dist = q.dist, missing = q.missing;
 
-  document.querySelectorAll('.d2-input').forEach(function (inp) {
-    var idx = parseInt(inp.dataset.idx, 10), field = inp.dataset.field;
-    var val = parseFloat(inp.value);
-    var expected = field === 'eff' ? dist.data[idx].eff : dist.data[idx].freq;
-    var tol = field === 'eff' ? Math.max(1, Math.round(dist.total * 0.06)) : 3;
-    var ok = !isNaN(val) && Math.abs(val - expected) <= tol;
-    if (!ok) allOk = false;
-    inp.style.borderColor = ok ? '#0F6E56' : '#A32D2D';
-    inp.disabled = true;
-    parts.push('(' + (ok ? '✓' : '✗') + ') ' + esc(dist.data[idx].label) + ' — ' +
-      (field === 'eff' ? 'effectif attendu ≈ ' + dist.data[idx].eff : 'fréquence attendue ≈ ' + fmtPct(dist.data[idx].freq) + ' %'));
+  var saisie = [String(typeCodeOf(d2pickedType))];
+  missing.forEach(function (m) {
+    var inp = document.querySelector('.d2-input[data-idx="' + m.idx + '"][data-field="' + m.field + '"]');
+    saisie.push(inp ? inp.value : '');
   });
 
-  document.querySelectorAll('#defi2-type-choices .choice-btn').forEach(function (b) {
-    b.disabled = true;
-    if (b.dataset.type === dist.type) b.classList.add('correct');
-    else if (b.classList.contains('picked')) b.classList.add('wrong');
+  var res = eD2.verifier(saisie);
+  if (!res || res.vide) return;
+  var champs = res.champs || [];
+
+  missing.forEach(function (m, k) {
+    var inp = document.querySelector('.d2-input[data-idx="' + m.idx + '"][data-field="' + m.field + '"]');
+    if (!inp) return;
+    inp.style.borderColor = champs[k + 1] ? '#0F6E56' : '#A32D2D';
+    if (res.verrou) inp.disabled = true;
   });
 
-  defi2.answered = true; defi2State.total++; if (allOk) defi2State.correct++;
+  var typeButtons = document.querySelectorAll('#defi2-type-choices .choice-btn');
+  if (res.verrou) {
+    typeButtons.forEach(function (b) {
+      b.disabled = true;
+      if (b.dataset.type === dist.type) b.classList.add('correct');
+      else if (b.classList.contains('picked')) b.classList.add('wrong');
+    });
+  } else if (!champs[0]) {
+    /* Type faux au 1er essai : on le dé-sélectionne pour forcer un nouveau choix. */
+    typeButtons.forEach(function (b) { b.classList.remove('picked'); });
+    d2pickedType = null;
+  }
+
   var fb = document.getElementById('defi2-feedback');
-  fb.className = 'feedback-box ' + (allOk ? 'correct' : 'wrong') + ' show';
-  fb.innerHTML = (allOk ? '<strong>Parfait !</strong>' : '<strong>Presque.</strong>') + '<br>' + parts.join('<br>');
-  document.getElementById('defi2-next').style.display = 'block';
-  updateScoreUI('defi2', defi2State);
+  fb.className = 'feedback-box ' + (res.ok ? 'correct' : 'wrong') + ' show';
+  fb.innerHTML = res.texte;
+
+  if (res.verrou) {
+    var chk = document.querySelector('#mode-defi2 .btn-check');
+    if (chk) chk.style.display = 'none';
+    document.getElementById('defi2-next').style.display = 'block';
+    majScore3('defi2', eD2);
+  }
 }
 function defi2Next() { defi2NewQuestion(); }
 
-function defi2Fiche() {
-  var qs = [];
-  for (var i = 0; i < 10; i++) {
-    var dist = genDistribution();
-    var diagType = pickDiagType(dist);
-    var fields = diagType === 'circulaire' ? ['eff'] : ['eff', 'freq'];
-    var idxs = shuffleArr(dist.data.map(function (_, k) { return k; })).slice(0, 2);
-    var missing = idxs.map(function (idx) { return { idx: idx, field: pickArr(fields) }; });
-    var built = chartSVGString(dist, diagType, { W: 200, H: 155, showPct: diagType === 'circulaire' });
+function ficheQ_D2(num) {
+  var dist = genDistribution();
+  var diagType = pickDiagType(dist);
+  var fields = diagType === 'circulaire' ? ['eff'] : ['eff', 'freq'];
+  var idxs = shuffleArr(dist.data.map(function (_, k) { return k; })).slice(0, 2);
+  var missing = idxs.map(function (idx) { return { idx: idx, field: pickArr(fields) }; });
+  var built = chartSVGString(dist, diagType, { W: 200, H: 150, showPct: diagType === 'circulaire' });
 
-    var cotes = '<table style="width:100%;border-collapse:collapse;font-size:9.5pt;margin-top:3px;">' +
-      '<tr style="background:#eee;"><th style="border:1px solid #999;padding:2px 4px;">Caractère</th>' +
-      '<th style="border:1px solid #999;padding:2px 4px;">Effectif</th><th style="border:1px solid #999;padding:2px 4px;">Fréq.(%)</th></tr>';
-    dist.data.forEach(function (d, idx) {
-      var missEff = missing.some(function (m) { return m.idx === idx && m.field === 'eff'; });
-      var missFreq = missing.some(function (m) { return m.idx === idx && m.field === 'freq'; });
-      cotes += '<tr><td style="border:1px solid #999;padding:2px 4px;">' + esc(d.label) + '</td>' +
-        '<td style="border:1px solid #999;padding:2px 4px;">' + (missEff ? '…' : d.eff) + '</td>' +
-        '<td style="border:1px solid #999;padding:2px 4px;">' + (missFreq ? '…' : fmtPct(d.freq)) + '</td></tr>';
-    });
-    cotes += '</table>';
-
-    var ans = missing.map(function (m) {
-      var d = dist.data[m.idx];
-      return esc(d.label) + ' : ' + (m.field === 'eff' ? d.eff + ' (eff.)' : fmtPct(d.freq) + '% (fréq.)');
-    }).join(' ; ');
-
-    qs.push({ num: i + 1, nom: dist.nomCaractere, hint: 'Type : ' + typeLabelFR(dist.type) + ' — Total : ' + dist.total,
-      svg: built.geo.svg, cotes: cotes, answerText: ans });
-  }
-  LP.fiche({
-    icon: '\u{1F4CA}', title: 'Diagrammes statistiques — Lecture',
-    subtitle: "Compléter un tableau à partir d'un diagramme",
-    modeLabel: 'Défi 2', isPlus: false, tolerance: 'lecture graphique',
-    accent: '#0F6E56', answerLabel: 'Valeurs manquantes :', unit: '',
-    aide: 'Fréquence (%) = Effectif ÷ Total × 100. Lis la hauteur des barres sur la graduation, ' +
-          'ou le pourcentage indiqué sur les parts du diagramme circulaire.',
-    questions: qs
+  var cotes = '<table style="width:100%;border-collapse:collapse;font-size:9.5pt;margin-top:3px;">' +
+    '<tr style="background:#eee;"><th style="border:1px solid #999;padding:2px 4px;">Caractère</th>' +
+    '<th style="border:1px solid #999;padding:2px 4px;">Effectif</th><th style="border:1px solid #999;padding:2px 4px;">Fréq.(%)</th></tr>';
+  dist.data.forEach(function (d, idx) {
+    var missEff = missing.some(function (m) { return m.idx === idx && m.field === 'eff'; });
+    var missFreq = missing.some(function (m) { return m.idx === idx && m.field === 'freq'; });
+    cotes += '<tr><td style="border:1px solid #999;padding:2px 4px;">' + esc(d.label) + '</td>' +
+      '<td style="border:1px solid #999;padding:2px 4px;">' + (missEff ? '…' : d.eff) + '</td>' +
+      '<td style="border:1px solid #999;padding:2px 4px;">' + (missFreq ? '…' : fmtPct(d.freq)) + '</td></tr>';
   });
+  cotes += '</table>';
+
+  var ans = missing.map(function (m) {
+    var d = dist.data[m.idx];
+    return esc(d.label) + ' : ' + (m.field === 'eff' ? d.eff + ' (eff.)' : fmtPct(d.freq) + '% (fréq.)');
+  }).join(' ; ');
+
+  return { num: num, nom: '[Défi 2] ' + dist.nomCaractere, hint: 'Type : ' + typeLabelFR(dist.type) + ' — Total : ' + dist.total,
+    svg: built.geo.svg, cotes: cotes, answerText: ans };
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   DÉFI 3 — Construire le diagramme (clic / clic-glisser)
+   DÉFI 3 — Construire le diagramme (clic / clic-glisser) — type "multi"
+   ──────────────────────────────────────────────────────────────────────
+   Réponse continue avec tolérance : angle du secteur (± 8°) ou effectif des
+   barres (± ~6 % de l'échelle). Le moteur tient le second essai ; l'outil
+   garde sa construction interactive. « defi3 » reste un objet de travail lu
+   par attachDefi3Handlers (geo, dist, constructed, missing), conservé tel quel.
    ══════════════════════════════════════════════════════════════════════ */
-var defi3State = { correct: 0, total: 0 };
 var defi3 = {};
 
-function defi3NewQuestion() {
-  var dist = genDistribution();
-  var diagType = pickDiagType(dist);
-  var missing;
-  if (diagType === 'circulaire') {
-    missing = [dist.data.length - 1];
-  } else {
-    var count = Math.random() < 0.5 ? 1 : 2;
-    missing = shuffleArr(dist.data.map(function (_, i) { return i; })).slice(0, count).sort(function (a, b) { return a - b; });
-  }
+function genD3(force) {
+  return function () {
+    var dist = genDistribution(force);
+    var diagType = pickDiagType(dist);
+    var missing;
+    if (diagType === 'circulaire') {
+      missing = [dist.data.length - 1];
+    } else {
+      var count = Math.random() < 0.5 ? 1 : 2;
+      missing = shuffleArr(dist.data.map(function (_, i) { return i; })).slice(0, count).sort(function (a, b) { return a - b; });
+    }
+    var effs = dist.data.map(function (d) { return d.eff; });
+    var maxV = niceMax(Math.max.apply(null, effs));
+    var champs = missing.map(function (idx) {
+      if (diagType === 'circulaire') return { reponse: dist.data[idx].angle, tol: 8 };
+      return { reponse: dist.data[idx].eff, tol: Math.max(1, Math.round(maxV * 0.06)) };
+    });
 
-  defi3 = { dist: dist, diagType: diagType, missing: missing, constructed: {}, answered: false, geo: null };
+    var detail = diagType === 'circulaire'
+      ? 'Part manquante : ' + Math.round(dist.data[missing[0]].angle) + '° (soit ' + fmtPct(dist.data[missing[0]].angle / 360 * 100) + ' % du disque).'
+      : 'Effectifs attendus : ' + missing.map(function (idx) { return esc(dist.data[idx].label) + ' = ' + dist.data[idx].eff; }).join(' ; ') + '.';
+
+    return {
+      type: 'multi', champs: champs,
+      dist: dist, diagType: diagType, missing: missing,
+      nomCaractere: dist.nomCaractere,
+      enonce: diagType === 'circulaire'
+        ? 'Construis la part manquante du diagramme circulaire.'
+        : 'Place la ou les barres manquantes à la bonne hauteur.',
+      rappel: diagType === 'circulaire'
+        ? "Angle d'une part = Fréquence ÷ 100 × 360°. La somme des angles fait 360°."
+        : "La hauteur d'une barre se lit sur l'axe vertical : place-la en face de l'effectif du tableau.",
+      hint: diagType === 'circulaire'
+        ? "Additionne les angles déjà tracés : la part manquante complète le tour jusqu'à 360°."
+        : "Repère l'effectif dans le tableau, puis suis la graduation de l'axe jusqu'à cette valeur.",
+      detail: detail
+    };
+  };
+}
+
+function defi3NewQuestion() {
+  var q = eD3.tirer();
+  var dist = q.dist, diagType = q.diagType, missing = q.missing;
+
+  var aideEl = document.getElementById('defi3-aide');
+  aideEl.innerHTML = q.rappel ? '<b>Rappel :</b> ' + q.rappel : '';
+  aideEl.style.display = aideEl.innerHTML ? 'block' : 'none';
+
+  defi3 = { dist: dist, diagType: diagType, missing: missing, constructed: {}, geo: null };
 
   document.getElementById('defi3-table-wrap').innerHTML =
     '<p style="font-weight:700;margin-bottom:4px;">' + esc(dist.nomCaractere) + ' — Total : ' + dist.total + '</p>' + tableHTML(dist);
@@ -765,6 +980,8 @@ function defi3NewQuestion() {
   document.getElementById('defi3-feedback').className = 'feedback-box';
   document.getElementById('defi3-feedback').textContent = '';
   document.getElementById('defi3-next').style.display = 'none';
+  var chk = document.querySelector('#mode-defi3 .btn-check');
+  if (chk) { chk.style.display = ''; chk.disabled = false; }
 }
 
 function attachDefi3Handlers(diagType, missing) {
@@ -850,36 +1067,40 @@ function attachDefi3Handlers(diagType, missing) {
 }
 
 function defi3Check() {
-  if (defi3.answered) return;
-  var dist = defi3.dist, diagType = defi3.diagType, geo = defi3.geo;
-  var allOk = true, details = [], svgEl = document.querySelector('#defi3-chart-wrap svg');
+  if (eD3.verrou) return;
+  var q = eD3.q, dist = q.dist, diagType = q.diagType, geo = defi3.geo, missing = q.missing;
+  var saisie = missing.map(function (idx) {
+    var v = defi3.constructed[idx];
+    return (v == null) ? '' : String(v);
+  });
+  var res = eD3.verifier(saisie);
+  if (!res) return;
+  var fb = document.getElementById('defi3-feedback');
+  if (res.vide) {
+    fb.className = 'feedback-box wrong show';
+    fb.innerHTML = "<strong>Construis d'abord</strong> la ou les valeurs manquantes avant de valider.";
+    return;
+  }
+  fb.className = 'feedback-box ' + (res.ok ? 'correct' : 'wrong') + ' show';
+  fb.innerHTML = res.texte;
 
-  if (diagType === 'circulaire') {
-    var idx = defi3.missing[0];
-    var expected = dist.data[idx].angle;
-    var got = defi3.constructed[idx] || 0;
-    var ok = Math.abs(got - expected) <= 8;
-    allOk = ok;
-    details.push((ok ? '✓ ' : '✗ ') + esc(dist.data[idx].label) + ' : ' + Math.round(got) + '° construits (attendu ' + Math.round(expected) + '°)');
-    if (!ok) {
+  var svgEl = document.querySelector('#defi3-chart-wrap svg');
+  if (res.verrou && !res.ok && svgEl) {
+    if (diagType === 'circulaire') {
+      var idx = missing[0];
       var slice = svgEl.querySelector('#d3-slice' + idx);
       var startDeg = -90;
       for (var k = 0; k < idx; k++) startDeg += dist.data[k].angle;
-      slice.setAttribute('d', sliceArcPathD(geo.cx, geo.cy, geo.r, startDeg, startDeg + expected));
-      slice.setAttribute('opacity', '0.3');
-      slice.setAttribute('stroke-dasharray', '4,3');
-    }
-  } else {
-    defi3.missing.forEach(function (idx) {
-      var expected = dist.data[idx].eff;
-      var got = defi3.constructed[idx];
-      var tol = Math.max(1, Math.round(geo.maxV * 0.06));
-      var ok = (got != null) && Math.abs(got - expected) <= tol;
-      if (!ok) allOk = false;
-      details.push((ok ? '✓ ' : '✗ ') + esc(dist.data[idx].label) + ' : ' + (got == null ? '—' : got) + ' construit (attendu ' + expected + ')');
-      if (!ok) {
+      if (slice) {
+        slice.setAttribute('d', sliceArcPathD(geo.cx, geo.cy, geo.r, startDeg, startDeg + dist.data[idx].angle));
+        slice.setAttribute('opacity', '0.3');
+        slice.setAttribute('stroke-dasharray', '4,3');
+      }
+    } else {
+      missing.forEach(function (idx) {
         var bar = svgEl.querySelector('#d3-bar' + idx);
-        var bh = geo.plotH * (expected / geo.maxV);
+        if (!bar) return;
+        var bh = geo.plotH * (dist.data[idx].eff / geo.maxV);
         var ghost = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         ghost.setAttribute('x', bar.getAttribute('x'));
         ghost.setAttribute('width', bar.getAttribute('width'));
@@ -888,19 +1109,30 @@ function defi3Check() {
         ghost.setAttribute('fill', 'none'); ghost.setAttribute('stroke', '#A32D2D');
         ghost.setAttribute('stroke-width', '2'); ghost.setAttribute('stroke-dasharray', '4,3');
         bar.parentNode.appendChild(ghost);
-      }
-    });
+      });
+    }
   }
 
-  defi3.answered = true; defi3State.total++; if (allOk) defi3State.correct++;
-  var fb = document.getElementById('defi3-feedback');
-  fb.className = 'feedback-box ' + (allOk ? 'correct' : 'wrong') + ' show';
-  fb.innerHTML = (allOk ? '<strong>Bravo, construction correcte !</strong>' : '<strong>Pas tout à fait.</strong> Le contour attendu est affiché en pointillés rouges.') +
-    '<br>' + details.join('<br>');
-  document.getElementById('defi3-next').style.display = 'block';
-  updateScoreUI('defi3', defi3State);
+  if (res.verrou) {
+    var chk = document.querySelector('#mode-defi3 .btn-check');
+    if (chk) chk.style.display = 'none';
+    document.getElementById('defi3-next').style.display = 'block';
+    majScore3('defi3', eD3);
+  }
 }
 function defi3Next() { defi3NewQuestion(); }
+
+function ficheQ_D3(num) {
+  var dist = genDistribution();
+  var diagType = (dist.type === 'continu') ? 'barres' : 'colonnes';
+  var allIdx = dist.data.map(function (_, i) { return i; });
+  var built = chartSVGString(dist, diagType, { W: 200, H: 150, showPct: false, hideIndices: allIdx, id: 'f3-' + num });
+  var cotes = tableHTML(dist);
+  var ans = dist.data.map(function (d) { return esc(d.label) + ' = ' + d.eff; }).join(' ; ');
+  return { num: num, nom: '[Défi 3] ' + dist.nomCaractere,
+    hint: 'Construis le diagramme sur la grille en pointillés, aux hauteurs du tableau.',
+    svg: built.geo.svg, cotes: cotes, answerText: ans };
+}
 
 /* ══════════════════════════════════════════════════════════════════════
    NAVIGATION DES ONGLETS
@@ -911,10 +1143,19 @@ function setMode(m, btn) {
   ['gen','defi1','defi2','defi3'].forEach(function (k) {
     document.getElementById('mode-' + k).style.display = (k === m) ? 'block' : 'none';
   });
-  if (m === 'defi1') { defi1State = { correct: 0, total: 0 }; updateScoreUI('defi1', defi1State); defi1NewQuestion(); }
-  else if (m === 'defi2') { defi2State = { correct: 0, total: 0 }; updateScoreUI('defi2', defi2State); defi2NewQuestion(); }
-  else if (m === 'defi3') { defi3State = { correct: 0, total: 0 }; updateScoreUI('defi3', defi3State); defi3NewQuestion(); }
+  if (m === 'defi1') { eD1.reinitialiser(); majScore3('defi1', eD1); defi1NewQuestion(); }
+  else if (m === 'defi2') { eD2.reinitialiser(); majScore3('defi2', eD2); defi2NewQuestion(); }
+  else if (m === 'defi3') { eD3.reinitialiser(); majScore3('defi3', eD3); defi3NewQuestion(); }
 }
+
+/* Touche Entrée : valider, puis question suivante (Défi 2 et Défi 3). */
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter') return;
+  if (window.LP && LP.ficheModal && LP.ficheModal.isOpen && LP.ficheModal.isOpen()) return;
+  var m2 = document.getElementById('mode-defi2'), m3 = document.getElementById('mode-defi3');
+  if (m2 && m2.style.display !== 'none') { if (eD2.verrou) defi2Next(); else defi2Check(); }
+  else if (m3 && m3.style.display !== 'none') { if (eD3.verrou) defi3Next(); else defi3Check(); }
+});
 
 /* ══════════════════════════════════════════════════════════════════════
    GÉNÉRATEUR (tableau + diagramme à partir de données saisies)
@@ -1451,6 +1692,84 @@ function setMode(m, btn) {
       ctx.fillText(titreDiagramme, canvas.width/2, 35);
     }
   }
+
+/* ══════════════════════════════════════════════════════════════════════
+   IMPRESSION / PDF DU GÉNÉRATEUR
+   ──────────────────────────────────────────────────────────────────────
+   Fenêtre imprimable : caractéristiques du caractère + tableau complet +
+   le ou les graphiques appropriés au type (qualitatif/discret → circulaire
+   ET colonnes ; continu → histogramme). Les graphiques sont capturés depuis
+   le canevas (toDataURL) après un rendu de chaque type ; l'affichage à
+   l'écran est ensuite restauré sur le type sélectionné.
+   ══════════════════════════════════════════════════════════════════════ */
+function collectGenDataForPrint() {
+  var typeContinu = (typeSelect.value === "quantitatif_continu");
+  var rows = Array.prototype.slice.call(tbody.rows).filter(function (r) { return !r.classList.contains("total-row"); });
+  var data = [];
+  rows.forEach(function (tr) {
+    var inp0 = tr.cells[0].querySelector("input");
+    var label = typeContinu ? tr.cells[0].textContent.trim() : ((inp0 && inp0.value) || "").trim();
+    if (!label) return;
+    var inp1 = tr.cells[1].querySelector("input");
+    var eff = parseFloat(inp1 && inp1.value);
+    if (isNaN(eff)) eff = 0;
+    data.push({ label: label, eff: eff });
+  });
+  var total = data.reduce(function (a, b) { return a + b.eff; }, 0);
+  var s = 0;
+  data.forEach(function (d) { d.freq = total > 0 ? d.eff / total * 100 : 0; d.angle = d.freq / 100 * 360; s += d.angle; });
+  if (data.length) data[data.length - 1].angle += (360 - s);
+  return { data: data, total: total };
+}
+
+function imprimerGenerateur() {
+  if (!typeSelect.value) { alert("Choisis d'abord un type de caractère et génère le tableau."); return; }
+  var g = collectGenDataForPrint();
+  if (!g.data.length || g.total <= 0) { alert("Génère le tableau et saisis au moins un effectif avant d'imprimer."); return; }
+
+  var nom = nomCaractereInput.value.trim() || "—";
+  var typeLabels = { qualitatif: "Qualitatif", quantitatif_discret: "Quantitatif discret", quantitatif_continu: "Quantitatif continu" };
+  var typeLabel = typeLabels[typeSelect.value] || "—";
+  var titre = titreDiagrammeInput.value.trim() || "Diagramme statistique";
+  var axe = axeYSelect.value === "effectif" ? "Effectif" : "Fréquence";
+
+  var types = (typeSelect.value === "quantitatif_continu") ? ["barres"] : ["circulaire", "colonnes"];
+  var typeNoms = { circulaire: "Diagramme circulaire", colonnes: "Diagramme en colonnes", barres: "Histogramme" };
+  var imgs = [];
+  types.forEach(function (t) { dessinerGraphique(t); imgs.push({ t: t, url: canvas.toDataURL("image/png") }); });
+  var checked = document.querySelector('input[name="graphType"]:checked');
+  if (checked) dessinerGraphique(checked.value);
+
+  var tableRows = g.data.map(function (d) {
+    return "<tr><td>" + esc(d.label) + "</td><td>" + d.eff + "</td><td>" + fmtPct(d.freq) + "</td><td>" + d.angle.toFixed(1).replace(".", ",") + "</td></tr>";
+  }).join("");
+  var tableTotal = '<tr class="tot"><td>Total</td><td>' + g.total + "</td><td>100,0</td><td>360,0</td></tr>";
+  var imgsHTML = imgs.map(function (im) {
+    return '<figure><figcaption>' + typeNoms[im.t] + '</figcaption><img src="' + im.url + '" alt="' + typeNoms[im.t] + '"></figure>';
+  }).join("");
+
+  var html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>' + esc(titre) + '</title><style>'
+    + '@page{size:A4 portrait;margin:14mm;}*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:4mm;}'
+    + 'h1{font-size:18pt;margin:0 0 4px;color:#0F6E56;}.meta{font-size:10.5pt;color:#333;margin-bottom:12px;}.meta b{color:#111;}'
+    + 'table{border-collapse:collapse;width:100%;font-size:10.5pt;margin:8px 0 16px;}'
+    + 'th,td{border:1px solid #999;padding:5px 8px;text-align:center;}th{background:#0F6E56;color:#fff;}tr.tot{font-weight:700;background:#eee;}'
+    + 'figure{margin:0 0 14px;text-align:center;page-break-inside:avoid;}figcaption{font-weight:700;font-size:11pt;margin-bottom:4px;}'
+    + 'img{max-width:100%;border:1px solid #ddd;border-radius:6px;}'
+    + '.print-btn{margin:0 0 12px;padding:10px 18px;font-size:12pt;cursor:pointer;}@media print{.print-btn{display:none;}body{padding:0;}}'
+    + '</style></head><body>'
+    + '<button class="print-btn" onclick="window.print()">🖨️ Imprimer</button>'
+    + '<h1>' + esc(titre) + '</h1>'
+    + '<div class="meta"><b>Caractère :</b> ' + esc(nom) + ' &nbsp;·&nbsp; <b>Type :</b> ' + typeLabel
+    + ' &nbsp;·&nbsp; <b>Axe étudié :</b> ' + axe + ' &nbsp;·&nbsp; <b>Effectif total :</b> ' + g.total + '</div>'
+    + '<table><thead><tr><th>Caractère</th><th>Effectif</th><th>Fréquence (%)</th><th>Angle (°)</th></tr></thead><tbody>'
+    + tableRows + tableTotal + '</tbody></table>'
+    + imgsHTML
+    + '</body></html>';
+
+  var win = window.open("", "_blank");
+  if (!win) { alert("La fenêtre d'impression a été bloquée.\nAutorise les fenêtres surgissantes pour ce site, puis réessaie."); return; }
+  win.document.open(); win.document.write(html); win.document.close();
+}
 </script>
 
 <footer class="lp-footer">
