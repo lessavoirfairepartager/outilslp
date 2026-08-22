@@ -487,27 +487,46 @@ function renderPieSVG(dist, opts) {
   var W = opts.W, H = opts.H;
   var cx = W / 2, cy = H / 2 + 4, r = Math.min(W, H) / 2 - 22;
   var hide = opts.hideIndices || [];
+  var id = opts.id || 'p';
   var svg = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#c2c0b6" stroke-width="1" stroke-dasharray="3,3"/>';
-  var start = -90, end, mid, lx, ly, p1, p2;
 
+  // Angles de départ cumulés (toujours calculés sur les angles réels).
+  var starts = [], s = -90, i, mid, lx, ly;
+  for (i = 0; i < dist.data.length; i++) { starts[i] = s; s += dist.data[i].angle; }
+
+  // Parts VISIBLES.
   dist.data.forEach(function (d, idx) {
-    end = start + d.angle;
-    if (hide.indexOf(idx) === -1) {
-      svg += sliceArcPath(cx, cy, r, start, end, PALETTE[idx % PALETTE.length], idx);
-      if (opts.showPct) {
-        mid = (start + end) / 2 * Math.PI / 180;
-        lx = cx + Math.cos(mid) * r * 0.62; ly = cy + Math.sin(mid) * r * 0.62;
-        svg += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" font-size="10.5" text-anchor="middle" fill="#fff" font-weight="700">' + fmtPct(d.freq) + '%</text>';
-      }
-    } else {
-      p1 = polar(cx, cy, r, start); p2 = polar(cx, cy, r, end);
-      svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p1.x.toFixed(1) + '" y2="' + p1.y.toFixed(1) + '" stroke="#a8a6a0" stroke-width="1" stroke-dasharray="3,3"/>';
-      svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p2.x.toFixed(1) + '" y2="' + p2.y.toFixed(1) + '" stroke="#a8a6a0" stroke-width="1" stroke-dasharray="3,3"/>';
-      svg += '<path id="' + (opts.id || 'p') + '-slice' + idx + '" data-idx="' + idx + '" d="" fill="' + PALETTE[idx % PALETTE.length] + '" opacity="0.88" stroke="#fff" stroke-width="1.5"/>';
-      svg += '<circle id="' + (opts.id || 'p') + '-handle' + idx + '" data-idx="' + idx + '" class="lp-handle" cx="' + p1.x.toFixed(1) + '" cy="' + p1.y.toFixed(1) + '" r="10" fill="#fff" stroke="' + PALETTE[idx % PALETTE.length] + '" stroke-width="3"/>';
+    if (hide.indexOf(idx) !== -1) return;
+    var st = starts[idx], en = st + d.angle;
+    svg += sliceArcPath(cx, cy, r, st, en, PALETTE[idx % PALETTE.length], idx);
+    if (opts.showPct) {
+      mid = (st + en) / 2 * Math.PI / 180;
+      lx = cx + Math.cos(mid) * r * 0.62; ly = cy + Math.sin(mid) * r * 0.62;
+      svg += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" font-size="10.5" text-anchor="middle" fill="#fff" font-weight="700">' + fmtPct(d.freq) + '%</text>';
     }
-    start = end;
   });
+
+  // Groupe de parts CACHÉES (supposé contigu) : un seul secteur à partager.
+  // Traits pointillés uniquement aux bords EXTÉRIEURS (les limites internes
+  // sont justement ce que l'élève doit trouver). Une poignée par limite
+  // interne (n parts cachées → n-1 poignées).
+  if (hide.length) {
+    var sorted = hide.slice().sort(function (a, b) { return a - b; });
+    var lastIdx = sorted[sorted.length - 1];
+    var runStart = starts[sorted[0]];
+    var runEnd = starts[lastIdx] + dist.data[lastIdx].angle;
+    var pa = polar(cx, cy, r, runStart), pb = polar(cx, cy, r, runEnd);
+    svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + pa.x.toFixed(1) + '" y2="' + pa.y.toFixed(1) + '" stroke="#a8a6a0" stroke-width="1" stroke-dasharray="3,3"/>';
+    svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + pb.x.toFixed(1) + '" y2="' + pb.y.toFixed(1) + '" stroke="#a8a6a0" stroke-width="1" stroke-dasharray="3,3"/>';
+    sorted.forEach(function (idx) {
+      svg += '<path id="' + id + '-slice' + idx + '" data-idx="' + idx + '" d="" fill="' + PALETTE[idx % PALETTE.length] + '" opacity="0.88" stroke="#fff" stroke-width="1.5"/>';
+    });
+    var hp = polar(cx, cy, r, runStart);
+    for (i = 0; i < sorted.length - 1; i++) {
+      var bIdx = sorted[i];
+      svg += '<circle id="' + id + '-handle' + bIdx + '" data-idx="' + bIdx + '" class="lp-handle" cx="' + hp.x.toFixed(1) + '" cy="' + hp.y.toFixed(1) + '" r="10" fill="#fff" stroke="' + PALETTE[bIdx % PALETTE.length] + '" stroke-width="3"/>';
+    }
+  }
   return { svg: svg, cx: cx, cy: cy, r: r };
 }
 
@@ -915,37 +934,48 @@ function genD3(force) {
   return function () {
     var dist = genDistribution(force);
     var diagType = pickDiagType(dist);
-    var missing;
-    if (diagType === 'circulaire') {
-      missing = [dist.data.length - 1];
-    } else {
-      var count = Math.random() < 0.5 ? 1 : 2;
-      missing = shuffleArr(dist.data.map(function (_, i) { return i; })).slice(0, count).sort(function (a, b) { return a - b; });
-    }
     var effs = dist.data.map(function (d) { return d.eff; });
     var maxV = niceMax(Math.max.apply(null, effs));
+
+    if (diagType === 'circulaire') {
+      // DEUX parts adjacentes cachées : l'élève place la LIMITE entre elles.
+      // « X » (bIdx) doit occuper la bonne portion, « Y » (twin) prend le reste.
+      // Le vide contient donc deux parts : impossible de « fermer le trou » au
+      // jugé, il faut calculer l'angle de X à partir de sa fréquence.
+      var n = dist.data.length;
+      var bIdx = rnd(0, n - 2);
+      var twin = bIdx + 1;
+      var X = dist.data[bIdx], Y = dist.data[twin];
+      return {
+        type: 'multi',
+        champs: [{ reponse: X.angle, tol: 8 }],
+        saisieIdx: [bIdx],
+        dist: dist, diagType: diagType, missing: [bIdx, twin], boundaryIdx: bIdx, twinIdx: twin,
+        nomCaractere: dist.nomCaractere,
+        enonce: 'Le secteur en pointillés se partage entre deux parts. Place la limite pour que « '
+          + esc(X.label) + ' » occupe la bonne portion (« ' + esc(Y.label) + ' » prendra le reste).',
+        rappel: "Angle d'une part = Fréquence ÷ 100 × 360°. La somme de toutes les parts fait 360°.",
+        hint: "Lis la fréquence de « " + esc(X.label) + " » dans le tableau, divise-la par 100 puis multiplie par 360 : "
+          + "c'est l'angle de sa part. Place la limite à cet angle depuis le début du secteur en pointillés.",
+        detail: '« ' + esc(X.label) + ' » : ' + Math.round(X.angle) + '° (' + fmtPct(X.freq) + ' %) ; « '
+          + esc(Y.label) + ' » : ' + Math.round(Y.angle) + '° (' + fmtPct(Y.freq) + ' %).'
+      };
+    }
+
+    // Colonnes / histogramme : 1 ou 2 barres cachées, placées indépendamment.
+    var count = Math.random() < 0.5 ? 1 : 2;
+    var missing = shuffleArr(dist.data.map(function (_, i) { return i; })).slice(0, count).sort(function (a, b) { return a - b; });
     var champs = missing.map(function (idx) {
-      if (diagType === 'circulaire') return { reponse: dist.data[idx].angle, tol: 8 };
       return { reponse: dist.data[idx].eff, tol: Math.max(1, Math.round(maxV * 0.06)) };
     });
-
-    var detail = diagType === 'circulaire'
-      ? 'Part manquante : ' + Math.round(dist.data[missing[0]].angle) + '° (soit ' + fmtPct(dist.data[missing[0]].angle / 360 * 100) + ' % du disque).'
-      : 'Effectifs attendus : ' + missing.map(function (idx) { return esc(dist.data[idx].label) + ' = ' + dist.data[idx].eff; }).join(' ; ') + '.';
-
+    var detail = 'Effectifs attendus : ' + missing.map(function (idx) { return esc(dist.data[idx].label) + ' = ' + dist.data[idx].eff; }).join(' ; ') + '.';
     return {
       type: 'multi', champs: champs,
-      dist: dist, diagType: diagType, missing: missing,
+      dist: dist, diagType: diagType, missing: missing, saisieIdx: missing,
       nomCaractere: dist.nomCaractere,
-      enonce: diagType === 'circulaire'
-        ? 'Construis la part manquante du diagramme circulaire.'
-        : 'Place la ou les barres manquantes à la bonne hauteur.',
-      rappel: diagType === 'circulaire'
-        ? "Angle d'une part = Fréquence ÷ 100 × 360°. La somme des angles fait 360°."
-        : "La hauteur d'une barre se lit sur l'axe vertical : place-la en face de l'effectif du tableau.",
-      hint: diagType === 'circulaire'
-        ? "Additionne les angles déjà tracés : la part manquante complète le tour jusqu'à 360°."
-        : "Repère l'effectif dans le tableau, puis suis la graduation de l'axe jusqu'à cette valeur.",
+      enonce: 'Place la ou les barres manquantes à la bonne hauteur.',
+      rappel: "La hauteur d'une barre se lit sur l'axe vertical : place-la en face de l'effectif du tableau.",
+      hint: "Repère l'effectif dans le tableau, puis suis la graduation de l'axe jusqu'à cette valeur.",
       detail: detail
     };
   };
@@ -959,10 +989,12 @@ function defi3NewQuestion() {
   aideEl.innerHTML = q.rappel ? '<b>Rappel :</b> ' + q.rappel : '';
   aideEl.style.display = aideEl.innerHTML ? 'block' : 'none';
 
-  defi3 = { dist: dist, diagType: diagType, missing: missing, constructed: {}, geo: null };
+  defi3 = { dist: dist, diagType: diagType, missing: missing, constructed: {},
+            boundaryIdx: q.boundaryIdx, twinIdx: q.twinIdx, geo: null };
 
   document.getElementById('defi3-table-wrap').innerHTML =
-    '<p style="font-weight:700;margin-bottom:4px;">' + esc(dist.nomCaractere) + ' — Total : ' + dist.total + '</p>' + tableHTML(dist);
+    '<p style="font-weight:700;margin-bottom:4px;">' + esc(dist.nomCaractere) + ' — Total : ' + dist.total + '</p>' + tableHTML(dist) +
+    '<p class="section-label" style="margin:12px 0 0;font-weight:600;">' + q.enonce + '</p>';
 
   var W = diagType === 'circulaire' ? 260 : 320, H = diagType === 'circulaire' ? 260 : 220;
   var built = chartSVGString(dist, diagType, { W: W, H: H, showPct: false, hideIndices: missing, id: 'd3' });
@@ -973,7 +1005,7 @@ function defi3NewQuestion() {
   attachDefi3Handlers(diagType, missing);
 
   document.getElementById('defi3-readout').textContent = diagType === 'circulaire'
-    ? "Fais glisser le point blanc pour construire la part manquante (secteur en pointillés)."
+    ? "Fais glisser la limite (point blanc) pour partager le secteur en pointillés entre les deux parts."
     : (missing.length > 1
         ? 'Clique dans les colonnes en pointillés pour placer les ' + missing.length + ' barres manquantes.'
         : 'Clique dans la colonne en pointillés pour placer la barre manquante.');
@@ -996,25 +1028,35 @@ function attachDefi3Handlers(diagType, missing) {
   }
 
   if (diagType === 'circulaire') {
-    var idx = missing[0];
-    var handle = svgEl.querySelector('#d3-handle' + idx);
-    var slice = svgEl.querySelector('#d3-slice' + idx);
-    var startDeg = -90;
-    for (var k = 0; k < idx; k++) startDeg += defi3.dist.data[k].angle;
+    // Deux parts cachées, une seule limite à placer : sliceA (bIdx) va du début
+    // du secteur en pointillés à la limite ; sliceB (twin) prend le reste jusqu'à
+    // la fin FIXE du secteur. L'élève ne peut pas « fermer le trou » : il doit
+    // calculer l'angle de X pour placer la limite au bon endroit.
+    var bIdx = defi3.boundaryIdx, twin = defi3.twinIdx;
+    var handle = svgEl.querySelector('#d3-handle' + bIdx);
+    var sliceA = svgEl.querySelector('#d3-slice' + bIdx);
+    var sliceB = svgEl.querySelector('#d3-slice' + twin);
+    var runStart = -90;
+    for (var k = 0; k < bIdx; k++) runStart += defi3.dist.data[k].angle;
+    var runSpan = defi3.dist.data[bIdx].angle + defi3.dist.data[twin].angle;
+    var runEnd = runStart + runSpan;
     var dragging = false;
 
     function update(evt) {
       var P = svgPoint(evt);
       var raw = Math.atan2(P.y - geo.cy, P.x - geo.cx) * 180 / Math.PI;
-      var sweep = (raw - startDeg + 360) % 360;
+      var sweep = (raw - runStart + 360) % 360;
       if (sweep < 2) sweep = 2;
-      var endDeg = startDeg + sweep;
-      slice.setAttribute('d', sliceArcPathD(geo.cx, geo.cy, geo.r, startDeg, endDeg));
-      var hp = polar(geo.cx, geo.cy, geo.r, endDeg);
+      if (sweep > runSpan - 2) sweep = runSpan - 2;
+      var bnd = runStart + sweep;
+      sliceA.setAttribute('d', sliceArcPathD(geo.cx, geo.cy, geo.r, runStart, bnd));
+      sliceB.setAttribute('d', sliceArcPathD(geo.cx, geo.cy, geo.r, bnd, runEnd));
+      var hp = polar(geo.cx, geo.cy, geo.r, bnd);
       handle.setAttribute('cx', hp.x.toFixed(1)); handle.setAttribute('cy', hp.y.toFixed(1));
-      defi3.constructed[idx] = sweep;
+      defi3.constructed[bIdx] = sweep;
       document.getElementById('defi3-readout').textContent =
-        'Secteur choisi : environ ' + Math.round(sweep) + '° (soit ' + fmtPct(sweep / 360 * 100) + ' % du disque)';
+        'Part de « ' + esc(defi3.dist.data[bIdx].label) + ' » : environ ' + Math.round(sweep) + '° (soit '
+        + fmtPct(sweep / 360 * 100) + ' %) — « ' + esc(defi3.dist.data[twin].label) + ' » prend le reste.';
     }
     function down(evt) { dragging = true; svgEl.setPointerCapture(evt.pointerId); update(evt); evt.preventDefault(); }
     function move(evt) { if (dragging) update(evt); }
@@ -1069,7 +1111,8 @@ function attachDefi3Handlers(diagType, missing) {
 function defi3Check() {
   if (eD3.verrou) return;
   var q = eD3.q, dist = q.dist, diagType = q.diagType, geo = defi3.geo, missing = q.missing;
-  var saisie = missing.map(function (idx) {
+  var saisieIdx = q.saisieIdx || missing;
+  var saisie = saisieIdx.map(function (idx) {
     var v = defi3.constructed[idx];
     return (v == null) ? '' : String(v);
   });
@@ -1087,14 +1130,20 @@ function defi3Check() {
   var svgEl = document.querySelector('#defi3-chart-wrap svg');
   if (res.verrou && !res.ok && svgEl) {
     if (diagType === 'circulaire') {
-      var idx = missing[0];
-      var slice = svgEl.querySelector('#d3-slice' + idx);
-      var startDeg = -90;
-      for (var k = 0; k < idx; k++) startDeg += dist.data[k].angle;
-      if (slice) {
-        slice.setAttribute('d', sliceArcPathD(geo.cx, geo.cy, geo.r, startDeg, startDeg + dist.data[idx].angle));
-        slice.setAttribute('opacity', '0.3');
-        slice.setAttribute('stroke-dasharray', '4,3');
+      var bIdx = q.boundaryIdx, twin = q.twinIdx;
+      var sliceA = svgEl.querySelector('#d3-slice' + bIdx);
+      var sliceB = svgEl.querySelector('#d3-slice' + twin);
+      var runStart = -90;
+      for (var k = 0; k < bIdx; k++) runStart += dist.data[k].angle;
+      var bnd = runStart + dist.data[bIdx].angle;
+      var runEnd = bnd + dist.data[twin].angle;
+      if (sliceA) {
+        sliceA.setAttribute('d', sliceArcPathD(geo.cx, geo.cy, geo.r, runStart, bnd));
+        sliceA.setAttribute('opacity', '0.35'); sliceA.setAttribute('stroke-dasharray', '4,3');
+      }
+      if (sliceB) {
+        sliceB.setAttribute('d', sliceArcPathD(geo.cx, geo.cy, geo.r, bnd, runEnd));
+        sliceB.setAttribute('opacity', '0.35'); sliceB.setAttribute('stroke-dasharray', '4,3');
       }
     } else {
       missing.forEach(function (idx) {
