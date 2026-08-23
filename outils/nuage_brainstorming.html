@@ -1,0 +1,692 @@
+<!--
+Nuage de brainstorming - ecoute micro, nuage de mots + phrases en direct
+Copyright (c) 2026 Moise Muller <lessavoirfairepartager@gmail.com>
+Cree pour outilslp.netlify.app
+
+Outil prof : ecoute un brainstorming de classe via le micro (API Web Speech,
+fr-FR), construit un nuage de mots en temps reel (clic pour garder un mot),
+et liste les phrases dites (clic pour marquer juste / a corriger).
+
+ATTENTION : la reconnaissance vocale du navigateur exige une connexion
+internet (Chrome / Edge envoient l'audio a un service de decodage). Cet
+outil n'est donc PAS utilisable hors-ligne, contrairement aux autres.
+
+Apostrophes DROITES obligatoires dans tout le JavaScript.
+
+MIT License - fourni "TEL QUEL", sans garantie d'aucune sorte.
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nuage de brainstorming - ecoute de la classe</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--purple); --accent-bg: var(--purple-bg); }
+
+  /* ---- Barre d'etat + commandes ---------------------------------------- */
+  .status-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--pad-card);
+    margin-bottom: var(--gap);
+  }
+  .status-row {
+    display: flex; align-items: center; flex-wrap: wrap;
+    gap: 12px;
+  }
+  .status-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--text3); flex: none;
+    box-shadow: 0 0 0 0 rgba(0,0,0,0);
+  }
+  .status-dot.live {
+    background: var(--red);
+    animation: pulseDot 1.4s ease-in-out infinite;
+  }
+  .status-dot.paused { background: var(--amber); }
+  @keyframes pulseDot {
+    0%,100% { box-shadow: 0 0 0 0 rgba(163,45,45,.5); }
+    50%     { box-shadow: 0 0 0 10px rgba(163,45,45,0); }
+  }
+  html[data-motion="off"] .status-dot.live { animation: none; }
+  .status-text { font-size: var(--fs-sm); color: var(--text2); font-weight: 600; }
+  .status-spacer { flex: 1 1 auto; }
+
+  .btn {
+    font-family: inherit;
+    font-size: var(--fs-md);
+    font-weight: 700;
+    padding: 12px 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    line-height: 1.1;
+  }
+  .btn:hover { border-color: var(--border2); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-main {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+  html[data-theme="dark"] .btn-main { color: #14130f; }
+  .btn-main:hover { filter: brightness(1.08); border-color: var(--accent); }
+  .btn-ghost { background: transparent; }
+  .btn-danger:hover { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+  /* ---- Nuage de mots --------------------------------------------------- */
+  .cloud-card, .phrases-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--pad-card);
+    margin-bottom: var(--gap);
+  }
+  .card-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+  }
+  .card-title { font-size: var(--fs-lg); font-weight: 700; }
+  .card-hint { font-size: var(--fs-xs); color: var(--text3); }
+
+  .cloud {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 6px 16px;
+    min-height: 160px;
+    padding: 10px;
+  }
+  .cloud:empty::after {
+    content: "Le nuage se remplit des que la classe parle...";
+    color: var(--text3); font-size: var(--fs-sm); font-style: italic;
+  }
+  .word {
+    display: inline-block;
+    line-height: 1.1;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    transition: transform .12s ease;
+    color: var(--wc);
+  }
+  .word:hover { transform: scale(1.08); }
+  html[data-motion="off"] .word { transition: none; }
+  html[data-motion="off"] .word:hover { transform: none; }
+  .word.kept {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+  .word .cnt {
+    font-size: .55em; vertical-align: super; color: var(--text3); font-weight: 600;
+  }
+  .word.kept .cnt { color: var(--accent); }
+
+  /* Mode "termine" : seuls les mots gardes restent visibles */
+  .cloud.finished .word:not(.kept) { display: none; }
+  .cloud.finished:empty::after,
+  .cloud.finished .word.kept:only-child { }
+  .finished-empty {
+    color: var(--text3); font-style: italic; font-size: var(--fs-sm);
+    text-align: center; width: 100%;
+  }
+
+  /* ---- Liste de phrases ------------------------------------------------ */
+  .interim {
+    font-size: var(--fs-base); color: var(--text3); font-style: italic;
+    min-height: 1.6em; margin-bottom: 10px; padding: 4px 8px;
+    border-left: 3px solid var(--border2);
+  }
+  .interim:empty::after { content: "\00a0"; }
+  .phrases {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .phrases:empty::after {
+    content: "Les phrases entendues s'afficheront ici.";
+    color: var(--text3); font-size: var(--fs-sm); font-style: italic;
+  }
+  .phrase {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--border2);
+    border-radius: var(--radius);
+    background: var(--surface2);
+    font-size: var(--fs-base);
+    line-height: 1.4;
+  }
+  .phrase-txt { flex: 1 1 auto; cursor: pointer; }
+  .phrase.ok    { border-left-color: var(--green); background: var(--green-bg); }
+  .phrase.wrong { border-left-color: var(--red);   background: var(--red-bg); }
+  .phrase.wrong .phrase-txt { text-decoration: line-through; text-decoration-thickness: 1px; }
+  .phrase-mark {
+    font-size: var(--fs-xs); font-weight: 700; flex: none;
+    padding: 2px 8px; border-radius: 999px; align-self: center;
+  }
+  .phrase.ok .phrase-mark    { background: var(--green); color: #fff; }
+  .phrase.wrong .phrase-mark { background: var(--red);   color: #fff; }
+  html[data-theme="dark"] .phrase.ok .phrase-mark,
+  html[data-theme="dark"] .phrase.wrong .phrase-mark { color: #14130f; }
+  .phrase-del {
+    flex: none; border: none; background: transparent; cursor: pointer;
+    color: var(--text3); font-size: var(--fs-base); line-height: 1;
+    padding: 0 4px;
+  }
+  .phrase-del:hover { color: var(--red); }
+
+  /* ---- Aide ------------------------------------------------------------ */
+  .note {
+    background: var(--amber-bg);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-size: var(--fs-xs);
+    margin-bottom: var(--gap);
+    line-height: 1.5;
+  }
+  details.help {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 4px 16px; margin-bottom: var(--gap);
+  }
+  details.help summary {
+    cursor: pointer; font-weight: 700; font-size: var(--fs-sm);
+    color: var(--accent); padding: 10px 0;
+  }
+  details.help ol { padding-left: 1.3em; line-height: 1.6; font-size: var(--fs-sm); }
+  details.help li { margin-bottom: 6px; }
+  kbd {
+    font-family: var(--font-mono); font-size: .9em;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 6px;
+  }
+
+  /* ---- Mode plein ecran (vid=oproj) ------------------------------------ */
+  .app.fs {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg); overflow: auto;
+    padding: 24px clamp(16px, 4vw, 60px);
+    margin: 0; max-width: none;
+  }
+  .app.fs .cloud { min-height: 40vh; }
+  .app.fs .word { font-weight: 800; }
+  .app.fs .fs-hide { display: none; }
+
+  /* ---- Impression ------------------------------------------------------ */
+  @media print {
+    header, .lp-toolbar, .status-card, .note, details.help,
+    .interim, .phrase-del, .lp-footer, .no-print { display: none !important; }
+    .cloud .word:not(.kept) { display: none; }
+    .cloud-card, .phrases-card { border: none; break-inside: avoid; }
+    .phrase { background: #fff !important; border: 1px solid #999; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+    <circle cx="12" cy="14" r="3" fill="var(--purple)"/>
+    <circle cx="22" cy="10" r="4" fill="var(--purple)" opacity=".7"/>
+    <circle cx="30" cy="16" r="2.5" fill="var(--purple)" opacity=".5"/>
+    <circle cx="17" cy="22" r="2" fill="var(--purple)" opacity=".6"/>
+    <path d="M8 30h20M8 30v4M28 30v4" stroke="var(--purple)" stroke-width="3" stroke-linecap="round"/>
+  </svg></div>
+  <div>
+    <h1>Nuage de brainstorming</h1>
+    <p>Ecoute de la classe &middot; nuage de mots + phrases en direct</p>
+  </div>
+</header>
+
+<div class="main">
+<div class="app" id="app">
+
+  <!-- Message si navigateur incompatible -->
+  <div id="unsupported" class="note" hidden>
+    <strong>Ce navigateur ne sait pas transcrire la parole.</strong>
+    Ouvrez cette page dans <strong>Google Chrome</strong> ou <strong>Microsoft Edge</strong>
+    (sur ordinateur), avec une connexion internet active.
+  </div>
+
+  <!-- Barre d'etat + commandes -->
+  <div class="status-card fs-hide">
+    <div class="status-row">
+      <span class="status-dot" id="dot" aria-hidden="true"></span>
+      <span class="status-text" id="statusText">Pret. Cliquez sur Demarrer l'ecoute.</span>
+      <span class="status-spacer"></span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-main" id="btnStart" type="button">&#127908; Demarrer l'ecoute</button>
+      <button class="btn" id="btnPause" type="button" disabled>&#9208; Pause</button>
+      <button class="btn btn-ghost btn-danger" id="btnClear" type="button">&#128465; Tout effacer</button>
+      <button class="btn btn-ghost" id="btnFinish" type="button">&#9989; Terminer le nuage</button>
+      <button class="btn btn-ghost" id="btnFull" type="button">&#9974; Plein ecran</button>
+      <button class="btn btn-ghost" id="btnPrint" type="button">&#128424; Imprimer / PDF</button>
+    </div>
+  </div>
+
+  <!-- Nuage de mots -->
+  <section class="cloud-card">
+    <div class="card-head">
+      <span class="card-title">Nuage de mots</span>
+      <span class="card-hint">Cliquez un mot pour le <strong>garder</strong>. &laquo;&nbsp;Terminer&nbsp;&raquo; ne laisse que les mots gardes.</span>
+    </div>
+    <div class="cloud" id="cloud" aria-live="polite"></div>
+  </section>
+
+  <!-- Phrases -->
+  <section class="phrases-card">
+    <div class="card-head">
+      <span class="card-title">Phrases entendues</span>
+      <span class="card-hint">Un clic : <strong style="color:var(--green)">juste</strong> &rarr; <strong style="color:var(--red)">a corriger</strong> &rarr; neutre. La croix supprime.</span>
+    </div>
+    <div class="interim" id="interim"></div>
+    <ul class="phrases" id="phrases"></ul>
+  </section>
+
+  <!-- Aide -->
+  <div class="note fs-hide">
+    <strong>Bon a savoir&nbsp;:</strong> la transcription passe par le navigateur et
+    <strong>demande internet</strong> (cet outil n'est pas hors-ligne). La reconnaissance
+    n'est pas parfaite&nbsp;: elle sert de brouillon a corriger avec la classe.
+  </div>
+
+  <details class="help fs-hide">
+    <summary>Comment brancher le micro USB d'ambiance&nbsp;?</summary>
+    <ol>
+      <li>Branchez le micro USB, puis dans <strong>Windows &rarr; Parametres &rarr; Systeme &rarr; Son &rarr; Entree</strong>, choisissez-le comme <strong>peripherique d'entree par defaut</strong>. Le navigateur ecoute toujours le micro par defaut du systeme.</li>
+      <li>Ouvrez cette page dans <strong>Chrome</strong> ou <strong>Edge</strong>, cliquez <strong>Demarrer l'ecoute</strong> et <strong>autorisez le micro</strong> quand le navigateur le demande.</li>
+      <li>Parlez normalement&nbsp;: les mots remplissent le nuage, les phrases s'ajoutent dessous.</li>
+      <li>Pendant le tri, cliquez les <strong>bons mots</strong> pour les garder, puis <strong>Terminer le nuage</strong>. Marquez les phrases <strong>justes</strong> / <strong>a corriger</strong> d'un clic.</li>
+      <li><strong>Plein ecran</strong> pour projeter, <strong>Imprimer / PDF</strong> pour garder une trace (nuage garde + phrases marquees).</li>
+    </ol>
+  </details>
+
+</div><!-- .app -->
+</div><!-- .main -->
+
+<footer class="lp-footer">
+  <a href="/">&larr; Tous les outils</a> &nbsp;&middot;&nbsp;
+  Licence MIT &middot; &copy; 2026 Moise Muller &nbsp;&middot;&nbsp;
+  <span title="T : theme - P : projection - D : lecture facilitee">Raccourcis : T &middot; P &middot; D</span>
+</footer>
+
+<script>
+"use strict";
+(function () {
+
+  /* ====================================================================
+     ETAT
+  ==================================================================== */
+  var words = {};        // mot -> { count, kept }
+  var phraseSeq = 0;     // identifiant croissant des phrases
+  var listening = false; // l'ecoute est-elle demandee ?
+  var paused = false;    // en pause volontaire ?
+  var finished = false;  // nuage "termine" (mots non gardes masques) ?
+  var recog = null;
+  var restartTimer = null;
+
+  /* ====================================================================
+     RACCOURCIS DOM
+  ==================================================================== */
+  function $(id) { return document.getElementById(id); }
+  var elCloud   = $("cloud");
+  var elPhrases = $("phrases");
+  var elInterim = $("interim");
+  var elDot     = $("dot");
+  var elStatus  = $("statusText");
+  var btnStart  = $("btnStart");
+  var btnPause  = $("btnPause");
+  var btnClear  = $("btnClear");
+  var btnFinish = $("btnFinish");
+  var btnFull   = $("btnFull");
+  var btnPrint  = $("btnPrint");
+  var elApp     = $("app");
+
+  /* ====================================================================
+     MOTS VIDES (ne rentrent pas dans le nuage)
+     Liste courte des mots-outils francais les plus frequents. Sans elle,
+     le nuage serait ecrase par "le", "de", "et", "euh"...
+  ==================================================================== */
+  var STOP = {};
+  (function () {
+    var l = ("le la les un une des de du d au aux a et ou ou ni mais donc or car "
+      + "que qui quoi dont ou quand comme si ne pas plus moins tres trop bien "
+      + "je tu il elle on nous vous ils elles me te se lui leur y en "
+      + "ce cet cette ces ceci cela ca celui celle ceux "
+      + "mon ma mes ton ta tes son sa ses notre nos votre vos leurs "
+      + "est sont es suis etes sommes etait etaient sera seront etre ete "
+      + "ai as a avons avez ont avais avait aura auront avoir eu "
+      + "fait fais faire font va vais vas vont aller "
+      + "dans sur sous par pour avec sans chez vers entre depuis apres avant "
+      + "au-dessus au-dessous "
+      + "d"
+      + "oui non peut etre bah ben euh hum voila alors enfin puis aussi meme "
+      + "tout tous toute toutes rien quelque quelques chaque autre autres "
+      + "ici la-bas maintenant deja encore toujours jamais "
+      + "c s j t l m n qu jusqu lorsqu puisqu quelqu "
+      + "il-y-a").split(/\s+/);
+    for (var i = 0; i < l.length; i++) { if (l[i]) STOP[l[i]] = true; }
+  })();
+
+  /* Palette de couleurs (tokens du site) pour les mots non gardes. */
+  var PALETTE = ["--blue", "--teal", "--amber", "--coral", "--pink", "--green", "--purple"];
+  function colorFor(word) {
+    var h = 0;
+    for (var i = 0; i < word.length; i++) { h = (h * 31 + word.charCodeAt(i)) >>> 0; }
+    return "var(" + PALETTE[h % PALETTE.length] + ")";
+  }
+
+  /* ====================================================================
+     NETTOYAGE / DECOUPAGE DU TEXTE
+  ==================================================================== */
+  function normWord(w) {
+    // minuscules, on retire ponctuation et chiffres, on garde lettres accentuees et tiret
+    w = w.toLowerCase().trim();
+    w = w.replace(/^[^0-9a-zà-ÿ-]+/, "").replace(/[^0-9a-zà-ÿ-]+$/, "");
+    // on ecarte les nombres purs
+    if (/^[0-9]+$/.test(w)) return "";
+    return w;
+  }
+
+  function addWordsFrom(text) {
+    var parts = text.split(/[\s,;:!?.()"'\u2019\u2026]+/);
+    var changed = false;
+    for (var i = 0; i < parts.length; i++) {
+      var w = normWord(parts[i]);
+      if (!w || w.length < 3) continue;
+      if (STOP[w]) continue;
+      if (!words[w]) { words[w] = { count: 0, kept: false }; }
+      words[w].count++;
+      changed = true;
+    }
+    if (changed) renderCloud();
+  }
+
+  /* ====================================================================
+     RENDU DU NUAGE
+  ==================================================================== */
+  function renderCloud() {
+    // taille de police proportionnelle a la frequence
+    var max = 1;
+    for (var k in words) { if (words[k].count > max) max = words[k].count; }
+
+    // tri par frequence decroissante pour un rendu stable et lisible
+    var keys = Object.keys(words).sort(function (a, b) {
+      return words[b].count - words[a].count || (a < b ? -1 : 1);
+    });
+
+    elCloud.innerHTML = "";
+    var anyKept = false;
+    for (var i = 0; i < keys.length; i++) {
+      var w = keys[i];
+      var info = words[w];
+      if (info.kept) anyKept = true;
+      var ratio = info.count / max;            // 0..1
+      var size = 18 + Math.round(ratio * 42);  // 18px -> 60px
+      var span = document.createElement("span");
+      span.className = "word" + (info.kept ? " kept" : "");
+      span.style.fontSize = size + "px";
+      span.style.setProperty("--wc", colorFor(w));
+      span.setAttribute("data-w", w);
+      span.title = info.count + " fois - cliquer pour " + (info.kept ? "retirer" : "garder");
+      span.textContent = w;
+      if (info.count > 1) {
+        var c = document.createElement("span");
+        c.className = "cnt";
+        c.textContent = info.count;
+        span.appendChild(c);
+      }
+      elCloud.appendChild(span);
+    }
+
+    elCloud.classList.toggle("finished", finished);
+    if (finished && !anyKept) {
+      var msg = document.createElement("span");
+      msg.className = "finished-empty";
+      msg.textContent = "Aucun mot garde. Cliquez Reprendre, puis choisissez les mots a garder.";
+      elCloud.appendChild(msg);
+    }
+  }
+
+  // clic sur un mot -> bascule "garde"
+  elCloud.addEventListener("click", function (e) {
+    var el = e.target;
+    while (el && el !== elCloud && !el.getAttribute("data-w")) { el = el.parentNode; }
+    if (!el || el === elCloud) return;
+    var w = el.getAttribute("data-w");
+    if (words[w]) { words[w].kept = !words[w].kept; renderCloud(); }
+  });
+
+  /* ====================================================================
+     PHRASES
+  ==================================================================== */
+  function addPhrase(text) {
+    text = text.trim();
+    if (!text) return;
+    // majuscule initiale, propre a l'affichage
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+
+    var id = ++phraseSeq;
+    var li = document.createElement("li");
+    li.className = "phrase";
+    li.setAttribute("data-state", "0");
+
+    var span = document.createElement("span");
+    span.className = "phrase-txt";
+    span.textContent = text;
+
+    var mark = document.createElement("span");
+    mark.className = "phrase-mark";
+    mark.setAttribute("aria-hidden", "true");
+
+    var del = document.createElement("button");
+    del.className = "phrase-del no-print";
+    del.type = "button";
+    del.setAttribute("aria-label", "Supprimer la phrase");
+    del.innerHTML = "&times;";
+
+    // clic sur le texte -> cycle neutre / juste / a corriger
+    span.addEventListener("click", function () {
+      var s = (parseInt(li.getAttribute("data-state"), 10) + 1) % 3;
+      li.setAttribute("data-state", s);
+      li.classList.remove("ok", "wrong");
+      if (s === 1) { li.classList.add("ok"); mark.textContent = "juste"; }
+      else if (s === 2) { li.classList.add("wrong"); mark.textContent = "a corriger"; }
+      else { mark.textContent = ""; }
+    });
+
+    del.addEventListener("click", function () { li.remove(); });
+
+    li.appendChild(span);
+    li.appendChild(mark);
+    li.appendChild(del);
+    // plus recent en haut
+    elPhrases.insertBefore(li, elPhrases.firstChild);
+  }
+
+  /* ====================================================================
+     RECONNAISSANCE VOCALE
+  ==================================================================== */
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function setStatus(txt, mode) {
+    elStatus.textContent = txt;
+    elDot.className = "status-dot" + (mode ? " " + mode : "");
+  }
+
+  function buildRecog() {
+    var r = new SR();
+    r.lang = "fr-FR";
+    r.continuous = true;
+    r.interimResults = true;
+    r.maxAlternatives = 1;
+
+    r.onresult = function (ev) {
+      var interim = "";
+      for (var i = ev.resultIndex; i < ev.results.length; i++) {
+        var res = ev.results[i];
+        var txt = res[0].transcript;
+        if (res.isFinal) {
+          addPhrase(txt);
+          addWordsFrom(txt);
+        } else {
+          interim += txt;
+        }
+      }
+      elInterim.textContent = interim;
+    };
+
+    r.onerror = function (ev) {
+      if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
+        listening = false; paused = false; updateButtons();
+        setStatus("Micro refuse. Autorisez le micro dans le navigateur, puis relancez.", "");
+      } else if (ev.error === "audio-capture") {
+        listening = false; paused = false; updateButtons();
+        setStatus("Aucun micro detecte. Branchez le micro USB et reglez-le par defaut.", "");
+      } else if (ev.error === "network") {
+        setStatus("Probleme reseau : la transcription a besoin d'internet.", "paused");
+      }
+      // "no-speech" et "aborted" : on laisse onend relancer
+    };
+
+    r.onend = function () {
+      // Chrome coupe apres un silence : on relance tant que l'ecoute est active.
+      if (listening && !paused) {
+        clearTimeout(restartTimer);
+        restartTimer = setTimeout(function () {
+          try { r.start(); } catch (e) { /* deja demarre */ }
+        }, 250);
+      }
+    };
+
+    return r;
+  }
+
+  function startListening() {
+    if (!SR) return;
+    if (!recog) recog = buildRecog();
+    listening = true; paused = false;
+    try { recog.start(); } catch (e) { /* deja en cours */ }
+    setStatus("Ecoute en cours...", "live");
+    updateButtons();
+  }
+
+  function pauseListening() {
+    paused = true;
+    clearTimeout(restartTimer);
+    if (recog) { try { recog.stop(); } catch (e) {} }
+    setStatus("En pause. Cliquez Reprendre pour reecouter.", "paused");
+    elInterim.textContent = "";
+    updateButtons();
+  }
+
+  function resumeListening() {
+    paused = false; listening = true;
+    if (!recog) recog = buildRecog();
+    try { recog.start(); } catch (e) {}
+    setStatus("Ecoute en cours...", "live");
+    updateButtons();
+  }
+
+  function stopAll() {
+    listening = false; paused = false;
+    clearTimeout(restartTimer);
+    if (recog) { try { recog.stop(); } catch (e) {} }
+  }
+
+  /* ====================================================================
+     BOUTONS
+  ==================================================================== */
+  function updateButtons() {
+    if (!listening) {
+      btnStart.hidden = false;
+      btnStart.disabled = false;
+      btnPause.disabled = true;
+      btnPause.innerHTML = "&#9208; Pause";
+    } else {
+      btnStart.hidden = true;
+      btnPause.disabled = false;
+      btnPause.innerHTML = paused ? "&#9654; Reprendre" : "&#9208; Pause";
+    }
+  }
+
+  btnStart.addEventListener("click", startListening);
+
+  btnPause.addEventListener("click", function () {
+    if (paused) resumeListening(); else pauseListening();
+  });
+
+  btnClear.addEventListener("click", function () {
+    if (!confirm("Effacer tout le nuage et toutes les phrases ?")) return;
+    words = {}; phraseSeq = 0; finished = false;
+    elPhrases.innerHTML = "";
+    elInterim.textContent = "";
+    btnFinish.innerHTML = "&#9989; Terminer le nuage";
+    renderCloud();
+  });
+
+  btnFinish.addEventListener("click", function () {
+    finished = !finished;
+    btnFinish.innerHTML = finished
+      ? "&#9998; Reprendre l'edition"
+      : "&#9989; Terminer le nuage";
+    renderCloud();
+  });
+
+  btnFull.addEventListener("click", function () {
+    var on = elApp.classList.toggle("fs");
+    // on tente aussi le vrai plein ecran du navigateur (F11-like)
+    try {
+      if (on && elApp.requestFullscreen) { elApp.requestFullscreen(); }
+      else if (!on && document.fullscreenElement) { document.exitFullscreen(); }
+    } catch (e) {}
+    btnFull.innerHTML = on ? "&#10005; Quitter le plein ecran" : "&#9974; Plein ecran";
+  });
+
+  document.addEventListener("fullscreenchange", function () {
+    if (!document.fullscreenElement && elApp.classList.contains("fs")) {
+      elApp.classList.remove("fs");
+      btnFull.innerHTML = "&#9974; Plein ecran";
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && elApp.classList.contains("fs") && !document.fullscreenElement) {
+      elApp.classList.remove("fs");
+      btnFull.innerHTML = "&#9974; Plein ecran";
+    }
+  });
+
+  btnPrint.addEventListener("click", function () {
+    var wasFinished = finished;
+    finished = true; renderCloud();  // n'imprimer que les mots gardes
+    setTimeout(function () {
+      window.print();
+      finished = wasFinished; renderCloud();
+    }, 60);
+  });
+
+  /* ====================================================================
+     DEMARRAGE
+  ==================================================================== */
+  if (!SR) {
+    $("unsupported").hidden = false;
+    btnStart.disabled = true;
+    setStatus("Navigateur incompatible.", "");
+  }
+  renderCloud();
+  updateButtons();
+
+})();
+</script>
+</body>
+</html>
