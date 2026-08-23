@@ -137,6 +137,11 @@
     display: block; margin-top: 8px;
     font-size: var(--fs-xs); color: var(--text3); font-weight: 400;
   }
+  .defi-aide-inline {
+    background: var(--accent-bg); border-left: 3px solid var(--accent);
+    padding: 8px 10px; border-radius: 6px; margin: 4px 0 12px;
+    font-size: var(--fs-xs); color: var(--text2);
+  }
   .comp-badge {
     display: inline-block;
     font-size: var(--fs-xs); font-weight: 700;
@@ -197,6 +202,7 @@
     <button class="mode-tab active" onclick="setMode('mesure',this)">Sonomètre</button>
     <button class="mode-tab" onclick="setMode('reperes',this)">Repères &amp; calculs</button>
     <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi ⁺</button>
   </div>
 
   <!-- ═══ 1. SONOMÈTRE ════════════════════════════════════════════════════ -->
@@ -487,11 +493,15 @@
       </div>
       <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
 
+      <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI ⁺ — Rappels masqués</div>
+
       <div class="defi-shape-display">
         <span class="comp-badge" id="defi-badge">C1 · S’approprier</span>
         <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:230px;width:100%"></svg>
         <div class="defi-enonce" id="defi-enonce"></div>
       </div>
+
+      <div class="defi-aide-inline" id="defi-rappel" style="display:none"></div>
 
       <!-- Réponse : QCM -->
       <div class="qcm" id="defi-qcm"></div>
@@ -500,7 +510,7 @@
       <div id="defi-num" style="display:none">
         <div class="defi-input-row">
           <label for="defi-input" id="defi-num-label">Réponse =</label>
-          <input type="number" id="defi-input" placeholder="?" step="0.1">
+          <input type="text" inputmode="decimal" id="defi-input" placeholder="?">
           <span class="unit" id="defi-num-unit">dB</span>
         </div>
         <button class="btn-check" onclick="verifierNum()">Vérifier ma réponse</button>
@@ -511,7 +521,7 @@
 
       <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
         <div class="fiche-info" id="fiche-info"></div>
-        <button class="btn-fiche" onclick="genererFiche()">Générer une fiche d’exercices (10 questions)</button>
+        <button class="btn-fiche" onclick="ouvrirFiche()">Générer une fiche d’exercices (10 questions)</button>
       </div>
     </div>
   </div>
@@ -521,6 +531,7 @@
 <div id="son-alert" class="son-alert no-print" hidden>Trop de bruit — on baisse d’un ton</div>
 
 <script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════════════
    Sonomètre de classe — logique
@@ -1153,7 +1164,9 @@ const FAMILLES = [
         enonce:`Le sonomètre de la classe affiche l’aiguille ci-dessus. Quel niveau sonore indique-t-il ?`,
         ficheEnonce:`Quel niveau le sonomètre indique-t-il ?`,
         type:`qcm`, choix:choix, bonne:choix.indexOf(db+` dB`), reponse:db+` dB`,
-        ficheReponse: db+` dB  (± 5 dB accepté)`
+        ficheReponse: db+` dB  (± 5 dB accepté)`,
+        hint:`Suis l’aiguille jusqu’au bord du cadran, puis lis la graduation chiffrée la plus proche de sa pointe.`,
+        detail:`L’aiguille pointe vers la graduation ${db} dB.`
       };
     } },
 
@@ -1166,7 +1179,9 @@ const FAMILLES = [
         svg: svgEchelle(s.db),
         enonce:`${cap(s.n)} produit environ ${s.db} dB. Dans quelle zone ce niveau se situe-t-il ?`,
         ficheEnonce:`${cap(s.n)} produit environ ${s.db} dB. Dans quelle zone se situe ce niveau ?`,
-        type:`qcm`, choix:ZONES_RISQUE.slice(), bonne:i, reponse:ZONES_RISQUE[i]
+        type:`qcm`, choix:ZONES_RISQUE.slice(), bonne:i, reponse:ZONES_RISQUE[i],
+        hint:`Compare le niveau aux trois seuils à connaître : 80 dB, 85 dB et 120 dB.`,
+        detail:`${s.db} dB se situe dans la zone « ${ZONES_RISQUE[i]} ».`
       };
     } },
 
@@ -1178,7 +1193,9 @@ const FAMILLES = [
       return {
         svg: it.dB ? svgEchelle(null) : svgPanneau(`risque auditif`),
         enonce: it.q,
-        type:`qcm`, choix:choix, bonne:choix.indexOf(it.r), reponse:it.r
+        type:`qcm`, choix:choix, bonne:choix.indexOf(it.r), reponse:it.r,
+        hint:`Revois l’aide-mémoire : 80 dB (information), 85 dB (protections obligatoires), 87 dB (limite absolue), 120 dB (douleur).`,
+        detail:`Réponse attendue : ${it.r}.`
       };
     } },
 
@@ -1193,7 +1210,9 @@ const FAMILLES = [
       return {
         svg: svgHorloge(TABLE_DUREES[i].L+` dB`),
         enonce:`D’après le tableau des durées maximales, combien de temps par jour peut-on travailler sans protection dans un atelier à ${TABLE_DUREES[i].L} dB ?`,
-        type:`qcm`, choix:choix, bonne:choix.indexOf(bonne), reponse:bonne
+        type:`qcm`, choix:choix, bonne:choix.indexOf(bonne), reponse:bonne,
+        hint:`Pars de 85 dB → 8 h, puis divise la durée par 2 à chaque tranche de +3 dB.`,
+        detail:`À ${TABLE_DUREES[i].L} dB, la durée maximale sans protection est de ${bonne}.`
       };
     } },
 
@@ -1209,14 +1228,18 @@ const FAMILLES = [
         return {
           svg: svgChaine3dB(L),
           enonce:`À 85 dB, la durée maximale d’exposition est de 8 h par jour. Le poste mesuré atteint ${L} dB. Quelle est la durée maximale à ce poste ?`,
-          type:`qcm`, choix:choix, bonne:choix.indexOf(bonne), reponse:bonne
+          type:`qcm`, choix:choix, bonne:choix.indexOf(bonne), reponse:bonne,
+          hint:`Compte les tranches de +3 dB au-dessus de 85 dB, puis divise 8 h par 2 autant de fois.`,
+          detail:`De 85 à ${L} dB, il y a ${k} tranches de +3 dB : 8 h ÷ 2^${k} = ${bonne}.`
         };
       }
       const k = rnd(1,5), L = 85+3*k, duree = fmtDuree(8/Math.pow(2,k));
       return {
         svg: svgHorloge(duree),
         enonce:`Sur ce poste, la durée maximale d’exposition n’est plus que de ${duree} par jour, au lieu de 8 h à 85 dB. Quel est le niveau sonore du poste ?`,
-        type:`num`, valeur:L, tol:0.4, unite:`dB`, reponse:L+` dB`
+        type:`num`, valeur:L, tol:0.4, unite:`dB`, reponse:L+` dB`,
+        hint:`Combien de fois faut-il diviser 8 h par 2 pour tomber sur cette durée ? Chaque division correspond à +3 dB.`,
+        detail:`${duree} = 8 h ÷ 2^${k}, soit ${k} tranches de +3 dB au-dessus de 85 dB : 85 + ${3*k} = ${L} dB.`
       };
     } },
 
@@ -1237,7 +1260,9 @@ const FAMILLES = [
       return {
         svg: svgDistance(L1,d1,d2),
         enonce:`À ${d1} m d’${m}, le sonomètre indique ${L1} dB. Quel niveau mesure-t-on à ${d2} m ?`,
-        type:`num`, valeur:L2, tol:1, unite:`dB`, reponse:L2+` dB`
+        type:`num`, valeur:L2, tol:1, unite:`dB`, reponse:L2+` dB`,
+        hint:`Compte les doublements de distance entre les deux points ; retire (ou ajoute) 6 dB à chaque doublement.`,
+        detail:`${k} doublement(s) de distance, soit ${6*k} dB d’écart : de ${L1} dB à ${d1} m on passe à ${L2} dB à ${d2} m.`
       };
     } },
 
@@ -1248,7 +1273,9 @@ const FAMILLES = [
       return {
         svg: svgCasque(L,a),
         enonce:`Dans l’atelier, le niveau sonore est de ${L} dB. L’élève porte un casque qui atténue ${a} dB. Quel niveau son oreille reçoit-elle réellement ?`,
-        type:`num`, valeur:L-a, tol:0.4, unite:`dB`, reponse:(L-a)+` dB`
+        type:`num`, valeur:L-a, tol:0.4, unite:`dB`, reponse:(L-a)+` dB`,
+        hint:`Le casque ne supprime pas le bruit : il en retire seulement son atténuation. Fais une soustraction.`,
+        detail:`Niveau reçu = niveau de l’atelier − atténuation = ${L} − ${a} = ${L-a} dB.`
       };
     } },
 
@@ -1260,7 +1287,9 @@ const FAMILLES = [
       return {
         svg: svgMachines(n,L),
         enonce:`Une machine seule produit ${L} dB. On met ${n} machines identiques en marche en même temps. Quel est le niveau sonore total ?`,
-        type:`num`, valeur:L+plus, tol:0.6, unite:`dB`, reponse:(L+plus)+` dB`
+        type:`num`, valeur:L+plus, tol:0.6, unite:`dB`, reponse:(L+plus)+` dB`,
+        hint:`Deux sources identiques : +3 dB · quatre : +6 dB · dix : +10 dB. Les décibels ne s’additionnent pas comme des nombres ordinaires.`,
+        detail:`${n} machines identiques ajoutent ${plus} dB : ${L} + ${plus} = ${L+plus} dB.`
       };
     } },
 
@@ -1287,7 +1316,9 @@ const FAMILLES = [
         svg: svgAtelier(L, poste.t),
         enonce:`Au poste, le sonomètre indique ${L} dB. L’élève y travaille ${poste.t} par jour, sans protection. La durée maximale d’exposition est-elle respectée ?`,
         ficheEnonce:`Le sonomètre indique ${L} dB au poste et l’élève y travaille ${poste.t} par jour, sans protection. · La durée maximale d’exposition est-elle respectée ? Donner cette durée maximale.`,
-        type:`qcm`, choix:choix, bonne:choix.indexOf(bonneP), reponse:bonneP
+        type:`qcm`, choix:choix, bonne:choix.indexOf(bonneP), reponse:bonneP,
+        hint:`Compare la durée réelle de travail à la durée maximale autorisée à ${L} dB (lis le tableau des durées).`,
+        detail:`À ${L} dB, la durée maximale est de ${dmax}. ${conforme ? `La durée de travail au poste est respectée.` : `La durée de travail au poste est dépassée.`}`
       };
     } },
 
@@ -1300,7 +1331,9 @@ const FAMILLES = [
         svg: svgBulle(),
         enonce:`Un élève affirme : « ${it.dit} » Que faut-il en penser ?`,
         ficheEnonce:`Un élève affirme : « ${it.dit} » · Cette affirmation est-elle juste ? Corriger si nécessaire.`,
-        type:`qcm`, choix:choix, bonne:choix.indexOf(it.r), reponse:it.r
+        type:`qcm`, choix:choix, bonne:choix.indexOf(it.r), reponse:it.r,
+        hint:`Teste l’affirmation avec les règles : −6 dB par doublement de distance, +3 dB pour deux sources identiques, seuils 80 / 85 / 120 dB.`,
+        detail:`${it.r}`
       };
     } },
 
@@ -1320,17 +1353,61 @@ const FAMILLES = [
         svg: svgRapport(L,dmax),
         enonce:`Tu rédiges la conclusion du compte rendu de mesure. Le sonomètre indique ${L} dB au poste. Quelle phrase est correcte et complète ?`,
         ficheEnonce:`Le sonomètre indique ${L} dB au poste. Rédiger la phrase de conclusion du compte rendu : valeur, unité, comparaison au seuil de 85 dB, conséquence.`,
-        type:`qcm`, choix:choix, bonne:choix.indexOf(bonne), reponse:bonne
+        type:`qcm`, choix:choix, bonne:choix.indexOf(bonne), reponse:bonne,
+        hint:`Une bonne conclusion donne la valeur AVEC son unité (dB), la compare au seuil de 85 dB, puis indique la conséquence.`,
+        detail:`Conclusion complète : donner la valeur (${L} dB), la comparer au seuil de 85 dB et indiquer la conséquence (durée maximale + protections obligatoires).`
       };
     } }
 
 ];
 
-/* ═══ MOTEUR DU DÉFI ═══════════════════════════════════════════════════════ */
+/* ═══ MOTEUR DU DÉFI (branché sur lp-defi.js, dom:false) ═══════════════════
+   ⚠ INDICES / DÉTAILS — PREMIER JET, À RELIRE (pédagogie).
+   L outil garde son rendu (cadran, QCM, saisie numérique) ; le moteur partagé
+   tient la question, le second essai, l indice, le score, le journal et les
+   événements lp:defi:reponse (comp C1/C2/C4/C5). On pilote nous-mêmes le
+   tirage pour respecter la barre de compétences : melange sur les familles
+   actives, puis defi.tirer(id). Le rappel (aide) est affiché avant de répondre
+   en Mode défi, et masqué en Défi ⁺. */
 
 const compActives = { C1:true, C2:true, C4:true, C5:true };
 let ordre = [], idxOrdre = 0;
-let numQuestion = 0, bons = 0, total = 0, repondu = false, courant = null;
+let numQuestion = 0, courant = null, defiPlus = false;
+
+/* Enveloppe une famille au format du moteur : qcm → type « choix » (index de
+   la bonne carte), num → type « nombre ». rappel = aide de la famille ; hint
+   et detail viennent du générateur (calculés sur les valeurs tirées). */
+function familleMoteur(f){
+  return {
+    value:f.id, label:f.nom, nom:f.nom, comp:f.comp, aide:f.aide,
+    gen:function(){
+      const raw = f.gen();
+      const q = {
+        svg:raw.svg, enonce:raw.enonce,
+        rappel:f.aide, hint:raw.hint || ``, detail:raw.detail || ``
+      };
+      if(raw.type === `qcm`){
+        q.type = `choix`;
+        q.choix = raw.choix.map(function(s,i){ return { val:String(i), label:s }; });
+        q.reponse = String(raw.bonne);
+        q.reponseTexte = raw.reponse;
+      } else {
+        q.type = `nombre`;
+        q.reponse = raw.valeur;
+        q.tol = raw.tol;
+        q.unite = raw.unite;
+        q.reponseTexte = raw.reponse;
+      }
+      return q;
+    }
+  };
+}
+
+const defi = LP.defi.creer({
+  outil:`sonometre`, dom:false, serie:0,
+  familles: FAMILLES.map(familleMoteur),
+  modePlus:function(){ return defiPlus; }
+});
 
 function famillesActives(){
   return FAMILLES.filter(function(f){ return compActives[f.comp]; });
@@ -1361,42 +1438,48 @@ function questionSuivante(){
   if(!dispo.length) return;
   if(!ordre.length || idxOrdre >= ordre.length){ ordre = melange(dispo.slice()); idxOrdre = 0; }
   const f = ordre[idxOrdre++];
-  courant = f.gen();
-  courant.famille = f;
+  courant = defi.tirer(f.id);
   afficherQuestion();
 }
 
 function afficherQuestion(){
   numQuestion++;
-  repondu = false;
-  const f = courant.famille, c = COMPETENCES[f.comp];
+  const q = courant, c = COMPETENCES[q.comp];
 
-  el(`defi-titre`).textContent = `Question ` + numQuestion + ` — ` + f.nom;
+  el(`defi-titre`).textContent = `Question ` + numQuestion + ` — ` + q.nom;
   const badge = el(`defi-badge`);
-  badge.textContent = f.comp + ` · ` + c.nom;
+  badge.textContent = q.comp + ` · ` + c.nom;
   badge.style.background = c.bg;
   badge.style.color = c.fg;
 
-  el(`defi-svg`).innerHTML = courant.svg;
-  el(`defi-enonce`).innerHTML = courant.enonce
-    + (f.aide ? `<span class="defi-aide">` + f.aide + `</span>` : ``);
+  el(`defi-svg`).innerHTML = q.svg;
+  el(`defi-enonce`).innerHTML = q.enonce;
+
+  const rap = el(`defi-rappel`);
+  if(q.rappel && !defiPlus){
+    rap.innerHTML = `<b>Rappel :</b> ` + q.rappel;
+    rap.style.display = `block`;
+  } else {
+    rap.innerHTML = ``;
+    rap.style.display = `none`;
+  }
 
   const fb = el(`defi-feedback`);
   fb.className = `feedback-box`; fb.innerHTML = ``;
   el(`btn-next`).style.display = `none`;
 
   const zoneQcm = el(`defi-qcm`), zoneNum = el(`defi-num`);
-  if(courant.type === `qcm`){
+  if(q.type === `choix`){
     zoneNum.style.display = `none`;
     zoneQcm.style.display = `grid`;
     zoneQcm.innerHTML = ``;
     const lettres = [`A`,`B`,`C`,`D`];
-    for(let i=0;i<courant.choix.length;i++){
+    for(let i=0;i<q.choix.length;i++){
       const b = document.createElement(`button`);
       b.type = `button`;
       b.className = `qcm-btn`;
       b.setAttribute(`data-i`, i);
-      b.innerHTML = `<span class="lettre">` + lettres[i] + `</span><span>` + courant.choix[i] + `</span>`;
+      b.innerHTML = `<span class="lettre">` + lettres[i] + `</span><span>` + q.choix[i].label + `</span>`;
       b.addEventListener(`click`, function(){ repondreQcm(parseInt(this.getAttribute(`data-i`),10)); });
       zoneQcm.appendChild(b);
     }
@@ -1404,120 +1487,170 @@ function afficherQuestion(){
     zoneQcm.style.display = `none`;
     zoneQcm.innerHTML = ``;
     zoneNum.style.display = `block`;
-    el(`defi-num-unit`).textContent = courant.unite;
+    el(`defi-num-unit`).textContent = q.unite;
+    el(`defi-input`).removeAttribute(`disabled`);
     el(`defi-input`).value = ``;
     el(`defi-input`).focus();
   }
 }
 
 function repondreQcm(i){
-  if(repondu) return;
+  if(defi.verrou) return;
+  const res = defi.verifier(String(i));
+  if(!res || res.vide) return;
   const boutons = el(`defi-qcm`).querySelectorAll(`.qcm-btn`);
-  for(let k=0;k<boutons.length;k++){
-    boutons[k].setAttribute(`disabled`, `disabled`);
-    if(k === courant.bonne) boutons[k].classList.add(`bon`);
-    else if(k === i) boutons[k].classList.add(`faux`);
+  const fb = el(`defi-feedback`);
+  fb.className = `feedback-box ` + (res.ok ? `correct` : `wrong`) + ` show`;
+  fb.innerHTML = res.texte;
+  if(res.verrou){
+    const bon = parseInt(defi.q.reponse, 10);
+    for(let k=0;k<boutons.length;k++){
+      boutons[k].setAttribute(`disabled`, `disabled`);
+      if(k === bon) boutons[k].classList.add(`bon`);
+      else if(k === i && !res.ok) boutons[k].classList.add(`faux`);
+    }
+    el(`btn-next`).style.display = `block`;
+    majScore();
+  } else {
+    /* 1er essai raté : on élimine la carte choisie, l élève rejoue sur ce qui
+       reste, la bonne réponse n est pas dévoilée. */
+    boutons[i].classList.add(`faux`);
+    boutons[i].setAttribute(`disabled`, `disabled`);
   }
-  conclure(i === courant.bonne);
 }
 
 function verifierNum(){
-  if(repondu) return;
-  const x = parseFloat(el(`defi-input`).value.replace(`,`, `.`));
-  if(isNaN(x)){ alert(`Entre une valeur numérique.`); return; }
-  conclure(Math.abs(x - courant.valeur) <= courant.tol);
-}
-
-function conclure(ok){
-  repondu = true; total++;
-  if(ok) bons++;
+  if(defi.verrou) return;
+  const res = defi.verifier(el(`defi-input`).value);
+  if(!res) return;
+  if(res.vide){ el(`defi-input`).focus(); return; }
   const fb = el(`defi-feedback`);
-  fb.className = `feedback-box ` + (ok ? `correct` : `wrong`) + ` show`;
-  fb.innerHTML = ok
-    ? `<strong>Correct !</strong> ` + courant.reponse
-    : `<strong>Pas tout à fait.</strong> La bonne réponse : ` + courant.reponse;
-  el(`btn-next`).style.display = `block`;
-  majScore();
+  fb.className = `feedback-box ` + (res.ok ? `correct` : `wrong`) + ` show`;
+  fb.innerHTML = res.texte;
+  if(res.verrou){
+    el(`defi-input`).setAttribute(`disabled`, `disabled`);
+    el(`btn-next`).style.display = `block`;
+    majScore();
+  } else {
+    el(`defi-input`).value = ``;
+    el(`defi-input`).focus();
+  }
 }
 
 function majScore(){
-  el(`defi-score`).textContent = bons + ` / ` + total + ` correct` + (total > 1 ? `s` : ``);
-  el(`defi-progress`).style.width = (total > 0 ? (bons/total*100) : 0) + `%`;
+  el(`defi-score`).textContent = defi.bons + ` / ` + defi.total + ` correct` + (defi.total > 1 ? `s` : ``);
+  el(`defi-progress`).style.width = (defi.total > 0 ? (defi.bons/defi.total*100) : 0) + `%`;
 }
 
 document.addEventListener(`keydown`, function(e){
+  if(window.LP && LP.ficheModal && LP.ficheModal.isOpen && LP.ficheModal.isOpen()) return;
   if(e.ctrlKey || e.metaKey || e.altKey) return;
-  const defiVisible = el(`mode-defi`).classList.contains(`active`);
+  const md = el(`mode-defi`);
+  const defiVisible = md && md.style.display !== `none`;
   if(!defiVisible || !courant) return;
   const tag = document.activeElement ? document.activeElement.tagName : ``;
   const saisie = (tag === `INPUT` || tag === `TEXTAREA`);
   if(e.key === `Enter`){
-    if(!repondu && courant.type === `num`) verifierNum();
-    else if(repondu) questionSuivante();
+    if(!defi.verrou && courant.type === `nombre`) verifierNum();
+    else if(defi.verrou) questionSuivante();
     return;
   }
   if(saisie) return;
-  if(!repondu && courant.type === `qcm` && /^[1-4]$/.test(e.key)){
+  if(!defi.verrou && courant.type === `choix` && /^[1-4]$/.test(e.key)){
     const i = parseInt(e.key,10) - 1;
     if(i < courant.choix.length) repondreQcm(i);
   }
 });
 
-/* ═══ FICHE IMPRIMABLE ═════════════════════════════════════════════════════ */
+/* ═══ FICHE IMPRIMABLE (LP.ficheModal — cases par compétence) ══════════════ */
 
-function questionsFiche(n){
-  const dispo = famillesActives();
-  let ord = melange(dispo.slice());
-  const out = [];
-  while(out.length < n){
-    for(let k=0; k<ord.length && out.length<n; k++){
-      const f = ord[k], g = f.gen();
-      out.push({
-        num: out.length + 1,
-        nom: f.comp + ` · ` + f.nom,
-        hint: f.aide ? `Rappel : ` + f.aide : ``,
-        svg: g.svg,
-        cotes: g.ficheEnonce || g.enonce,
-        answerText: g.ficheReponse || g.reponse
-      });
-    }
-    ord = melange(ord);
-  }
-  return out;
+function famillesDeComp(c){
+  return FAMILLES.filter(function(f){ return f.comp === c; });
 }
 
-function genererFiche(){
-  LP.fiche({
-    icon: `\u{1F50A}`,
-    title: `Bruit et risque auditif`,
-    subtitle: `Physique-chimie \u00b7 CAP \u00b7 Bac Pro \u00b7 3\u1d49 pr\u00e9pa-m\u00e9tiers`,
-    modeLabel: `Mode d\u00e9fi`,
-    isPlus: false,
-    accent: `#993C1D`,
-    answerLabel: `R\u00e9ponse :`,
-    unit: ``,
-    aide: `85 dB = 8 h/jour, et chaque +3 dB divise la dur\u00e9e par 2 &nbsp;|&nbsp; `
-        + `doubler la distance : \u22126 dB &nbsp;|&nbsp; 2 machines identiques : +3 dB `
-        + `(4 \u2192 +6 dB, 10 \u2192 +10 dB) &nbsp;|&nbsp; niveau re\u00e7u = niveau ambiant \u2212 att\u00e9nuation `
-        + `du casque &nbsp;|&nbsp; 80 dB : information \u00b7 85 dB : protections obligatoires \u00b7 `
-        + `120 dB : douleur`,
-    questions: questionsFiche(10)
+/* Une question de fiche à partir d une famille (réutilise son gen()). */
+function questionFiche(f, num){
+  const g = f.gen();
+  return {
+    num: num,
+    nom: f.comp + ` · ` + f.nom,
+    hint: f.aide ? `Rappel : ` + f.aide : ``,
+    svg: g.svg,
+    cotes: g.ficheEnonce || g.enonce,
+    answerText: g.ficheReponse || g.reponse
+  };
+}
+
+function ouvrirFiche(){
+  const cases = Object.keys(COMPETENCES).map(function(c){
+    return { value:c, label: c + ` \u00b7 ` + COMPETENCES[c].nom, checked: compActives[c] };
   });
+  LP.ficheModal.init({
+    familles: cases,
+    titre: `\u{1F50A} Fiche d\u2019exercices \u2014 Bruit et risque auditif`,
+    texte: `Coche les comp\u00e9tences \u00e0 inclure. Les 10 exercices seront r\u00e9partis entre les comp\u00e9tences s\u00e9lectionn\u00e9es.`,
+    onConfirm: function(plan, sel, opt){
+      const out = []; let num = 1;
+      for(let j=0;j<plan.length;j++){
+        const fams = melange(famillesDeComp(plan[j].fam).slice());
+        for(let k=0;k<plan[j].n;k++){
+          out.push(questionFiche(fams[k % fams.length], num++));
+        }
+      }
+      LP.fiche({
+        icon: `\u{1F50A}`,
+        title: `Bruit et risque auditif`,
+        subtitle: `Physique-chimie \u00b7 CAP \u00b7 Bac Pro \u00b7 3\u1d49 pr\u00e9pa-m\u00e9tiers`,
+        modeLabel: defiPlus ? `D\u00e9fi \u207a` : `Mode d\u00e9fi`,
+        isPlus: defiPlus,
+        accent: `#993C1D`,
+        answerLabel: `R\u00e9ponse :`,
+        unit: ``,
+        aide: `85 dB = 8 h/jour, et chaque +3 dB divise la dur\u00e9e par 2 &nbsp;|&nbsp; `
+            + `doubler la distance : \u22126 dB &nbsp;|&nbsp; 2 machines identiques : +3 dB `
+            + `(4 \u2192 +6 dB, 10 \u2192 +10 dB) &nbsp;|&nbsp; niveau re\u00e7u = niveau ambiant \u2212 att\u00e9nuation `
+            + `du casque &nbsp;|&nbsp; 80 dB : information \u00b7 85 dB : protections obligatoires \u00b7 `
+            + `120 dB : douleur`,
+        questions: out,
+        avecCorrige: opt ? opt.avecCorrige : true
+      });
+    }
+  });
+  LP.ficheModal.open();
 }
 
 /* ═══ NAVIGATION ═══════════════════════════════════════════════════════════ */
+
+let modeDefiCourant = null;   /* `defi` ou `defiplus` actuellement affiché */
 
 function setMode(m, btn){
   const tabs = document.querySelectorAll(`.mode-tab`);
   for(let i=0;i<tabs.length;i++) tabs[i].classList.remove(`active`);
   if(btn) btn.classList.add(`active`);
+
+  const estDefi = (m === `defi` || m === `defiplus`);
   const modes = [`mesure`,`reperes`,`defi`];
   for(let i=0;i<modes.length;i++){
     const noeud = el(`mode-` + modes[i]);
-    if(modes[i] === m){ noeud.classList.add(`active`); noeud.style.display = `block`; }
-    else { noeud.classList.remove(`active`); noeud.style.display = `none`; }
+    const visible = (modes[i] === m) || (modes[i] === `defi` && estDefi);
+    noeud.classList.toggle(`active`, visible);
+    noeud.style.display = visible ? `block` : `none`;
   }
-  if(m === `defi` && !courant) questionSuivante();
+
+  if(estDefi){
+    defiPlus = (m === `defiplus`);
+    const badgePlus = el(`defi-plus-badge`);
+    if(badgePlus) badgePlus.classList.toggle(`visible`, defiPlus);
+    /* Changer de sous-mode (Défi ↔ Défi ⁺) relance une série propre ;
+       revenir sur le même sous-mode conserve la question en cours. */
+    if(modeDefiCourant !== m || !courant){
+      modeDefiCourant = m;
+      defi.reinitialiser();
+      ordre = []; idxOrdre = 0; numQuestion = 0; courant = null;
+      majScore();
+      questionSuivante();
+    }
+  }
 }
 
 /* ═══ DÉMARRAGE ════════════════════════════════════════════════════════════ */
