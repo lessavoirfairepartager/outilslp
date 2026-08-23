@@ -466,6 +466,13 @@ suivi:`<path d="M6 11h9M6 20h9M6 29h9" stroke="currentColor" stroke-width="2.6" 
 <path d="M21 18.5 L24.5 22 L31.5 15" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" class="lp-draw" style="--dash:24;animation-delay:.35s"/>
 <path d="M21 27.5 L24.5 31 L31.5 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" class="lp-draw" style="--dash:24;animation-delay:.7s"/>`,
 
+/* Brainstorming — bulle qui parle + mots qui s'envolent */
+brain:`<path d="M7 20.5 H23.5 a2.5 2.5 0 0 1 2.5 2.5 V29 a2.5 2.5 0 0 1 -2.5 2.5 H13 l-4.2 3.6 a.6 .6 0 0 1 -1 -.46 V31.5 H7 a2.5 2.5 0 0 1 -2.5 -2.5 V23 a2.5 2.5 0 0 1 2.5 -2.5 Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" class="lp-draw" style="--dash:96"/>
+<rect x="8.5" y="24" width="12" height="2.2" rx="1.1" fill="currentColor" class="lp-blink" style="animation-delay:.3s"/>
+<rect x="8.5" y="27.6" width="8" height="2.2" rx="1.1" fill="currentColor" class="lp-blink" style="animation-delay:.9s"/>
+<rect x="24" y="15" width="10.5" height="3.2" rx="1.6" fill="currentColor" class="lp-rise" style="animation-delay:0s"/>
+<rect x="27" y="9" width="7.5" height="2.8" rx="1.4" fill="currentColor" opacity=".8" class="lp-rise" style="animation-delay:.6s"/>
+<rect x="21.5" y="4.5" width="5.5" height="2.5" rx="1.25" fill="currentColor" opacity=".55" class="lp-rise" style="animation-delay:1.2s"/>`,
 
 /* Les deux nombres flottent au-dessus de leur PGCD */
 pgcd:`<text x="20" y="17" text-anchor="middle" font-size="11.5" font-weight="700" fill="currentColor" class="lp-float">12 · 18</text>
@@ -500,7 +507,8 @@ const SECTIONS = [
     { url:'outils/atome_bohr2.html', nom:'Atomes — modèle de Bohr', desc:"Tableau périodique et structure de l'atome", ico:'atom', cats:['science','outil'] },
     { url:'outils/sonometre.html', nom:'Sonomètre de classe', desc:'Mesure le niveau sonore, repères de risque auditif et mode défi', ico:'sound', cats:['science','outil'] },
     { url:'outils/infographie_nuisances_sonores.html', nom:'Nuisances sonores', desc:'Infographie sur les dangers du bruit', ico:'ripple', cats:['science','outil'] },
-    { url:'outils/horloge.html', nom:'Horloge de classe', desc:"Minuteur de séance à secteurs et heure courante, pour le tableau", ico:'clock', cats:['outil'] },
+    { url:'outils/horloge.html', nom:'Horloge interactive', desc:"Lecture de l'heure et calcul de durées, au tableau", ico:'clock', cats:['outil'] },
+	{ url:'outils/nuage_brainstorming.html', nom:'Brainstorming', desc:"Un sujet, des souvenirs", ico:'brain', cats:['prof','outil'] },
 	{ url:'outils/programmes_lp.html', nom:'Programmes et suivi des acquis', desc:'Tout le programme de maths et physique-chimie, avec suivi personnel', ico:'suivi', cats:['outil','math','science','prof'] }
 	  ]
 },
