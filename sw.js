@@ -14,7 +14,7 @@
    pas de rechargement automatique, un défi en cours n'est jamais perdu.
    ========================================================================== */
 
-var VERSION = '2026-07-30';
+var VERSION = '2026-08-25';
 var SHELL   = 'lp-shell-'   + VERSION;
 var RUNTIME = 'lp-runtime-' + VERSION;
 
@@ -26,13 +26,9 @@ var PRECACHE = [
   '/assets/lp-ui.css',
   '/assets/lp-ui.js',
   '/assets/lp-fiche.js',
+  '/assets/lp-defi.js',
+  '/assets/three.min.js',
   '/assets/icons/icon-192.png'
-];
-
-/* Bibliothèques externes à figer (URL versionnée : le contenu ne change
-   jamais). Sans ça, la vue 3D des atomes ne marcherait pas hors ligne. */
-var CDN = [
-  'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
 ];
 
 self.addEventListener('install', function (e) {
@@ -63,8 +59,6 @@ self.addEventListener('fetch', function (e) {
   var url;
   try { url = new URL(req.url); } catch (err) { return; }
 
-  if (CDN.indexOf(url.href) !== -1) { e.respondWith(cacheFirst(req)); return; }
-
   // Autres domaines (compteur GoatCounter, polices…) : on ne s'en mêle pas.
   if (url.origin !== self.location.origin) return;
 
@@ -94,16 +88,5 @@ function networkFirst(req) {
       }
       return Response.error();
     });
-  });
-}
-
-function cacheFirst(req) {
-  return caches.match(req).then(function (hit) {
-    if (hit) return hit;
-    return fetch(req).then(function (res) {
-      var copy = res.clone();   // réponse opaque : stockable, non lisible
-      caches.open(RUNTIME).then(function (c) { c.put(req, copy); });
-      return res;
-    }).catch(function () { return Response.error(); });
   });
 }
