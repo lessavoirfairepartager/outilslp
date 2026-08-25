@@ -60,6 +60,7 @@
   }
   #fallback.show{ display:block; }
   #fallback input[type=file]{ margin-top:8px; }
+  #fallback #detail{ margin-top:6px; line-height:1.45; }
 
   /* ---------- Zone d'aperçu ---------- */
   .preview-wrap{
@@ -187,9 +188,9 @@
 </div>
 
 <div id="fallback">
-  <strong>Le chargement automatique de <code>resumes_items_LP.json</code> a échoué</strong>
-  (fichier absent à côté de cette page, ou <code>fetch</code> bloqué en ouverture locale).
-  Choisis le fichier manuellement :
+  <strong id="cause">Le chargement automatique de resumes_items_LP.json a échoué.</strong>
+  <div id="detail"></div>
+  <div style="margin-top:10px;">En attendant, tu peux charger le fichier manuellement :</div>
   <div><input type="file" id="file-input" accept="application/json,.json"></div>
 </div>
 
@@ -555,12 +556,54 @@
     buildFormationOptions();
   }
 
+  // Un editeur de texte (Notepad++, Bloc-notes...) ajoute frequemment un BOM
+  // en tete de fichier a l'enregistrement. Ces octets invisibles font echouer
+  // JSON.parse : on les retire avant l'analyse.
+  function lireJSON(texte){
+    return JSON.parse(texte.replace(/^\uFEFF/, ""));
+  }
+
+  // Message de diagnostic precis : un fichier absent et un fichier illisible
+  // demandent deux corrections tres differentes.
+  function echecChargement(cause, detail){
+    document.getElementById("fallback").classList.add("show");
+    document.getElementById("cause").textContent = cause;
+    document.getElementById("detail").textContent = detail || "";
+    document.getElementById("status").textContent = "En attente du fichier JSON…";
+  }
+
   fetch("resumes_items_LP.json")
-    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
-    .then(boot)
-    .catch(function(){
-      document.getElementById("fallback").classList.add("show");
-      document.getElementById("status").textContent = "En attente du fichier JSON…";
+    .then(function(r){
+      if(!r.ok) throw new Error("__HTTP__" + r.status);
+      return r.text();
+    })
+    .then(function(txt){
+      var items;
+      try{
+        items = lireJSON(txt);
+      }catch(err){
+        throw new Error("__PARSE__" + err.message);
+      }
+      boot(items);
+    })
+    .catch(function(err){
+      var m = String(err.message || err);
+      if(m.indexOf("__HTTP__") === 0){
+        echecChargement(
+          "Le fichier resumes_items_LP.json est introuvable à côté de cette page (erreur HTTP " + m.slice(8) + ").",
+          "Vérifie qu'il est bien déposé dans le même dossier que fiche_suivi.html.");
+      }else if(m.indexOf("__PARSE__") === 0){
+        echecChargement(
+          "Le fichier a bien été trouvé, mais son contenu n'est pas un JSON valide.",
+          "Erreur signalée : " + m.slice(9) +
+          " — cause la plus fréquente après une modification manuelle : le fichier a été " +
+          "enregistré en UTF-8 AVEC BOM, ou une virgule / un guillemet a sauté. " +
+          "Dans Notepad++ : menu Encodage → Convertir en UTF-8 (sans BOM), puis réenregistre.");
+      }else{
+        echecChargement(
+          "Le chargement automatique a échoué (fetch bloqué, par exemple en ouverture locale du fichier).",
+          String(m));
+      }
     });
 
   document.getElementById("file-input").addEventListener("change", function(e){
@@ -569,11 +612,13 @@
     var reader = new FileReader();
     reader.onload = function(){
       try{
-        var items = JSON.parse(reader.result);
+        var items = lireJSON(reader.result);
         document.getElementById("fallback").classList.remove("show");
         boot(items);
       }catch(err){
-        alert("JSON illisible : " + err.message);
+        alert("JSON illisible : " + err.message +
+              "\n\nSi le fichier vient d'être modifié à la main, vérifie qu'il est " +
+              "enregistré en UTF-8 SANS BOM et qu'aucune virgule ni guillemet ne manque.");
       }
     };
     reader.readAsText(f, "utf-8");
