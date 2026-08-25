@@ -72,6 +72,9 @@
     padding:6mm;
     overflow:hidden;
   }
+  /* Conteneur mesuré par l'auto-ajustement : sa hauteur suit le contenu,
+     contrairement à .sheet qui est bloquée à 297mm par min-height. */
+  .sheet-inner{ height:auto; }
   .sheet-label{
     font-size:11px; color:var(--muted); align-self:flex-start;
     width:210mm; margin:-14px 0 0 0;
@@ -95,7 +98,7 @@
   }
 
   .modules{ display:flex; flex-direction:column; gap:0; }
-  .module-block{ border:0.7pt solid var(--line); margin-bottom:0.45em; break-inside:avoid; }
+  .module-block{ border:0.7pt solid var(--line); margin-bottom:0.45em; break-inside:avoid; min-width:0; }
   .module-bandeau{
     font-weight:700; font-size:0.86em; padding:0.28em 0.55em;
     color:#20263a;
@@ -105,7 +108,9 @@
   }
   .cases{
     display:grid;
-    grid-template-columns:repeat(var(--cols, 6), 1fr);
+    /* minmax(0,1fr) et non 1fr : sinon une colonne refuse de descendre sous la
+       largeur de son mot le plus long et la grille déborde de la page. */
+    grid-template-columns:repeat(var(--cols, 6), minmax(0, 1fr));
     gap:0.16em;
     padding:0.16em;
   }
@@ -116,7 +121,9 @@
     display:flex; flex-direction:column; justify-content:space-between;
     min-height:3.5em;
   }
-  .case .txt{ font-size:0.78em; line-height:1.15; }
+  /* overflow-wrap seul (sans word-break) : les mots ne se cassent que si c'est
+     indispensable, et hyphens:auto place alors un vrai trait d'union. */
+  .case .txt{ font-size:0.78em; line-height:1.15; overflow-wrap:break-word; hyphens:auto; }
   .case .code{ font-weight:700; margin-right:0.35em; }
   .case .chks{
     display:flex; gap:0.3em; margin-top:0.28em; align-self:flex-start;
@@ -406,7 +413,7 @@
       html += escapeHTML(mod.module);
       html += '<span class="module-domaine">— ' + escapeHTML(mod.domaine) + '</span>';
       html += '</div>';
-      html += '<div class="cases">';
+      html += '<div class="cases" data-n="' + mod.items.length + '">';
       mod.items.forEach(function(it){
         html += '<div class="case" style="border-color:'+col.border+';">';
         html += '<div class="txt"><span class="code" style="color:'+col.text+';">' + escapeHTML(it.code) + '</span>' + escapeHTML(it.resume) + '</div>';
@@ -457,12 +464,16 @@
     var page2El = document.getElementById("page2");
     var page2Label = document.getElementById("page2-label");
 
-    page1El.innerHTML = enteteHTML("", niveau, matiere, groupementLabel) + renderModulesHTML(parts.page1, palette);
+    page1El.innerHTML = '<div class="sheet-inner">' +
+      enteteHTML("", niveau, matiere, groupementLabel) +
+      renderModulesHTML(parts.page1, palette) + '</div>';
 
     if(parts.page2.length){
       page2El.style.display = "";
       page2Label.style.display = "";
-      page2El.innerHTML = enteteHTML("— page 2", niveau, matiere, groupementLabel) + renderModulesHTML(parts.page2, palette);
+      page2El.innerHTML = '<div class="sheet-inner">' +
+        enteteHTML("— page 2", niveau, matiere, groupementLabel) +
+        renderModulesHTML(parts.page2, palette) + '</div>';
     }else{
       page2El.style.display = "none";
       page2Label.style.display = "none";
@@ -481,42 +492,56 @@
   }
 
   // ===================== Auto-ajustement (police + colonnes) =====================
-  // Le nombre de colonnes est recherché indépendamment de la police : sinon,
-  // comme la largeur des cases dépendait autrefois de "em", grossir la police
-  // réduisait le nombre de colonnes, ce qui allongeait la page et repoussait
-  // l'algorithme vers une police plus petite (boucle qui empêchait tout gain).
+  // Deux réglages indépendants : le nombre de colonnes et la taille de police.
+  // On mesure .sheet-inner et NON .sheet, dont le min-height de 297mm masquerait
+  // toujours la hauteur réelle du contenu.
   var COL_CANDIDATES = [9,8,7,6,5,4,3];
 
-  function autofit(container){
-    var targetH = PAGE_H_MM * MM_TO_PX; // hauteur imprimable cible en px
+  // Un module de 3 items dans une grille à 9 colonnes laisserait 6 cases vides :
+  // chaque module se limite donc au nombre de colonnes qu'il peut réellement remplir.
+  function appliquerColonnes(inner, cols){
+    var blocs = inner.querySelectorAll(".cases");
+    for(var i=0;i<blocs.length;i++){
+      var n = parseInt(blocs[i].getAttribute("data-n"), 10) || cols;
+      blocs[i].style.setProperty("--cols", Math.min(cols, n));
+    }
+  }
+
+  function autofit(sheetEl){
+    var inner = sheetEl.querySelector(".sheet-inner");
+    if(!inner) return;
+
+    // Hauteur imprimable réellement disponible, moins 1mm de sécurité.
+    var targetH = (PAGE_H_MM - 1) * MM_TO_PX;
 
     function fits(fs){
-      container.style.fontSize = fs + "pt";
-      return container.scrollHeight <= targetH;
+      inner.style.fontSize = fs + "pt";
+      return inner.scrollHeight <= targetH;
     }
 
-    var bestFs = FS_MIN, bestCols = COL_CANDIDATES[0]; // repli : le plus dense si rien ne tient nulle part
+    var bestFs = null, bestCols = COL_CANDIDATES[0];
 
     COL_CANDIDATES.forEach(function(cols){
-      container.style.setProperty("--cols", cols);
+      appliquerColonnes(inner, cols);
 
-      if(!fits(FS_MIN)) return; // même la police mini déborde à ce nb de colonnes : on l'écarte
-
-      if(fits(FS_MAX)){
-        if(FS_MAX > bestFs){ bestFs = FS_MAX; bestCols = cols; }
+      if(!fits(FS_MIN)) return;              // déborde même en police mini
+      if(fits(FS_MAX)){                       // tout tient déjà au maximum
+        if(bestFs === null || FS_MAX > bestFs){ bestFs = FS_MAX; bestCols = cols; }
         return;
       }
 
       var lo = FS_MIN, hi = FS_MAX, ok = FS_MIN;
-      for(var i=0;i<16;i++){
+      for(var i=0;i<18;i++){
         var mid = (lo + hi) / 2;
         if(fits(mid)){ ok = mid; lo = mid; } else { hi = mid; }
       }
-      if(ok > bestFs){ bestFs = ok; bestCols = cols; }
+      if(bestFs === null || ok > bestFs){ bestFs = ok; bestCols = cols; }
     });
 
-    container.style.setProperty("--cols", bestCols);
-    container.style.fontSize = bestFs + "pt";
+    if(bestFs === null){ bestFs = FS_MIN; bestCols = COL_CANDIDATES[0]; }
+
+    appliquerColonnes(inner, bestCols);
+    inner.style.fontSize = bestFs + "pt";
   }
 
   window.addEventListener("beforeprint", function(){
