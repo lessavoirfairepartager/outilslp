@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fiche de suivi des acquis — outilslp</title>
+<style>
+  :root{
+    --ink:#1a2230;
+    --paper:#ffffff;
+    --muted:#5b6474;
+    --line:#d7dbe3;
+    --accent:#2a5fb0;
+    --bg:#eef1f6;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:Arial, Helvetica, sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+  }
+
+  /* ---------- Barre d'outils (écran uniquement) ---------- */
+  .toolbar{
+    position:sticky; top:0; z-index:20;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    padding:12px 16px;
+    display:flex; flex-wrap:wrap; gap:10px 16px;
+    align-items:flex-end;
+    box-shadow:0 1px 4px rgba(0,0,0,.06);
+  }
+  .toolbar h1{
+    font-size:15px; margin:0 18px 0 0; flex-basis:100%;
+    color:var(--ink); font-weight:700;
+  }
+  .field{display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--muted);}
+  .field select{
+    font:inherit; font-family:Arial, sans-serif; font-size:13px;
+    padding:6px 8px; border:1px solid var(--line); border-radius:6px;
+    background:#fff; color:var(--ink); min-width:170px;
+  }
+  .btn{
+    font-family:Arial, sans-serif; font-size:13px; font-weight:700;
+    padding:8px 16px; border-radius:6px; border:1px solid var(--accent);
+    background:var(--accent); color:#fff; cursor:pointer;
+  }
+  .btn:hover{ filter:brightness(1.08); }
+  .btn.secondary{ background:#fff; color:var(--accent); }
+  .status{ font-size:12px; color:var(--muted); align-self:center; margin-left:auto; }
+  .toolbar-row{ display:flex; flex-wrap:wrap; gap:10px 16px; align-items:flex-end; width:100%; }
+
+  /* ---------- Panneau de secours (chargement manuel du JSON) ---------- */
+  #fallback{
+    display:none; margin:16px; padding:16px; background:#fff7e6;
+    border:1px solid #e8c777; border-radius:8px; font-size:13px; color:#5c4a12;
+    max-width:760px;
+  }
+  #fallback.show{ display:block; }
+  #fallback input[type=file]{ margin-top:8px; }
+
+  /* ---------- Zone d'aperçu ---------- */
+  .preview-wrap{
+    padding:24px 0 60px;
+    display:flex; flex-direction:column; align-items:center; gap:24px;
+  }
+  .sheet{
+    background:var(--paper);
+    width:210mm; min-height:297mm;
+    box-shadow:0 2px 14px rgba(0,0,0,.18);
+    padding:6mm;
+    overflow:hidden;
+  }
+  .sheet-label{
+    font-size:11px; color:var(--muted); align-self:flex-start;
+    width:210mm; margin:-14px 0 0 0;
+  }
+
+  /* ---------- Contenu de la fiche (imprimé) ---------- */
+  .fiche-head{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    border-bottom:2.4pt solid var(--ink); padding-bottom:0.35em; margin-bottom:0.55em;
+  }
+  .fiche-head h2{
+    margin:0; font-size:1.28em; letter-spacing:.2px;
+  }
+  .fiche-head .meta{ text-align:right; font-size:0.78em; color:var(--muted); }
+  .fiche-nom{ font-size:0.9em; margin-top:0.15em; }
+  .fiche-nom .ligne{
+    display:inline-block; border-bottom:1px solid var(--ink); width:9em; margin-left:0.35em;
+  }
+  .fiche-legende{
+    font-size:0.72em; color:var(--muted); margin:0.15em 0 0.6em 0;
+  }
+
+  .modules{ display:flex; flex-direction:column; gap:0; }
+  .module-block{ border:0.7pt solid var(--line); margin-bottom:0.45em; break-inside:avoid; }
+  .module-bandeau{
+    font-weight:700; font-size:0.86em; padding:0.28em 0.55em;
+    color:#20263a;
+  }
+  .module-domaine{
+    font-weight:400; font-size:0.85em; opacity:.75; margin-left:0.4em;
+  }
+  .cases{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(13.5em, 1fr));
+    gap:0.16em;
+    padding:0.16em;
+  }
+  .case{
+    border:0.6pt solid rgba(0,0,0,.14);
+    border-radius:2px;
+    padding:0.28em 0.4em 0.24em;
+    display:flex; flex-direction:column; justify-content:space-between;
+    min-height:3.5em;
+  }
+  .case .txt{ font-size:0.78em; line-height:1.15; }
+  .case .code{ font-weight:700; margin-right:0.35em; }
+  .case .chks{
+    display:flex; gap:0.3em; margin-top:0.28em; align-self:flex-start;
+  }
+  .chk{
+    width:0.85em; height:0.85em; border:1pt solid #333; border-radius:1px;
+    display:inline-block; flex:none;
+  }
+
+  /* ---------- Sélecteur de fond par domaine (variables injectées en JS) ---------- */
+  .dom-0{ --dbg:#dbe7fb; --dbd:#a9c3ea; --dtxt:#1c4a86; }
+
+  /* ---------- Impression ---------- */
+  @page{ size:A4; margin:6mm; }
+  @media print{
+    html,body{ background:#fff; }
+    .toolbar, #fallback, .sheet-label{ display:none !important; }
+    .preview-wrap{ padding:0; gap:0; }
+    .sheet{
+      box-shadow:none; margin:0; width:auto; min-height:auto; padding:0;
+    }
+    .sheet + .sheet{ break-before:page; page-break-before:always; }
+    * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>Fiche de suivi des acquis — outilslp</h1>
+  <div class="toolbar-row">
+    <div class="field">
+      <label for="sel-niveau">Niveau</label>
+      <select id="sel-niveau"></select>
+    </div>
+    <div class="field">
+      <label for="sel-matiere">Matière</label>
+      <select id="sel-matiere"></select>
+    </div>
+    <div class="field" id="field-groupement">
+      <label for="sel-groupement">Groupement</label>
+      <select id="sel-groupement"></select>
+    </div>
+    <button class="btn" id="btn-print">Imprimer / PDF</button>
+    <button class="btn secondary" id="btn-recalc">Réajuster</button>
+    <div class="status" id="status">…</div>
+  </div>
+</div>
+
+<div id="fallback">
+  <strong>Le chargement automatique de <code>resumes_items_LP.json</code> a échoué</strong>
+  (fichier absent à côté de cette page, ou <code>fetch</code> bloqué en ouverture locale).
+  Choisis le fichier manuellement :
+  <div><input type="file" id="file-input" accept="application/json,.json"></div>
+</div>
+
+<div class="preview-wrap" id="preview-wrap">
+  <div class="sheet-label">Page 1</div>
+  <div class="sheet" id="page1"></div>
+  <div class="sheet-label" id="page2-label" style="display:none;">Page 2</div>
+  <div class="sheet" id="page2" style="display:none;"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ===================== Constantes de référence =====================
+  var NIVEAU_ORDRE = ["3PM","CAP","2PRO","1PRO","TPRO"];
+  var NIVEAU_LABEL = {
+    "3PM":"3e Prépa-Métiers", "CAP":"CAP", "2PRO":"2de Bac Pro",
+    "1PRO":"1re Bac Pro", "TPRO":"Terminale Bac Pro"
+  };
+  var MATIERE_ORDRE = ["M","PhCh"];
+  var MATIERE_LABEL = { "M":"Mathématiques", "PhCh":"Physique-Chimie" };
+
+  var GROUPEMENT_LABEL = {
+    "A":"Groupement A", "B":"Groupement B", "C":"Groupement C",
+    "Grp1":"Groupe 1", "Grp2":"Groupe 2",
+    "SansPhCh":"Sans Physique-Chimie",
+    "SPE1":"Spécialité 1", "SPE2":"Spécialité 2", "SPE3":"Spécialité 3",
+    "SPE4":"Spécialité 4", "SPE5":"Spécialité 5", "SPE6":"Spécialité 6"
+  };
+  var GROUPEMENT_ORDRE = ["A","B","C","SansPhCh","Grp1","Grp2","SPE1","SPE2","SPE3","SPE4","SPE5","SPE6"];
+
+  // Domaines Maths envoyés en page 2 (1PRO / TPRO)
+  var DOMAINES_PAGE2_MATHS = ["Algo-Prog","EnsLog","Auto"];
+  // Domaines Sciences envoyés en page 2 (1PRO / TPRO), et ordre imposé en page 1
+  var DOMAINES_PAGE2_SCIENCES = ["Mesures et incertitudes","Sécurité"];
+  var ORDRE_PAGE1_SCIENCES = ["Électricité","Mécanique","Chimie","Thermique","Signaux"];
+
+  var FS_MIN = 5.0, FS_MAX = 15.0; // pt, bornes de recherche de la police
+  var MM_TO_PX = 96 / 25.4;
+  var PAGE_W_MM = 210 - 12; // marges 6mm de chaque côté
+  var PAGE_H_MM = 297 - 12;
+
+  var DATA = null;
+
+  // ===================== Chargement des données =====================
+  function boot(items){
+    DATA = items;
+    buildNiveauOptions();
+    render();
+  }
+
+  fetch("resumes_items_LP.json")
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(boot)
+    .catch(function(){
+      document.getElementById("fallback").classList.add("show");
+      document.getElementById("status").textContent = "En attente du fichier JSON…";
+    });
+
+  document.getElementById("file-input").addEventListener("change", function(e){
+    var f = e.target.files[0];
+    if(!f) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var items = JSON.parse(reader.result);
+        document.getElementById("fallback").classList.remove("show");
+        boot(items);
+      }catch(err){
+        alert("JSON illisible : " + err.message);
+      }
+    };
+    reader.readAsText(f, "utf-8");
+  });
+
+  // ===================== Construction du sélecteur =====================
+  function uniq(arr){
+    var seen = {}, out = [];
+    for(var i=0;i<arr.length;i++){ if(!seen[arr[i]]){ seen[arr[i]]=1; out.push(arr[i]); } }
+    return out;
+  }
+
+  function matieresDisponibles(niveau){
+    var set = uniq(DATA.filter(function(d){return d.niveau===niveau;}).map(function(d){return d.matiere;}));
+    return MATIERE_ORDRE.filter(function(m){ return set.indexOf(m) !== -1; });
+  }
+
+  function groupementsDisponibles(niveau, matiere){
+    var tags = {};
+    DATA.forEach(function(d){
+      if(d.niveau===niveau && d.matiere===matiere && d.groupements && d.groupements.length){
+        d.groupements.forEach(function(g){ tags[g]=1; });
+      }
+    });
+    return GROUPEMENT_ORDRE.filter(function(g){ return tags[g]; });
+  }
+
+  function buildNiveauOptions(){
+    var selN = document.getElementById("sel-niveau");
+    selN.innerHTML = "";
+    var niveaux = NIVEAU_ORDRE.filter(function(n){
+      return DATA.some(function(d){ return d.niveau===n; });
+    });
+    niveaux.forEach(function(n){
+      var o = document.createElement("option");
+      o.value = n; o.textContent = NIVEAU_LABEL[n] || n;
+      selN.appendChild(o);
+    });
+    selN.value = niveaux.indexOf("1PRO") !== -1 ? "1PRO" : niveaux[0];
+    selN.onchange = function(){ buildMatiereOptions(); };
+    buildMatiereOptions();
+  }
+
+  function buildMatiereOptions(){
+    var niveau = document.getElementById("sel-niveau").value;
+    var selM = document.getElementById("sel-matiere");
+    selM.innerHTML = "";
+    var matieres = matieresDisponibles(niveau);
+    matieres.forEach(function(m){
+      var o = document.createElement("option");
+      o.value = m; o.textContent = MATIERE_LABEL[m] || m;
+      selM.appendChild(o);
+    });
+    selM.value = matieres.indexOf("PhCh") !== -1 ? "PhCh" : matieres[0];
+    selM.onchange = function(){ buildGroupementOptions(); };
+    buildGroupementOptions();
+  }
+
+  function buildGroupementOptions(){
+    var niveau = document.getElementById("sel-niveau").value;
+    var matiere = document.getElementById("sel-matiere").value;
+    var groupements = groupementsDisponibles(niveau, matiere);
+    var field = document.getElementById("field-groupement");
+    var selG = document.getElementById("sel-groupement");
+    selG.innerHTML = "";
+    if(groupements.length === 0){
+      field.style.display = "none";
+    }else{
+      field.style.display = "";
+      groupements.forEach(function(g){
+        var o = document.createElement("option");
+        o.value = g; o.textContent = GROUPEMENT_LABEL[g] || g;
+        selG.appendChild(o);
+      });
+      selG.value = groupements[0];
+    }
+    selG.onchange = render;
+    render();
+  }
+
+  document.getElementById("btn-recalc").onclick = render;
+  document.getElementById("btn-print").onclick = function(){ window.print(); };
+  window.addEventListener("resize", debounce(render, 300));
+
+  function debounce(fn, ms){
+    var t;
+    return function(){ clearTimeout(t); t = setTimeout(fn, ms); };
+  }
+
+  // ===================== Filtrage + regroupement =====================
+  function itemsSelectionnes(){
+    var niveau = document.getElementById("sel-niveau").value;
+    var matiere = document.getElementById("sel-matiere").value;
+    var field = document.getElementById("field-groupement");
+    var groupement = (field.style.display !== "none") ? document.getElementById("sel-groupement").value : null;
+
+    return DATA.filter(function(d){
+      if(d.niveau !== niveau || d.matiere !== matiere) return false;
+      if(groupement === null) return true;
+      if(!d.groupements || d.groupements.length === 0) return true;
+      return d.groupements.indexOf(groupement) !== -1;
+    });
+  }
+
+  // regroupe en conservant l'ordre d'apparition dans le fichier
+  function grouperParModule(items){
+    var order = [], map = {};
+    items.forEach(function(it){
+      var key = it.domaine + " || " + it.module;
+      if(!map[key]){ map[key] = { domaine: it.domaine, module: it.module, items: [] }; order.push(key); }
+      map[key].items.push(it);
+    });
+    return order.map(function(k){ return map[k]; });
+  }
+
+  function repartirPages(modules, niveau, matiere){
+    var page2Domaines = null;
+    if((niveau === "1PRO" || niveau === "TPRO")){
+      if(matiere === "M") page2Domaines = DOMAINES_PAGE2_MATHS;
+      else if(matiere === "PhCh") page2Domaines = DOMAINES_PAGE2_SCIENCES;
+    }
+    if(!page2Domaines){
+      return { page1: modules, page2: [] };
+    }
+    var page1 = modules.filter(function(m){ return page2Domaines.indexOf(m.domaine) === -1; });
+    var page2 = modules.filter(function(m){ return page2Domaines.indexOf(m.domaine) !== -1; });
+
+    // Ordre imposé pour les sciences en page 1
+    if(matiere === "PhCh"){
+      page1.sort(function(a,b){
+        var ia = ORDRE_PAGE1_SCIENCES.indexOf(a.domaine);
+        var ib = ORDRE_PAGE1_SCIENCES.indexOf(b.domaine);
+        if(ia === -1) ia = 999; if(ib === -1) ib = 999;
+        if(ia !== ib) return ia - ib;
+        return 0; // conserve l'ordre relatif d'origine sinon (tri stable)
+      });
+    }
+    return { page1: page1, page2: page2 };
+  }
+
+  // ===================== Couleurs par domaine =====================
+  function paletteDomaines(domaines){
+    var palette = {};
+    var n = domaines.length || 1;
+    domaines.forEach(function(dom, i){
+      var hue = Math.round((360 / n) * i);
+      palette[dom] = {
+        bg: "hsl(" + hue + ",48%,91%)",
+        border: "hsl(" + hue + ",40%,74%)",
+        text: "hsl(" + hue + ",62%,28%)"
+      };
+    });
+    return palette;
+  }
+
+  // ===================== Rendu HTML d'une page =====================
+  function renderModulesHTML(modules, palette){
+    var html = '<div class="modules">';
+    modules.forEach(function(mod){
+      var col = palette[mod.domaine] || { bg:"#e6e9ef", border:"#c7ccd6", text:"#333" };
+      html += '<div class="module-block" style="border-color:'+col.border+';">';
+      html += '<div class="module-bandeau" style="background:'+col.bg+';">';
+      html += escapeHTML(mod.module);
+      html += '<span class="module-domaine">— ' + escapeHTML(mod.domaine) + '</span>';
+      html += '</div>';
+      html += '<div class="cases">';
+      mod.items.forEach(function(it){
+        html += '<div class="case" style="border-color:'+col.border+';">';
+        html += '<div class="txt"><span class="code" style="color:'+col.text+';">' + escapeHTML(it.code) + '</span>' + escapeHTML(it.resume) + '</div>';
+        html += '<div class="chks"><span class="chk"></span><span class="chk"></span><span class="chk"></span></div>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function escapeHTML(s){
+    return String(s == null ? "" : s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function enteteHTML(titreSuffixe, niveau, matiere, groupementLabel){
+    var titre = "GRILLE DE SUIVI DES ACQUIS — " + NIVEAU_LABEL[niveau] + " · " + MATIERE_LABEL[matiere];
+    if(groupementLabel) titre += " · " + groupementLabel;
+    if(titreSuffixe) titre += " " + titreSuffixe;
+    var html = '<div class="fiche-head">';
+    html += '<div><h2>' + escapeHTML(titre) + '</h2>';
+    html += '<div class="fiche-nom">Nom : <span class="ligne">&nbsp;</span></div></div>';
+    html += '<div class="meta">outilslp.netlify.app</div>';
+    html += '</div>';
+    html += '<div class="fiche-legende">Coche une case à chaque passage (1<sup>er</sup>, 2<sup>e</sup>, 3<sup>e</sup>).</div>';
+    return html;
+  }
+
+  // ===================== Rendu principal =====================
+  function render(){
+    if(!DATA) return;
+    var niveau = document.getElementById("sel-niveau").value;
+    var matiere = document.getElementById("sel-matiere").value;
+    var fieldG = document.getElementById("field-groupement");
+    var groupementCode = (fieldG.style.display !== "none") ? document.getElementById("sel-groupement").value : null;
+    var groupementLabel = groupementCode ? (GROUPEMENT_LABEL[groupementCode] || groupementCode) : "";
+
+    var items = itemsSelectionnes();
+    var modules = grouperParModule(items);
+    var parts = repartirPages(modules, niveau, matiere);
+
+    var allDomaines = uniq(modules.map(function(m){ return m.domaine; }));
+    var palette = paletteDomaines(allDomaines);
+
+    var page1El = document.getElementById("page1");
+    var page2El = document.getElementById("page2");
+    var page2Label = document.getElementById("page2-label");
+
+    page1El.innerHTML = enteteHTML("", niveau, matiere, groupementLabel) + renderModulesHTML(parts.page1, palette);
+
+    if(parts.page2.length){
+      page2El.style.display = "";
+      page2Label.style.display = "";
+      page2El.innerHTML = enteteHTML("— page 2", niveau, matiere, groupementLabel) + renderModulesHTML(parts.page2, palette);
+    }else{
+      page2El.style.display = "none";
+      page2Label.style.display = "none";
+      page2El.innerHTML = "";
+    }
+
+    document.getElementById("status").textContent =
+      items.length + " items · " + modules.length + " modules" +
+      (parts.page2.length ? " (2 pages)" : " (1 page)");
+
+    // Ajustement après le rendu (laisser le navigateur peindre une fois)
+    requestAnimationFrame(function(){
+      autofit(page1El);
+      if(parts.page2.length) autofit(page2El);
+    });
+  }
+
+  // ===================== Auto-ajustement de la police =====================
+  function autofit(container){
+    var targetH = PAGE_H_MM * MM_TO_PX; // hauteur imprimable cible en px
+
+    function fits(fs){
+      container.style.fontSize = fs + "pt";
+      // force reflow
+      var h = container.scrollHeight;
+      return h <= targetH;
+    }
+
+    var lo = FS_MIN, hi = FS_MAX, best = FS_MIN;
+    // Si même la plus petite taille déborde, on l'applique quand même (cas extrême)
+    if(!fits(lo)){ container.style.fontSize = lo + "pt"; return; }
+    // Si la plus grande taille tient déjà, on la garde
+    if(fits(hi)){ container.style.fontSize = hi + "pt"; return; }
+
+    for(var i=0;i<16;i++){
+      var mid = (lo + hi) / 2;
+      if(fits(mid)){ best = mid; lo = mid; } else { hi = mid; }
+    }
+    container.style.fontSize = best + "pt";
+  }
+
+  window.addEventListener("beforeprint", function(){
+    autofit(document.getElementById("page1"));
+    if(document.getElementById("page2").style.display !== "none"){
+      autofit(document.getElementById("page2"));
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
