@@ -41,6 +41,7 @@
     padding:6px 8px; border:1px solid var(--line); border-radius:6px;
     background:#fff; color:var(--ink); min-width:170px;
   }
+  .field select:disabled{ background:#f1f3f7; color:var(--muted); cursor:not-allowed; }
   .btn{
     font-family:Arial, sans-serif; font-size:13px; font-weight:700;
     padding:8px 16px; border-radius:6px; border:1px solid var(--accent);
@@ -89,6 +90,7 @@
     margin:0; font-size:1.28em; letter-spacing:.2px;
   }
   .fiche-head .meta{ text-align:right; font-size:0.78em; color:var(--muted); }
+  .fiche-spe{ font-size:0.86em; color:var(--accent); font-weight:700; margin-top:0.12em; }
   .fiche-nom{ font-size:0.9em; margin-top:0.15em; }
   .fiche-nom .ligne{
     display:inline-block; border-bottom:1px solid var(--ink); width:9em; margin-left:0.35em;
@@ -124,6 +126,9 @@
   /* overflow-wrap seul (sans word-break) : les mots ne se cassent que si c'est
      indispensable, et hyphens:auto place alors un vrai trait d'union. */
   .case .txt{ font-size:0.78em; line-height:1.15; overflow-wrap:break-word; hyphens:auto; }
+  /* Etat de mesure : sans coupure forcee, un mot trop large deborde et devient
+     detectable. Utilise uniquement le temps de l'auto-ajustement. */
+  .mesure-mots .case .txt{ overflow-wrap:normal; hyphens:none; }
   .case .code{ font-weight:700; margin-right:0.35em; }
   .case .chks{
     display:flex; gap:0.3em; margin-top:0.28em; align-self:flex-start;
@@ -156,7 +161,15 @@
   <h1>Fiche de suivi des acquis — outilslp</h1>
   <div class="toolbar-row">
     <div class="field">
-      <label for="sel-niveau">Niveau</label>
+      <label for="sel-formation">Formation</label>
+      <select id="sel-formation"></select>
+    </div>
+    <div class="field" id="field-specialite">
+      <label for="sel-specialite">Spécialité</label>
+      <select id="sel-specialite"></select>
+    </div>
+    <div class="field">
+      <label for="sel-niveau">Année</label>
       <select id="sel-niveau"></select>
     </div>
     <div class="field">
@@ -222,11 +235,324 @@
 
   var DATA = null;
 
+  // ===================== Formations et spécialités =====================
+  var FORMATION_ORDRE = ["3PM","CAP","BACPRO"];
+  var FORMATION_LABEL = { "3PM":"3e Prépa-Métiers", "CAP":"CAP", "BACPRO":"Bac Pro" };
+  // Années proposées pour chaque formation (les valeurs sont celles du champ "niveau" du JSON)
+  var FORMATION_ANNEES = { "3PM":["3PM"], "CAP":["CAP"], "BACPRO":["2PRO","1PRO","TPRO"] };
+
+  var SANS_SPECIALITE = "__aucune__"; // choix explicite : on règle le groupement à la main
+
+  // Spécialités de baccalauréat professionnel en vigueur (session 2023 et suivantes),
+  // avec leur groupement de mathématiques (A/B/C) et de physique-chimie (SPE1..SPE6).
+  // Une spécialité sans enseignement de physique-chimie porte "SansPhCh".
+  // Source : feuille "Groupements" de programmes_voie_pro_base_v5.ods.
+  var SPE_BACPRO = [
+    {n:"Accompagnement soins et services à la personne", m:"C", p:"SPE5"},
+    {n:"Aménagement et finition du bâtiment", m:"B", p:"SPE3"},
+    {n:"Animation - enfance et personnes âgées", m:"C", p:"SansPhCh"},
+    {n:"Artisanat et métiers d'art - facteur d'orgues, options organier et tuyautier", m:"B", p:"SPE6"},
+    {n:"Artisanat et métiers d'art option Communication visuelle pluri média", m:"B", p:"SPE4"},
+    {n:"Artisanat et métiers d'art option Marchandisage visuel", m:"B", p:"SPE6"},
+    {n:"Artisanat et métiers d'art option Métiers de l'enseigne et de la signalétique", m:"B", p:"SPE6"},
+    {n:"Artisanat et métiers d'art option Tapissier d'ameublement", m:"B", p:"SPE6"},
+    {n:"Artisanat et métiers d'art option Verrerie scientifique et technique", m:"B", p:"SPE5"},
+    {n:"Assistance à la gestion des organisations et de leurs activités", m:"C", p:"SansPhCh"},
+    {n:"Aviation générale", m:"B", p:"SPE1"},
+    {n:"Aéronautique option Avionique", m:"B", p:"SPE1"},
+    {n:"Aéronautique option Structure", m:"B", p:"SPE1"},
+    {n:"Aéronautique option Systèmes", m:"B", p:"SPE1"},
+    {n:"Bio-industries de transformation", m:"C", p:"SPE5"},
+    {n:"Boucher charcutier traiteur", m:"C", p:"SansPhCh"},
+    {n:"Boulanger - pâtissier", m:"C", p:"SansPhCh"},
+    {n:"Carrossier peintre automobile", m:"B", p:"SPE1"},
+    {n:"Commercialisation et services en restauration", m:"C", p:"SansPhCh"},
+    {n:"Conducteur transport routier marchandises", m:"B", p:"SPE6"},
+    {n:"Construction des carrosseries", m:"B", p:"SPE1"},
+    {n:"Cuisine", m:"C", p:"SansPhCh"},
+    {n:"Esthétique Cosmétique Parfumerie", m:"C", p:"SPE5"},
+    {n:"Etude et réalisation d'agencement (ex Agencement de l'espace architectural)", m:"B", p:"SPE3"},
+    {n:"Façonnage de produits imprimés, routage", m:"B", p:"SPE1"},
+    {n:"Fonderie", m:"B", p:"SPE1"},
+    {n:"Gestion des pollutions et protection de l'environnement", m:"C", p:"SPE5"},
+    {n:"Hygiène, propreté et stérilisation", m:"C", p:"SPE5"},
+    {n:"Installateur en chauffage, climatisation et énergies renouvelables", m:"B", p:"SPE1"},
+    {n:"Interventions sur le patrimoine bâti option A - Maçonnerie", m:"B", p:"SPE3"},
+    {n:"Interventions sur le patrimoine bâti option B - Charpente", m:"B", p:"SPE3"},
+    {n:"Interventions sur le patrimoine bâti option C - Couverture", m:"B", p:"SPE3"},
+    {n:"Logistique", m:"C", p:"SansPhCh"},
+    {n:"Maintenance des matériels option A - Matériels agricoles", m:"B", p:"SPE1"},
+    {n:"Maintenance des matériels option B - Matériels de construction et de manutention", m:"B", p:"SPE1"},
+    {n:"Maintenance des matériels option C - Matériels d'espaces verts", m:"B", p:"SPE1"},
+    {n:"Maintenance des systèmes de production connectés", m:"B", p:"SPE1"},
+    {n:"Maintenance des véhicules option A - Voitures particulières", m:"B", p:"SPE1"},
+    {n:"Maintenance des véhicules option B - Véhicules de transport routier", m:"B", p:"SPE1"},
+    {n:"Maintenance des véhicules option C - Motocycles", m:"B", p:"SPE1"},
+    {n:"Maintenance et Efficacité Energétique", m:"B", p:"SPE1"},
+    {n:"Maintenance nautique", m:"B", p:"SPE1"},
+    {n:"Menuiserie Aluminium-Verre", m:"B", p:"SPE3"},
+    {n:"Microtechniques", m:"B", p:"SPE4"},
+    {n:"Modélisation et prototypage 3D", m:"B", p:"SPE1"},
+    {n:"Métiers de l'accueil", m:"C", p:"SansPhCh"},
+    {n:"Métiers de l'entretien des textiles, option A : blanchisserie, option B : pressing", m:"C", p:"SPE5"},
+    {n:"Métiers de l'électricité et de ses environnements connectés", m:"A", p:"SPE2"},
+    {n:"Métiers de la coiffure", m:"C", p:"SPE5"},
+    {n:"Métiers de la mode - vêtements", m:"B", p:"SPE6"},
+    {n:"Métiers de la sécurité", m:"C", p:"SansPhCh"},
+    {n:"Métiers du commerce et de la vente option A - Animation et gestion de l'espace commercial", m:"C", p:"SansPhCh"},
+    {n:"Métiers du commerce et de la vente option B - Prospection clientèle et valorisation de l'offre commerciale", m:"C", p:"SansPhCh"},
+    {n:"Métiers du cuir option Chaussures", m:"B", p:"SPE6"},
+    {n:"Métiers du cuir option Maroquinerie", m:"B", p:"SPE6"},
+    {n:"Métiers du cuir option Sellerie garnissage (première session 2018)", m:"B", p:"SPE6"},
+    {n:"Métiers du Froid et des Energies Renouvelables", m:"B", p:"SPE1"},
+    {n:"Métiers et arts de la pierre", m:"B", p:"SPE6"},
+    {n:"Optique lunetterie", m:"B", p:"SPE4"},
+    {n:"Organisation de transports de marchandises", m:"C", p:"SansPhCh"},
+    {n:"Ouvrage du bâtiment : métallerie", m:"B", p:"SPE3"},
+    {n:"Perruquier posticheur", m:"C", p:"SPE6"},
+    {n:"Photographie", m:"B", p:"SPE4"},
+    {n:"Pilote de ligne de production", m:"B", p:"SPE6"},
+    {n:"Plastiques et composites", m:"B", p:"SPE5"},
+    {n:"Poissonnier écailler traiteur", m:"C", p:"SansPhCh"},
+    {n:"Procédés de la chimie, de l'eau et des papiers-cartons", m:"B", p:"SPE5"},
+    {n:"Réalisation de produits imprimés et plurimédia option A - Productions graphiques", m:"B", p:"SPE4"},
+    {n:"Réalisation de produits imprimés et plurimédia option B - Productions imprimées", m:"B", p:"SPE4"},
+    {n:"Systèmes numériques option A - Sûreté et sécurité des infrastructures, de l'habitat et du tertiaire", m:"A", p:"SPE2"},
+    {n:"Systèmes numériques option B - Audiovisuels, réseau et équipement domestiques", m:"A", p:"SPE2"},
+    {n:"Systèmes numériques option C - Réseaux informatiques et systèmes communicants", m:"A", p:"SPE2"},
+    {n:"Technicien constructeur bois", m:"B", p:"SPE3"},
+    {n:"Technicien d'études du bâtiment option A - Etudes et économie", m:"B", p:"SPE3"},
+    {n:"Technicien d'études du bâtiment option B - Assistant en architecture", m:"B", p:"SPE3"},
+    {n:"Technicien de fabrication bois et matériaux associes", m:"B", p:"SPE3"},
+    {n:"Technicien de scierie", m:"B", p:"SPE6"},
+    {n:"Technicien du bâtiment : organisation et réalisation du gros œuvre", m:"B", p:"SPE3"},
+    {n:"Technicien en appareillage orthopédique", m:"B", p:"SPE1"},
+    {n:"Technicien en chaudronnerie industrielle", m:"B", p:"SPE1"},
+    {n:"Technicien en installation des systèmes énergétiques et climatiques", m:"B", p:"SPE1"},
+    {n:"Technicien en prothèse dentaire", m:"B", p:"SPE5"},
+    {n:"Technicien en réalisation de produits mécaniques, option réalisation et suivi de production, option réalisation et maintenance des outillages", m:"B", p:"SPE1"},
+    {n:"Technicien Gaz", m:"B", p:"SPE6"},
+    {n:"Technicien géomètre topographe", m:"B", p:"SPE6"},
+    {n:"Technicien menuisier agenceur", m:"B", p:"SPE3"},
+    {n:"Technicien modeleur", m:"B", p:"SPE1"},
+    {n:"Techniques d'interventions sur installations nucléaires", m:"B", p:"SPE1"},
+    {n:"Traitements des matériaux (Ex Traitements de surfaces)", m:"C", p:"SPE5"},
+    {n:"Transport fluvial", m:"C", p:"SPE1"},
+    {n:"Transports par câbles et remontées mécaniques", m:"B", p:"SPE1"},
+    {n:"Travaux publics", m:"B", p:"SPE1"},
+    {n:"Étude et définition de produits industriels", m:"B", p:"SPE1"}
+  ];
+
+  // Spécialités de CAP en vigueur (liste éduscol de mars 2024), rattachées à
+  // Grp1 ou Grp2. Le CAP ne différencie QUE les mathématiques : il n'existe pas
+  // de groupement de physique-chimie, d'où l'absence de champ "p" ici.
+  // Source : ra19_lycee_p_liste_groupements_cap.xlsx.
+  var SPE_CAP = [
+    {n:"Accessoiriste réalisateur", m:"Grp1"},
+    {n:"Accompagnant éducatif petite enfance", m:"Grp1"},
+    {n:"Accordeur de piano", m:"Grp1"},
+    {n:"Agent accompagnant au grand âge", m:"Grp1"},
+    {n:"Agent d'assainissement et de collecte des déchets liquides spéciaux", m:"Grp1"},
+    {n:"Agent de la qualité de l'eau", m:"Grp1"},
+    {n:"Agent de propreté et d'hygiène", m:"Grp1"},
+    {n:"Agent de prévention et de médiation", m:"Grp2"},
+    {n:"Agent de sécurité", m:"Grp1"},
+    {n:"Agent vérificateur d'appareils extincteurs", m:"Grp1"},
+    {n:"Armurerie (fabrication et réparation)", m:"Grp1"},
+    {n:"Art et techniques de la bijouterie-joaillerie option Bijouterie-joaillerie", m:"Grp1"},
+    {n:"Art et techniques de la bijouterie-joaillerie option Bijouterie-sertissage", m:"Grp1"},
+    {n:"Art et techniques de la bijouterie-joaillerie option Polissage-finition", m:"Grp1"},
+    {n:"Arts de la broderie", m:"Grp1"},
+    {n:"Arts de la dentelle option Aiguille", m:"Grp1"},
+    {n:"Arts de la dentelle option Fuseaux", m:"Grp1"},
+    {n:"Arts de la reliure", m:"Grp1"},
+    {n:"Arts du bois option A - Sculpteur ornemaniste", m:"Grp1"},
+    {n:"Arts du bois option B - Tourneur", m:"Grp1"},
+    {n:"Arts du bois option C - Marqueteur", m:"Grp1"},
+    {n:"Arts du tapis et de la tapisserie de lisse", m:"Grp1"},
+    {n:"Arts du verre et du cristal", m:"Grp1"},
+    {n:"Arts et techniques du verre option Décorateur", m:"Grp1"},
+    {n:"Arts et techniques du verre option Vitrailliste", m:"Grp1"},
+    {n:"Assistant luthier du quatuor", m:"Grp1"},
+    {n:"Assistant technique en instruments de musique option Accordéon", m:"Grp1"},
+    {n:"Assistant technique en instruments de musique option Guitare", m:"Grp1"},
+    {n:"Assistant technique en instruments de musique option Instruments à vent", m:"Grp1"},
+    {n:"Assistant technique en instruments de musique option Piano", m:"Grp1"},
+    {n:"Aéronautique option Avionique", m:"Grp1"},
+    {n:"Aéronautique option Structure", m:"Grp1"},
+    {n:"Aéronautique option Systèmes", m:"Grp1"},
+    {n:"Boucher", m:"Grp2"},
+    {n:"Boulanger", m:"Grp2"},
+    {n:"Bronzier option A - Monteur en bronze", m:"Grp2"},
+    {n:"Bronzier option B - Ciseleur sur bronze", m:"Grp2"},
+    {n:"Bronzier option C - Tourneur sur bronze", m:"Grp2"},
+    {n:"Cannage et paillage en ameublement", m:"Grp1"},
+    {n:"Carreleur mosaïste", m:"Grp1"},
+    {n:"Carrossier automobile", m:"Grp1"},
+    {n:"Charcuterie-traiteur", m:"Grp2"},
+    {n:"Charpentier bois", m:"Grp1"},
+    {n:"Charpentier de marine", m:"Grp1"},
+    {n:"Chaussure", m:"Grp1"},
+    {n:"Chocolaterie-confiserie", m:"Grp2"},
+    {n:"Commercialisation et services en hôtel-café-restaurant", m:"Grp2"},
+    {n:"Composites, plastiques chaudronnés", m:"Grp1"},
+    {n:"Conducteur agent d'accueil en autobus et autocar", m:"Grp2"},
+    {n:"Conducteur d'engins : travaux publics et carrières", m:"Grp1"},
+    {n:"Conducteur d'installations de production", m:"Grp1"},
+    {n:"Conducteur livreur de marchandises", m:"Grp2"},
+    {n:"Conducteur opérateur de scierie", m:"Grp1"},
+    {n:"Conducteur routier \"marchandises\"", m:"Grp1"},
+    {n:"Constructeur d'ouvrages en béton armé", m:"Grp1"},
+    {n:"Constructeur de routes et d'aménagements urbains", m:"Grp1"},
+    {n:"Constructeur de réseaux de canalisations de travaux publics", m:"Grp1"},
+    {n:"Construction des carrosseries", m:"Grp1"},
+    {n:"Cordonnerie multiservice", m:"Grp1"},
+    {n:"Cordonnier-bottier", m:"Grp1"},
+    {n:"Couvreur", m:"Grp1"},
+    {n:"Crémier-fromager", m:"Grp2"},
+    {n:"Cuisine", m:"Grp2"},
+    {n:"Doreur à la feuille ornemaniste", m:"Grp2"},
+    {n:"Décolletage : opérateur régleur en décolletage", m:"Grp1"},
+    {n:"Décoration en céramique", m:"Grp1"},
+    {n:"Déménageur sur véhicule utilitaire léger", m:"Grp1"},
+    {n:"Emballeur professionnel", m:"Grp1"},
+    {n:"Employé technique de laboratoire", m:"Grp1"},
+    {n:"Encadreur", m:"Grp2"},
+    {n:"Esthétique cosmétique parfumerie", m:"Grp1"},
+    {n:"Fabrication industrielle des céramiques", m:"Grp1"},
+    {n:"Ferronnier d'art", m:"Grp1"},
+    {n:"Fleuriste", m:"Grp2"},
+    {n:"Fourrure", m:"Grp1"},
+    {n:"Gardien d'immeuble", m:"Grp1"},
+    {n:"Glacier fabricant", m:"Grp2"},
+    {n:"Horlogerie", m:"Grp1"},
+    {n:"Industries chimiques", m:"Grp1"},
+    {n:"Installateur en froid et conditionnement d'air", m:"Grp1"},
+    {n:"Instruments coupants et de chirurgie", m:"Grp1"},
+    {n:"Interventions en maintenance technique des bâtiments", m:"Grp1"},
+    {n:"Lapidaire option A - Diamant", m:"Grp2"},
+    {n:"Lapidaire option B - Pierres de couleur", m:"Grp2"},
+    {n:"Maintenance des matériels option A - Matériels agricoles", m:"Grp1"},
+    {n:"Maintenance des matériels option B -Matériels de construction et de manutention", m:"Grp1"},
+    {n:"Maintenance des matériels option C : Matériels d'espaces verts", m:"Grp1"},
+    {n:"Maintenance des véhicules option A - Voitures particulières", m:"Grp1"},
+    {n:"Maintenance des véhicules option B - Véhicules de transport routier", m:"Grp1"},
+    {n:"Maintenance des véhicules option C - Motocycles", m:"Grp1"},
+    {n:"Maintenance nautique", m:"Grp1"},
+    {n:"Marbrier du bâtiment et de la décoration", m:"Grp1"},
+    {n:"Mareyage", m:"Grp2"},
+    {n:"Maroquinerie", m:"Grp1"},
+    {n:"Maçon", m:"Grp1"},
+    {n:"Menuisier aluminium-verre", m:"Grp1"},
+    {n:"Menuisier en sièges", m:"Grp1"},
+    {n:"Menuisier fabricant", m:"Grp1"},
+    {n:"Menuisier installateur", m:"Grp1"},
+    {n:"Mise en forme des matériaux", m:"Grp1"},
+    {n:"Mise en œuvre des caoutchoucs et des élastomères thermoplastiques", m:"Grp1"},
+    {n:"Modèles et moules céramiques", m:"Grp1"},
+    {n:"Monteur de structures mobiles", m:"Grp1"},
+    {n:"Monteur en installations sanitaires", m:"Grp1"},
+    {n:"Monteur en installations thermiques", m:"Grp1"},
+    {n:"Mouleur noyauteur - Cuivre et bronze", m:"Grp1"},
+    {n:"Mécanicien conducteur des scieries et des industries mécaniques du bois option B Mécanicien affûteur de sciage, tranchage, déroulage", m:"Grp1"},
+    {n:"Métallier", m:"Grp1"},
+    {n:"Métiers de l'enseigne et de la signalétique", m:"Grp1"},
+    {n:"Métiers de l'entretien des textiles, option A : blanchisserie", m:"Grp1"},
+    {n:"Métiers de l'entretien des textiles, option B : pressing", m:"Grp1"},
+    {n:"Métiers de la coiffure", m:"Grp1"},
+    {n:"Métiers de la fonderie", m:"Grp1"},
+    {n:"Métiers de la gravure option A - Gravure d'ornementation", m:"Grp1"},
+    {n:"Métiers de la gravure option B - Gravure d'impression", m:"Grp1"},
+    {n:"Métiers de la gravure option C - Gravure en modèle", m:"Grp1"},
+    {n:"Métiers de la gravure option D - Marquage poinçonnage", m:"Grp1"},
+    {n:"Métiers de la mode - Chapelier-modiste", m:"Grp1"},
+    {n:"Métiers de la mode - Vêtement flou", m:"Grp1"},
+    {n:"Métiers de la mode - Vêtement tailleur", m:"Grp1"},
+    {n:"Métiers du football", m:"Grp2"},
+    {n:"Métiers du plâtre et de l'isolation", m:"Grp1"},
+    {n:"Opérateur en appareillage orthopédique - spécialité orthoprothèse", m:"Grp1"},
+    {n:"Opérateur en appareillage orthopédique- spécialité podo-orthèse", m:"Grp1"},
+    {n:"Opérateur-opératrice logistique", m:"Grp2"},
+    {n:"Opérateur/Opératrice de service - Relation client et livraison", m:"Grp2"},
+    {n:"Orfèvre option A - Monteur en orfèvrerie", m:"Grp2"},
+    {n:"Orfèvre option B - Tourneur repousseur en orfèvrerie", m:"Grp2"},
+    {n:"Orfèvre option C - Polisseur aviveur en orfèvrerie", m:"Grp2"},
+    {n:"Orfèvre option D - Planeur en orfèvrerie", m:"Grp2"},
+    {n:"Outillages en moules métalliques", m:"Grp1"},
+    {n:"Outillages en outils à découper et à emboutir", m:"Grp1"},
+    {n:"Ouvrier archetier", m:"Grp1"},
+    {n:"Peintre applicateur de revêtements", m:"Grp1"},
+    {n:"Peintre automobile", m:"Grp1"},
+    {n:"Plasturgie", m:"Grp1"},
+    {n:"Poissonnier écailler", m:"Grp2"},
+    {n:"Primeur", m:"Grp2"},
+    {n:"Production et service en restaurations (rapide, collective, cafétéria)", m:"Grp1"},
+    {n:"Propreté de l'environnement urbain - collecte et recyclage", m:"Grp1"},
+    {n:"Pâtissier", m:"Grp2"},
+    {n:"Rentrayeur option A - Tapis", m:"Grp1"},
+    {n:"Rentrayeur option B - Tapisserie", m:"Grp1"},
+    {n:"Réalisations industrielles en chaudronnerie ou soudage option A - chaudronnerie", m:"Grp1"},
+    {n:"Réalisations industrielles en chaudronnerie ou soudage option B - soudage", m:"Grp1"},
+    {n:"Sellerie générale", m:"Grp1"},
+    {n:"Sellier harnacheur", m:"Grp1"},
+    {n:"Signalétique et décors graphiques", m:"Grp1"},
+    {n:"Souffleur de verre option Enseigne lumineuse", m:"Grp1"},
+    {n:"Souffleur de verre option Verrerie scientifique", m:"Grp1"},
+    {n:"Staffeur ornemaniste", m:"Grp1"},
+    {n:"Sérigraphie industrielle", m:"Grp1"},
+    {n:"Tailleur de pierre", m:"Grp1"},
+    {n:"Tapissier ameublement en décor", m:"Grp1"},
+    {n:"Tapissier ameublement en siège", m:"Grp1"},
+    {n:"Taxidermiste", m:"Grp2"},
+    {n:"Tonnelier", m:"Grp1"},
+    {n:"Tournage en céramique", m:"Grp1"},
+    {n:"Transport fluvial", m:"Grp1"},
+    {n:"Transports par câbles et remontées mécaniques", m:"Grp1"},
+    {n:"Vannerie", m:"Grp1"},
+    {n:"Vêtement de peau", m:"Grp1"},
+    {n:"Ébéniste", m:"Grp1"},
+    {n:"Électricien", m:"Grp1"},
+    {n:"Émailleur d'art sur métaux", m:"Grp2"},
+    {n:"Équipier polyvalent du commerce", m:"Grp2"},
+    {n:"Étancheur du bâtiment et des travaux publics", m:"Grp1"}
+  ];
+
+  function specialitesDe(formation){
+    if(formation === "BACPRO") return SPE_BACPRO;
+    if(formation === "CAP") return SPE_CAP;
+    return [];
+  }
+
+  // Spécialité actuellement choisie, ou null (3PM, liste absente, mode manuel).
+  function specialiteCourante(formation){
+    var liste = specialitesDe(formation);
+    if(!liste.length) return null;
+    var nom = document.getElementById("sel-specialite").value;
+    if(!nom || nom === SANS_SPECIALITE) return null;
+    for(var i=0;i<liste.length;i++){
+      if(liste[i].n === nom) return liste[i];
+    }
+    return null;
+  }
+
+  // Une spécialité sans physique-chimie ("SansPhCh") suit en revanche un
+  // supplément de mathématiques : son groupement de maths cumule les deux tags.
+  function sansPhCh(sp){ return !!sp && sp.p === "SansPhCh"; }
+
+  // Groupement imposé par la spécialité pour la matière courante, ou null.
+  function groupementDeSpecialite(formation, matiere){
+    var sp = specialiteCourante(formation);
+    if(!sp) return null;
+    if(matiere === "M") return sansPhCh(sp) ? (sp.m + "+SansPhCh") : sp.m;
+    // En CAP la physique-chimie n'est pas differenciee : pas de champ "p",
+    // donc la specialite n'impose aucun groupement dans cette matiere.
+    return (sansPhCh(sp) || !sp.p) ? null : sp.p;
+  }
+
   // ===================== Chargement des données =====================
   function boot(items){
     DATA = items;
-    buildNiveauOptions();
-    render();
+    buildFormationOptions();
   }
 
   fetch("resumes_items_LP.json")
@@ -260,11 +586,20 @@
     return out;
   }
 
-  function matieresDisponibles(niveau){
+  function matieresDisponibles(niveau, formation){
     var set = uniq(DATA.filter(function(d){return d.niveau===niveau;}).map(function(d){return d.matiere;}));
-    return MATIERE_ORDRE.filter(function(m){ return set.indexOf(m) !== -1; });
+    var out = MATIERE_ORDRE.filter(function(m){ return set.indexOf(m) !== -1; });
+    // Une spécialité sans physique-chimie ne doit pas proposer cette matière.
+    if(formation && sansPhCh(specialiteCourante(formation))){
+      out = out.filter(function(m){ return m !== "PhCh"; });
+    }
+    return out;
   }
 
+  // "SansPhCh" n'est pas un groupement : c'est le supplement de mathematiques
+  // (module "Calculs commerciaux et financiers") suivi par les specialites qui
+  // n'ont pas de physique-chimie. Il se combine donc a une lettre A/B/C au lieu
+  // de s'y substituer : le choix propose devient "C" ou "C + sans PhCh".
   function groupementsDisponibles(niveau, matiere){
     var tags = {};
     DATA.forEach(function(d){
@@ -272,13 +607,81 @@
         d.groupements.forEach(function(g){ tags[g]=1; });
       }
     });
-    return GROUPEMENT_ORDRE.filter(function(g){ return tags[g]; });
+    var base = GROUPEMENT_ORDRE.filter(function(g){ return tags[g] && g !== "SansPhCh"; });
+    if(!tags["SansPhCh"]) return base;
+
+    var out = [];
+    base.forEach(function(g){ out.push(g); out.push(g + "+SansPhCh"); });
+    return out;
   }
 
+  // Un choix de groupement peut cumuler plusieurs tags ("C+SansPhCh").
+  function tagsDuGroupement(code){ return code ? code.split("+") : []; }
+
+  function libelleGroupement(code){
+    var t = tagsDuGroupement(code);
+    var base = GROUPEMENT_LABEL[t[0]] || t[0];
+    return (t.indexOf("SansPhCh") !== -1) ? (base + " — sans physique-chimie") : base;
+  }
+
+  // Chaine des selecteurs : Formation -> Specialite -> Annee -> Matiere -> Groupement.
+  // Chaque etage reconstruit le suivant, puis render() est appele une seule fois au bout.
+  function buildFormationOptions(){
+    var selF = document.getElementById("sel-formation");
+    selF.innerHTML = "";
+    FORMATION_ORDRE.forEach(function(f){
+      var annees = FORMATION_ANNEES[f].filter(function(n){
+        return DATA.some(function(d){ return d.niveau === n; });
+      });
+      if(!annees.length) return;
+      var o = document.createElement("option");
+      o.value = f; o.textContent = FORMATION_LABEL[f] || f;
+      selF.appendChild(o);
+    });
+    selF.value = "BACPRO";
+    selF.onchange = function(){ buildSpecialiteOptions(); };
+    buildSpecialiteOptions();
+  }
+
+  function buildSpecialiteOptions(){
+    var formation = document.getElementById("sel-formation").value;
+    var liste = specialitesDe(formation);
+    var field = document.getElementById("field-specialite");
+    var selS = document.getElementById("sel-specialite");
+    var ancien = selS.value;
+    selS.innerHTML = "";
+
+    if(!liste.length){
+      // 3PM, ou liste de specialites non encore fournie : on masque le champ
+      // et le groupement se regle directement, comme avant.
+      field.style.display = "none";
+    }else{
+      field.style.display = "";
+      var o0 = document.createElement("option");
+      o0.value = SANS_SPECIALITE;
+      o0.textContent = "— choisir le groupement à la main —";
+      selS.appendChild(o0);
+      liste.forEach(function(sp){
+        var o = document.createElement("option");
+        o.value = sp.n; o.textContent = sp.n;
+        selS.appendChild(o);
+      });
+      // On conserve la specialite en cours si elle existe toujours dans la liste.
+      selS.value = (ancien && selS.querySelector('option[value="' + cssEscape(ancien) + '"]')) ? ancien : SANS_SPECIALITE;
+    }
+    selS.onchange = function(){ buildNiveauOptions(); };
+    buildNiveauOptions();
+  }
+
+  // Echappe les guillemets doubles pour un selecteur d'attribut.
+  function cssEscape(v){ return String(v).replace(/["\\]/g, "\\$&"); }
+
   function buildNiveauOptions(){
+    var formation = document.getElementById("sel-formation").value;
     var selN = document.getElementById("sel-niveau");
+    var ancien = selN.value;
     selN.innerHTML = "";
-    var niveaux = NIVEAU_ORDRE.filter(function(n){
+    var niveaux = FORMATION_ANNEES[formation].filter(function(n){
       return DATA.some(function(d){ return d.niveau===n; });
     });
     niveaux.forEach(function(n){
@@ -286,7 +689,9 @@
       o.value = n; o.textContent = NIVEAU_LABEL[n] || n;
       selN.appendChild(o);
     });
-    selN.value = niveaux.indexOf("1PRO") !== -1 ? "1PRO" : niveaux[0];
+    // Le champ Annee n'a d'interet que si la formation compte plusieurs annees.
+    selN.parentNode.style.display = (niveaux.length > 1) ? "" : "none";
+    selN.value = (niveaux.indexOf(ancien) !== -1) ? ancien : niveaux[0];
     selN.onchange = function(){ buildMatiereOptions(); };
     buildMatiereOptions();
   }
@@ -294,35 +699,51 @@
   function buildMatiereOptions(){
     var niveau = document.getElementById("sel-niveau").value;
     var selM = document.getElementById("sel-matiere");
+    var ancien = selM.value;
     selM.innerHTML = "";
-    var matieres = matieresDisponibles(niveau);
+    var matieres = matieresDisponibles(niveau, document.getElementById("sel-formation").value);
     matieres.forEach(function(m){
       var o = document.createElement("option");
       o.value = m; o.textContent = MATIERE_LABEL[m] || m;
       selM.appendChild(o);
     });
-    selM.value = matieres.indexOf("PhCh") !== -1 ? "PhCh" : matieres[0];
+    selM.value = (matieres.indexOf(ancien) !== -1) ? ancien
+               : (matieres.indexOf("PhCh") !== -1 ? "PhCh" : matieres[0]);
     selM.onchange = function(){ buildGroupementOptions(); };
     buildGroupementOptions();
   }
 
   function buildGroupementOptions(){
+    var formation = document.getElementById("sel-formation").value;
     var niveau = document.getElementById("sel-niveau").value;
     var matiere = document.getElementById("sel-matiere").value;
     var groupements = groupementsDisponibles(niveau, matiere);
     var field = document.getElementById("field-groupement");
     var selG = document.getElementById("sel-groupement");
+    var ancien = selG.value;
     selG.innerHTML = "";
+
     if(groupements.length === 0){
       field.style.display = "none";
+      selG.disabled = false;
     }else{
       field.style.display = "";
       groupements.forEach(function(g){
         var o = document.createElement("option");
-        o.value = g; o.textContent = GROUPEMENT_LABEL[g] || g;
+        o.value = g; o.textContent = libelleGroupement(g);
         selG.appendChild(o);
       });
-      selG.value = groupements[0];
+
+      // Si une specialite est choisie, elle IMPOSE le groupement : on le
+      // positionne et on verrouille la liste pour eviter un reglage incoherent.
+      var impose = groupementDeSpecialite(formation, matiere);
+      if(impose && groupements.indexOf(impose) !== -1){
+        selG.value = impose;
+        selG.disabled = true;
+      }else{
+        selG.disabled = false;
+        selG.value = (groupements.indexOf(ancien) !== -1) ? ancien : groupements[0];
+      }
     }
     selG.onchange = render;
     render();
@@ -348,7 +769,11 @@
       if(d.niveau !== niveau || d.matiere !== matiere) return false;
       if(groupement === null) return true;
       if(!d.groupements || d.groupements.length === 0) return true;
-      return d.groupements.indexOf(groupement) !== -1;
+      var tags = tagsDuGroupement(groupement);
+      for(var i=0;i<tags.length;i++){
+        if(d.groupements.indexOf(tags[i]) !== -1) return true;
+      }
+      return false;
     });
   }
 
@@ -416,7 +841,7 @@
       html += '<div class="cases" data-n="' + mod.items.length + '">';
       mod.items.forEach(function(it){
         html += '<div class="case" style="border-color:'+col.border+';">';
-        html += '<div class="txt"><span class="code" style="color:'+col.text+';">' + escapeHTML(it.code) + '</span>' + escapeHTML(it.resume) + '</div>';
+        html += '<div class="txt"><span class="code" style="color:'+col.text+';">' + escapeHTML(it.code) + '</span>' + coupuresDouces(escapeHTML(it.resume)) + '</div>';
         html += '<div class="chks"><span class="chk"></span><span class="chk"></span><span class="chk"></span></div>';
         html += '</div>';
       });
@@ -426,17 +851,26 @@
     return html;
   }
 
+  // Offre au navigateur des points de coupure naturels (apres "/" ou un tiret)
+  // pour eviter qu'il ne casse un mot en plein milieu faute de mieux.
+  function coupuresDouces(html){
+    return html.replace(/([\/\u2013\u2014-])/g, "$1<wbr>");
+  }
+
   function escapeHTML(s){
     return String(s == null ? "" : s)
       .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
 
-  function enteteHTML(titreSuffixe, niveau, matiere, groupementLabel){
+  function enteteHTML(titreSuffixe, niveau, matiere, groupementLabel, specialite){
     var titre = "GRILLE DE SUIVI DES ACQUIS — " + NIVEAU_LABEL[niveau] + " · " + MATIERE_LABEL[matiere];
     if(groupementLabel) titre += " · " + groupementLabel;
     if(titreSuffixe) titre += " " + titreSuffixe;
     var html = '<div class="fiche-head">';
     html += '<div><h2>' + escapeHTML(titre) + '</h2>';
+    // Le nom de la specialite est ce que l'eleve reconnait ; le code de
+    // groupement reste dans le titre pour le reperage cote enseignant.
+    if(specialite) html += '<div class="fiche-spe">' + escapeHTML(specialite) + '</div>';
     html += '<div class="fiche-nom">Nom : <span class="ligne">&nbsp;</span></div></div>';
     html += '<div class="meta">outilslp.netlify.app</div>';
     html += '</div>';
@@ -451,7 +885,11 @@
     var matiere = document.getElementById("sel-matiere").value;
     var fieldG = document.getElementById("field-groupement");
     var groupementCode = (fieldG.style.display !== "none") ? document.getElementById("sel-groupement").value : null;
-    var groupementLabel = groupementCode ? (GROUPEMENT_LABEL[groupementCode] || groupementCode) : "";
+    var groupementLabel = groupementCode ? libelleGroupement(groupementCode) : "";
+
+    var selS = document.getElementById("sel-specialite");
+    var specialite = (document.getElementById("field-specialite").style.display !== "none"
+                      && selS.value && selS.value !== SANS_SPECIALITE) ? selS.value : "";
 
     var items = itemsSelectionnes();
     var modules = grouperParModule(items);
@@ -465,14 +903,14 @@
     var page2Label = document.getElementById("page2-label");
 
     page1El.innerHTML = '<div class="sheet-inner">' +
-      enteteHTML("", niveau, matiere, groupementLabel) +
+      enteteHTML("", niveau, matiere, groupementLabel, specialite) +
       renderModulesHTML(parts.page1, palette) + '</div>';
 
     if(parts.page2.length){
       page2El.style.display = "";
       page2Label.style.display = "";
       page2El.innerHTML = '<div class="sheet-inner">' +
-        enteteHTML("— page 2", niveau, matiere, groupementLabel) +
+        enteteHTML("— page 2", niveau, matiere, groupementLabel, specialite) +
         renderModulesHTML(parts.page2, palette) + '</div>';
     }else{
       page2El.style.display = "none";
@@ -519,29 +957,53 @@
       return inner.scrollHeight <= targetH;
     }
 
-    var bestFs = null, bestCols = COL_CANDIDATES[0];
+    // Un mot plus large que sa colonne serait coupé en plein milieu ("Échan-
+    // tillon") : la configuration est alors jugée illisible et écartée, même si
+    // elle permettait une police plus grande.
+    function motsEntiers(){
+      inner.classList.add("mesure-mots");
+      var txts = inner.querySelectorAll(".case .txt");
+      var ok = true;
+      for(var i=0;i<txts.length;i++){
+        if(txts[i].scrollWidth > txts[i].clientWidth + 1){ ok = false; break; }
+      }
+      inner.classList.remove("mesure-mots");
+      return ok;
+    }
 
+    // Pour chaque nombre de colonnes, la plus grande police qui tient en hauteur.
+    var essais = [];
     COL_CANDIDATES.forEach(function(cols){
       appliquerColonnes(inner, cols);
-
-      if(!fits(FS_MIN)) return;              // déborde même en police mini
-      if(fits(FS_MAX)){                       // tout tient déjà au maximum
-        if(bestFs === null || FS_MAX > bestFs){ bestFs = FS_MAX; bestCols = cols; }
-        return;
-      }
+      if(!fits(FS_MIN)) return;               // déborde même en police mini
+      if(fits(FS_MAX)){ essais.push({cols:cols, fs:FS_MAX}); return; }
 
       var lo = FS_MIN, hi = FS_MAX, ok = FS_MIN;
       for(var i=0;i<18;i++){
         var mid = (lo + hi) / 2;
         if(fits(mid)){ ok = mid; lo = mid; } else { hi = mid; }
       }
-      if(bestFs === null || ok > bestFs){ bestFs = ok; bestCols = cols; }
+      essais.push({cols:cols, fs:ok});
     });
 
-    if(bestFs === null){ bestFs = FS_MIN; bestCols = COL_CANDIDATES[0]; }
+    if(!essais.length){
+      appliquerColonnes(inner, COL_CANDIDATES[0]);
+      inner.style.fontSize = FS_MIN + "pt";
+      return;
+    }
 
-    appliquerColonnes(inner, bestCols);
-    inner.style.fontSize = bestFs + "pt";
+    // De la plus grande police à la plus petite, on retient la première
+    // configuration qui ne casse aucun mot ; à défaut, la plus grande police.
+    essais.sort(function(a,b){ return b.fs - a.fs; });
+    var choisi = essais[0];
+    for(var k=0;k<essais.length;k++){
+      appliquerColonnes(inner, essais[k].cols);
+      inner.style.fontSize = essais[k].fs + "pt";
+      if(motsEntiers()){ choisi = essais[k]; break; }
+    }
+
+    appliquerColonnes(inner, choisi.cols);
+    inner.style.fontSize = choisi.fs + "pt";
   }
 
   window.addEventListener("beforeprint", function(){
