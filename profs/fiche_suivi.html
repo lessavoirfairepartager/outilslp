@@ -105,7 +105,7 @@
   }
   .cases{
     display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(min(13.5em, 100%), 1fr));
+    grid-template-columns:repeat(var(--cols, 6), 1fr);
     gap:0.16em;
     padding:0.16em;
   }
@@ -480,28 +480,43 @@
     });
   }
 
-  // ===================== Auto-ajustement de la police =====================
+  // ===================== Auto-ajustement (police + colonnes) =====================
+  // Le nombre de colonnes est recherché indépendamment de la police : sinon,
+  // comme la largeur des cases dépendait autrefois de "em", grossir la police
+  // réduisait le nombre de colonnes, ce qui allongeait la page et repoussait
+  // l'algorithme vers une police plus petite (boucle qui empêchait tout gain).
+  var COL_CANDIDATES = [9,8,7,6,5,4,3];
+
   function autofit(container){
     var targetH = PAGE_H_MM * MM_TO_PX; // hauteur imprimable cible en px
 
     function fits(fs){
       container.style.fontSize = fs + "pt";
-      // force reflow
-      var h = container.scrollHeight;
-      return h <= targetH;
+      return container.scrollHeight <= targetH;
     }
 
-    var lo = FS_MIN, hi = FS_MAX, best = FS_MIN;
-    // Si même la plus petite taille déborde, on l'applique quand même (cas extrême)
-    if(!fits(lo)){ container.style.fontSize = lo + "pt"; return; }
-    // Si la plus grande taille tient déjà, on la garde
-    if(fits(hi)){ container.style.fontSize = hi + "pt"; return; }
+    var bestFs = FS_MIN, bestCols = COL_CANDIDATES[0]; // repli : le plus dense si rien ne tient nulle part
 
-    for(var i=0;i<16;i++){
-      var mid = (lo + hi) / 2;
-      if(fits(mid)){ best = mid; lo = mid; } else { hi = mid; }
-    }
-    container.style.fontSize = best + "pt";
+    COL_CANDIDATES.forEach(function(cols){
+      container.style.setProperty("--cols", cols);
+
+      if(!fits(FS_MIN)) return; // même la police mini déborde à ce nb de colonnes : on l'écarte
+
+      if(fits(FS_MAX)){
+        if(FS_MAX > bestFs){ bestFs = FS_MAX; bestCols = cols; }
+        return;
+      }
+
+      var lo = FS_MIN, hi = FS_MAX, ok = FS_MIN;
+      for(var i=0;i<16;i++){
+        var mid = (lo + hi) / 2;
+        if(fits(mid)){ ok = mid; lo = mid; } else { hi = mid; }
+      }
+      if(ok > bestFs){ bestFs = ok; bestCols = cols; }
+    });
+
+    container.style.setProperty("--cols", bestCols);
+    container.style.fontSize = bestFs + "pt";
   }
 
   window.addEventListener("beforeprint", function(){
