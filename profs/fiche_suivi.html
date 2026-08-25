@@ -105,7 +105,7 @@
   }
   .cases{
     display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(13.5em, 1fr));
+    grid-template-columns:repeat(auto-fill, minmax(min(13.5em, 100%), 1fr));
     gap:0.16em;
     padding:0.16em;
   }
@@ -208,7 +208,7 @@
   var DOMAINES_PAGE2_SCIENCES = ["Mesures et incertitudes","Sécurité"];
   var ORDRE_PAGE1_SCIENCES = ["Électricité","Mécanique","Chimie","Thermique","Signaux"];
 
-  var FS_MIN = 5.0, FS_MAX = 15.0; // pt, bornes de recherche de la police
+  var FS_MIN = 5.0, FS_MAX = 60.0; // pt, bornes de recherche de la police
   var MM_TO_PX = 96 / 25.4;
   var PAGE_W_MM = 210 - 12; // marges 6mm de chaque côté
   var PAGE_H_MM = 297 - 12;
