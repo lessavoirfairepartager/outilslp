@@ -308,10 +308,17 @@
 
       } else if (q.type === 'texte') {
         if (rep === null || rep === undefined || normTexte(rep) === '') return { vide: true };
-        var attendus = q.accepte || [q.reponse];
-        var j;
-        for (j = 0; j < attendus.length && !ok; j++) {
-          ok = (normTexte(rep) === normTexte(attendus[j]));
+        // Hook optionnel : une question peut fournir accepteFn(saisie) -> bool
+        // pour une comparaison sur mesure (ordre libre, separateurs...).
+        // Absent partout ailleurs : comportement historique inchange.
+        if (typeof q.accepteFn === 'function') {
+          ok = !!q.accepteFn(rep);
+        } else {
+          var attendus = q.accepte || [q.reponse];
+          var j;
+          for (j = 0; j < attendus.length && !ok; j++) {
+            ok = (normTexte(rep) === normTexte(attendus[j]));
+          }
         }
 
       } else if (q.type === 'multi') {
