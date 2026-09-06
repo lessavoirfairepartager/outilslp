@@ -805,19 +805,39 @@ var defiDefs = [
     }
   },
   {
-    value: "pgcd",
-    nom: "Plus grand diviseur commun",
-    hint: "PGCD : garder les facteurs premiers communs aux deux nombres.",
+    value: "ensdiv",
+    nom: "L\u2019ensemble des diviseurs",
+    hint: "Chercher les diviseurs par paires : 1 et n, puis 2 et n\u00F72, 3 et n\u00F73\u2026 jusqu\u2019\u00E0 la racine.",
     generate: function(){
-      var g = rnd(3, 12), a = g * rnd(2, 7), b = g * rnd(2, 7);
-      while (b === a) b = g * rnd(2, 7);
+      var n = rnd(12, 90);
+      var d = diviseurs(n);
       return {
-        svg: svgDeux(a, b, "PGCD des deux nombres ?"),
-        enonce: "Quel est leur plus grand diviseur commun ?",
-        cotes: "Nombres étudiés : " + a + " et " + b,
-        answer: pgcd(a, b),
-        detail: "PGCD(" + a + ", " + b + ") = " + pgcd(a, b) +
-          " (le plus grand nombre qui divise à la fois " + a + " et " + b + ")."
+        svg: svgUn(n, "Tous ses diviseurs ?"),
+        enonce: "Donne l\u2019ensemble de ses diviseurs, s\u00E9par\u00E9s par une virgule (ordre libre).",
+        cotes: "Nombre \u00E9tudi\u00E9 : " + n,
+        answer: d.join(", "),
+        // Comparaison sur mesure : on ne regarde que l'ENSEMBLE des nombres,
+        // quel que soit l'ordre, l'espacement ou le separateur (, ; espace).
+        accepteFn: function(saisie){
+          var attendu = d.slice();          // deja trie croissant
+          var saisis = String(saisie)
+            .replace(/[;\s]+/g, ",")        // ; ou espaces -> virgule
+            .split(",")
+            .map(function(x){ return x.trim(); })
+            .filter(function(x){ return x !== ""; })
+            .map(Number);
+          if (saisis.length !== attendu.length) return false;
+          for (var i = 0; i < saisis.length; i++) {
+            if (!isFinite(saisis[i])) return false;
+          }
+          saisis.sort(function(a, b){ return a - b; });
+          for (var j = 0; j < attendu.length; j++) {
+            if (saisis[j] !== attendu[j]) return false;
+          }
+          return true;
+        },
+        type: "texte",
+        detail: n + " a " + d.length + " diviseurs : " + d.join(", ") + "."
       };
     }
   }
@@ -854,20 +874,21 @@ var famIndices = {
       "différents.",
   produit: "Effectue le produit des facteurs premiers proposés, en tenant compte des puissances " +
       "(un facteur au carré compte deux fois dans le produit).",
-  pgcd: "Décompose les deux nombres en facteurs premiers et ne garde que les facteurs communs, " +
-      "avec la plus petite puissance commune. Le produit de ces facteurs communs est le PGCD."
+  ensdiv: "Avance par paires : 1 va avec n, 2 avec n\u00F72, 3 avec n\u00F73\u2026 Chaque diviseur trouv\u00E9 " +
+      "en donne un second. Arr\u00EAte-toi \u00E0 la racine de n. N\u2019oublie ni 1 ni n lui-m\u00EAme, et " +
+      "s\u00E9pare bien les nombres par une virgule."
 };
 
 // Code de compétence par famille : lecture/reconnaissance directe (C1,
 // s'approprier) ou application d'une méthode de calcul (C3, réaliser).
 var famComp = {
   nbdiv: "C3", petitfacteur: "C3", grandfacteur: "C3", complement: "C3",
-  racine: "C3", premiers: "C1", longueur: "C3", produit: "C3", pgcd: "C3"
+  racine: "C3", premiers: "C1", longueur: "C3", produit: "C3", ensdiv: "C3"
 };
 
 var famCouleurs = {
   nbdiv: "blue", petitfacteur: "teal", grandfacteur: "coral", complement: "amber",
-  racine: "green", premiers: "purple", longueur: "pink", produit: "amber2", pgcd: "red"
+  racine: "green", premiers: "purple", longueur: "pink", produit: "amber2", ensdiv: "red"
 };
 
 var defiDefsParValeur = {};
@@ -879,18 +900,20 @@ function adapter(fam){
   var def = defiDefsParValeur[fam];
   return function(){
     var g = def.generate();
+    var estTexte = (g.type === "texte");
     return {
-      svg:     g.svg,
-      enonce:  g.enonce,
-      cotes:   g.cotes,
-      reponse: g.answer,
-      detail:  g.detail,
-      rappel:  def.hint,          // le rappel de méthode, avant de répondre
-      hint:    famIndices[fam],   // l'indice, après un essai raté
-      type:    "nombre",
-      label:   "Réponse =",
-      unite:   "",
-      tol:     0                  // réponse entière exacte, comme dans l'ancienne boucle
+      svg:      g.svg,
+      enonce:   g.enonce,
+      cotes:    g.cotes,
+      reponse:  g.answer,
+      detail:   g.detail,
+      rappel:   def.hint,          // le rappel de méthode, avant de répondre
+      hint:     famIndices[fam],   // l'indice, après un essai raté
+      type:     estTexte ? "texte" : "nombre",
+      accepteFn: g.accepteFn,      // ignoré si absent (familles numériques)
+      label:    estTexte ? "Diviseurs =" : "Réponse =",
+      unite:    "",
+      tol:      0                  // réponse entière exacte, comme dans l'ancienne boucle
     };
   };
 }
@@ -934,8 +957,8 @@ LP.ficheModal.init({
       aide: "Diviseur : la division tombe juste &nbsp;|&nbsp; Nombre premier : exactement deux " +
           "diviseurs, 1 et lui-même &nbsp;|&nbsp; Décomposition : produit de facteurs " +
           "premiers &nbsp;|&nbsp; Nombre de diviseurs : (exposant+1) multipliés entre eux " +
-          "&nbsp;|&nbsp; Carré parfait : sa racine est un entier &nbsp;|&nbsp; PGCD : facteurs " +
-          "premiers communs, à la plus petite puissance commune",
+          "&nbsp;|&nbsp; Carré parfait : sa racine est un entier &nbsp;|&nbsp; Ensemble des " +
+          "diviseurs : les chercher par paires (1 et n, 2 et n÷2…), les séparer par une virgule",
       questions: defi.questionsFiche(plan)      // même objet que le défi
     });
   }
