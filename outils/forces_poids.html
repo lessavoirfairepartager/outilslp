@@ -1,0 +1,2002 @@
+<!--
+Forces et poids — modéliser, lire et construire un vecteur force
+Copyright (c) 2026 Moise Muller <lessavoirfairepartager@gmail.com>
+Créé pour outilslp.netlify.app
+
+Connaissances visées (référentiel v5) :
+  2PRO-PC-MECA-Mouvement-Co6  Savoir qu'une action mécanique peut se modéliser par une force.
+  2PRO-PC-MECA-Mouvement-Co7  Connaître les caractéristiques d'une force (droite d'action, sens, valeur en newton).
+  2PRO-PC-MECA-Mouvement-Co8  Connaître les caractéristiques du poids d'un corps.
+  2PRO-PC-MECA-Mouvement-Co9  Connaître et utiliser la relation entre le poids et la masse.
+Les items CAP-PC-MECA-Mouvement-Co6 à Co9 sont identiques : l'outil sert les deux niveaux.
+
+Structure : design system partagé (lp-ui.css / lp-ui.js / lp-fiche.js),
+boucle de défi déléguée à assets/lp-defi.js en dom:true, sur le modèle
+outils/perimetre_usinage.html. Fiche imprimable via LP.ficheModal, cases par
+compétence (C1 / C3 / C4) sur le modèle outils/sonometre.html.
+
+ECHELLE : les vecteurs se mesurent en CARREAUX, pas en centimètres. Un vrai
+centimètre ne peut être garanti ni à l'écran (SVG responsive) ni sur la fiche
+(la carte mesure 125 px pour un viewBox de 200 unités). Le quadrillage rend la
+mesure exacte et transposable au papier quadrillé de l'élève.
+
+CONTENU PEDAGOGIQUE : rappels, indices, détails, valeurs, échelles et énoncés
+sont un PREMIER JET, à relire par l'auteur (marqué en clair dans le fichier).
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forces et poids — 2nde Bac Pro / CAP</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--coral); --accent-bg: var(--coral-bg); }
+
+  /* ── Explorateur : commandes propres à cet outil ─────────────────────── */
+  #mode-explo select {
+    padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: var(--fs-sm); font-weight: 600;
+    background: var(--surface2); color: var(--text); width: 100%; max-width: 220px;
+  }
+  #mode-explo select:focus { border-color: var(--accent); background: var(--surface); outline: none; }
+  #mode-explo input[type="text"] {
+    width: 100%; max-width: 150px; padding: 9px 12px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: var(--fs-md); font-weight: 600;
+    background: var(--surface2); color: var(--text);
+  }
+  #mode-explo input[type="text"]:focus { border-color: var(--accent); background: var(--surface); outline: none; }
+
+  /* Boutons d'astre : même grammaire visuelle que les onglets de forme */
+  .astre-row { display: flex; gap: 7px; flex-wrap: wrap; }
+  .astre-btn {
+    padding: 8px 14px; border-radius: 999px; font-family: inherit;
+    font-size: var(--fs-xs); font-weight: 600; border: 1px solid var(--border);
+    cursor: pointer; background: var(--surface); color: var(--text2);
+    transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .astre-btn.on { color: var(--coral); background: var(--coral-bg); border-color: var(--coral); }
+
+  /* Cases à cocher des actions mécaniques */
+  .fp-coches { display: flex; flex-direction: column; gap: 8px; }
+  .fp-coche {
+    display: flex; align-items: flex-start; gap: 9px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    padding: 9px 11px; cursor: pointer; background: var(--surface2);
+    font-size: var(--fs-xs); color: var(--text2); line-height: 1.5;
+  }
+  .fp-coche.on { border-color: var(--accent); background: var(--accent-bg); }
+  .fp-coche input { margin-top: 2px; transform: scale(1.15); cursor: pointer; flex-shrink: 0; }
+  .fp-coche b { color: var(--text); }
+  .fp-tag {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px;
+    border-radius: 999px; margin-left: 6px; white-space: nowrap;
+  }
+  .fp-tag.contact  { background: var(--teal-bg);  color: var(--teal); }
+  .fp-tag.distance { background: var(--purple-bg); color: var(--purple); }
+
+  /* Tableau de comparaison des astres */
+  .fp-table { width: 100%; border-collapse: collapse; font-size: var(--fs-xs); }
+  .fp-table th, .fp-table td { border: 1px solid var(--border); padding: 7px 9px; text-align: center; }
+  .fp-table th { background: var(--surface2); font-weight: 700; color: var(--text2); }
+  .fp-table td.val { font-weight: 700; color: var(--text); }
+
+  /* ── Défi : fiche d'identité de la force (famille « lire ») ──────────── */
+  /* Ce bloc est injecté par le générateur dans #defi-cotes, que le moteur
+     repeuple à chaque question : pas d'observateur à écrire pour l'afficher. */
+  .fp-carte { text-align: left; width: 100%; max-width: 460px; margin: 0 auto; }
+  .fp-ligne {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 7px 0; border-bottom: 1px solid var(--border);
+  }
+  .fp-ligne:last-of-type { border-bottom: 0; }
+  .fp-lbl {
+    font-size: var(--fs-xs); font-weight: 700; color: var(--text3);
+    min-width: 132px; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .fp-btns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; flex: 1; }
+  .fp-opt {
+    padding: 7px 13px; border-radius: 999px; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--text2); font-family: inherit;
+    font-size: var(--fs-xs); font-weight: 600; cursor: pointer;
+    transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .fp-opt:hover { border-color: var(--border2); color: var(--text); }
+  .fp-opt.on { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+  .fp-val {
+    width: 92px; padding: 7px 10px; border: 1.5px solid var(--border);
+    border-radius: var(--radius); font-family: inherit; font-size: var(--fs-md);
+    font-weight: 700; background: var(--surface); color: var(--text);
+  }
+  .fp-val:focus { border-color: var(--accent); outline: none; }
+  .fp-unit { font-size: var(--fs-xs); color: var(--text3); font-weight: 600; }
+  .fp-etat {
+    font-size: var(--fs-xs); color: var(--text3); padding-top: 8px; line-height: 1.5;
+  }
+  .fp-etat.ok { color: var(--teal); font-weight: 600; }
+
+  /* Récapitulatif en lecture seule : le champ du moteur sert d'affichage */
+  #defi-input.fp-recap {
+    font-size: var(--fs-sm); font-weight: 600; cursor: default;
+    background: var(--surface2); color: var(--text2);
+  }
+
+  /* ── Défi : vignettes SVG dans les réponses à choisir ────────────────── */
+  .defi-choice .fp-mini {
+    width: 100%; height: auto; display: block; margin-top: 6px;
+    background: #ffffff; border-radius: 6px; border: 1px solid var(--border);
+  }
+  .defi-choice { text-align: center; }
+  .defi-choice .fp-etiq { display: block; font-size: var(--fs-xs); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <line x1="7" y1="20" x2="27" y2="20" stroke="var(--coral)" stroke-width="3.4"
+            stroke-linecap="round" class="lp-draw" style="--dash:22"/>
+      <polygon points="34,20 25,25 25,15" fill="var(--coral)"/>
+      <circle cx="7" cy="20" r="3.2" fill="var(--coral)"/>
+    </svg></div>
+  <div>
+    <h1>Forces et poids</h1>
+    <p>Modéliser une action &middot; lire et construire un vecteur &middot; P = m &times; g</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- SELECTEUR DE MODE -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('explo',this)">Explorateur</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi &#8314;</button>
+  </div>
+
+  <!-- ═══════════════ EXPLORATEUR ═══════════════ -->
+  <div id="mode-explo">
+    <div class="shape-tabs-row">
+      <div class="shape-tabs">
+        <button class="shape-tab active" data-color="blue" onclick="setPan('vecteur',this)"><span class="dot" style="background:var(--blue)"></span>Vecteur force</button>
+        <button class="shape-tab" data-color="teal" onclick="setPan('poids',this)"><span class="dot" style="background:var(--teal)"></span>Poids P = m &times; g</button>
+        <button class="shape-tab" data-color="amber2" onclick="setPan('echelle',this)"><span class="dot" style="background:#633806"></span>Échelle</button>
+        <button class="shape-tab" data-color="coral" onclick="setPan('actions',this)"><span class="dot" style="background:var(--coral)"></span>Actions mécaniques</button>
+      </div>
+      <button class="btn-rnd" onclick="hasardPanneau()">&#127922; Nouvelles valeurs</button>
+    </div>
+
+    <!-- VECTEUR FORCE -->
+    <div id="panel-vecteur" class="panel active">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--blue-bg);color:var(--blue)">Représenter une force</span>
+        <svg id="v-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">Les quatre caractéristiques se lisent sur le dessin :<br>point d'application &middot; direction &middot; sens &middot; valeur</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Les quatre caractéristiques</p>
+        <div class="field">
+          <label for="v-obj">Objet</label>
+          <div class="field-row"><select id="v-obj" onchange="calcVecteur()"></select></div>
+        </div>
+        <div class="field">
+          <label for="v-pt">Point d'application</label>
+          <div class="field-row"><select id="v-pt" onchange="calcVecteur()"></select></div>
+        </div>
+        <div class="field">
+          <label for="v-sens">Direction et sens</label>
+          <div class="field-row"><select id="v-sens" onchange="calcVecteur()"></select></div>
+        </div>
+        <div class="field">
+          <label for="v-F">Valeur de la force</label>
+          <div class="field-row"><input type="text" inputmode="decimal" id="v-F" value="60" oninput="calcVecteur()"><span class="unit">N</span></div>
+        </div>
+        <div class="field">
+          <label for="v-ech">Échelle du dessin</label>
+          <div class="field-row"><select id="v-ech" onchange="calcVecteur()"></select></div>
+        </div>
+        <div class="formula-box">
+          <code>longueur = valeur &divide; échelle</code>
+          <div class="formula-detail" id="v-detail"></div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Longueur du vecteur à tracer</div>
+          <div class="result-value" id="v-result">3<span class="result-unit">carreaux</span></div>
+          <div class="result-sub" id="v-sub"></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> confondre <b>direction</b> et <b>sens</b>. La direction, c'est la droite d'action (horizontale, verticale, oblique) ; le sens, c'est le côté vers lequel pointe la flèche sur cette droite.</div>
+      </div>
+    </div>
+
+    <!-- POIDS -->
+    <div id="panel-poids" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--teal-bg);color:var(--teal)">Le vecteur poids</span>
+        <svg id="p-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">Le poids est toujours vertical, dirigé vers le bas,<br>appliqué au centre de gravité G</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Masse et astre</p>
+        <div class="field">
+          <label for="p-obj">Objet</label>
+          <div class="field-row"><select id="p-obj" onchange="calcPoids()"></select></div>
+        </div>
+        <div class="field">
+          <label for="p-m">Masse m</label>
+          <div class="field-row"><input type="text" inputmode="decimal" id="p-m" value="12" oninput="calcPoids()"><span class="unit">kg</span></div>
+        </div>
+        <div class="field">
+          <label>Astre</label>
+          <div class="astre-row" id="p-astres"></div>
+        </div>
+        <div class="field">
+          <label for="p-ech">Échelle du dessin</label>
+          <div class="field-row"><select id="p-ech" onchange="calcPoids()"></select></div>
+        </div>
+        <div class="formula-box">
+          <code>P = m &times; g</code>
+          <div class="formula-detail" id="p-detail"></div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Poids</div>
+          <div class="result-value" id="p-result">117,7<span class="result-unit">N</span></div>
+          <div class="result-sub" id="p-sub"></div>
+        </div>
+        <table class="fp-table" id="p-table"></table>
+        <div class="error-box"><strong>Erreur fréquente :</strong> dire que « la masse diminue sur la Lune ». La masse (en kg) ne change jamais : c'est la quantité de matière. C'est le <b>poids</b> (en N) qui change, parce que g change d'un astre à l'autre.</div>
+      </div>
+    </div>
+
+    <!-- ECHELLE -->
+    <div id="panel-echelle" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:#FAEEDA;color:#633806">Échelle du dessin</span>
+        <svg id="e-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">Une échelle relie une longueur sur le dessin<br>à une valeur de force en newtons</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Convertir dans les deux sens</p>
+        <div class="field">
+          <label for="e-ech">Échelle</label>
+          <div class="field-row"><select id="e-ech" onchange="calcEchLong()"></select></div>
+        </div>
+        <div class="field">
+          <label for="e-long">Longueur du vecteur</label>
+          <div class="field-row"><input type="text" inputmode="decimal" id="e-long" value="4" oninput="calcEchLong()"><span class="unit">carreaux</span></div>
+        </div>
+        <div class="field">
+          <label for="e-val">Valeur de la force</label>
+          <div class="field-row"><input type="text" inputmode="decimal" id="e-val" value="80" oninput="calcEchVal()"><span class="unit">N</span></div>
+        </div>
+        <div class="formula-box">
+          <code>valeur = longueur &times; échelle &nbsp;&nbsp;|&nbsp;&nbsp; longueur = valeur &divide; échelle</code>
+          <div class="formula-detail" id="e-detail"></div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Lecture du dessin</div>
+          <div class="result-value" id="e-result">80<span class="result-unit">N</span></div>
+          <div class="result-sub" id="e-sub"></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> multiplier au lieu de diviser. Si l'échelle est « 1 carreau &#8596; 20 N », une force de 80 N se trace sur 80 &divide; 20 = 4 carreaux, pas 80 &times; 20.</div>
+      </div>
+    </div>
+
+    <!-- ACTIONS MECANIQUES -->
+    <div id="panel-actions" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--coral-bg);color:var(--coral)">Modéliser les actions</span>
+        <svg id="a-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">Une caisse tirée par un câble, posée sur le sol.<br>Chaque action subie par la caisse se modélise par une force.</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Afficher les forces subies par la caisse</p>
+        <div class="fp-coches" id="a-coches"></div>
+        <div class="formula-box">
+          <code>action mécanique &#8594; force</code>
+          <div class="formula-detail">Action de <b>contact</b> : les deux objets se touchent. Action <b>à distance</b> : ils ne se touchent pas (poids, aimant).</div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Forces affichées</div>
+          <div class="result-value" id="a-result">0<span class="result-unit">sur 4</span></div>
+          <div class="result-sub" id="a-sub"></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> oublier de préciser <b>qui</b> exerce l'action et <b>sur qui</b>. On écrit toujours « action du sol <b>sur</b> la caisse », jamais « la force du sol » toute seule.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ DÉFI + DÉFI ⁺ ═══════════════ -->
+  <!-- Balisage standard du moteur : onglets de familles et zone de réponse
+       sont construits par lp-defi.js. -->
+  <div id="mode-defi">
+    <div class="defi-card">
+      <div id="defi-plus-badge" class="defi-mode-badge">&#128274; DÉFI &#8314; — Rappels masqués</div>
+      <div class="defi-header">
+        <div class="defi-title" id="defi-mode-title">Mode défi — Forces et poids</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
+
+      <div id="defi-familles" style="margin-bottom:1.25rem"></div>
+
+      <div class="defi-aide" id="defi-aide"></div>
+
+      <div class="defi-shape-display" id="defi-figure">
+        <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:300px;width:100%;"></svg>
+        <div class="defi-enonce" id="defi-enonce"></div>
+        <div class="defi-cotes" id="defi-cotes"></div>
+      </div>
+
+      <div id="defi-reponse"></div>
+
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol"></div>
+
+      <button class="btn-check" id="btn-check">Vérifier ma réponse</button>
+      <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
+      <button class="btn-next" id="btn-next" style="display:none">Question suivante →</button>
+
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="ouvrirFiche()">&#128196; Générer une fiche d'exercices</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- La modale de choix des compétences est construite par LP.ficheModal -->
+
+<script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
+<script>
+/* ═════════════════════════════════════════════════════════════════════════
+   FORCES ET POIDS — script de l'outil
+   ES5 strict (var / function), apostrophes DROITES uniquement dans le JS :
+   les apostrophes typographiques du texte affiché sont écrites \u2019.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ─── OUTILLAGE NUMÉRIQUE ─────────────────────────────────────────────── */
+
+function fnb(x, d) {
+  var p = (d === undefined) ? 2 : d;
+  var f = Math.pow(10, p);
+  var s = (Math.round(x * f) / f).toFixed(p);
+  s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  return s.replace('.', ',');
+}
+function fnb1(x) { return fnb(x, 1); }
+function lireNb(s) { return LP.defi.lireNombre(s); }
+function melange(t) { return LP.defi.melanger(t); }
+function auHasard(t) { return t[Math.floor(Math.random() * t.length)]; }
+function entier(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
+function el(id) { return document.getElementById(id); }
+function ech(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ─── OUTILLAGE SVG ───────────────────────────────────────────────────────
+   Toutes les figures sont dessinées dans le MEME repère 200 x 160, celui du
+   viewBox de la fiche imprimable (lp-fiche.js). Un carreau vaut 20 unités :
+   la zone quadrillée fait 9 carreaux sur 6, de (10,28) à (190,148).
+
+   Les couleurs sont des littéraux hexadécimaux et non des var(--...) : la
+   fiche s'ouvre dans une fenêtre qui n'a pas la feuille de style du site, et
+   un var() non résolu sur un attribut fill retombe en noir.               */
+
+var CAR = 20;                 /* unités par carreau                        */
+var GX0 = 10, GY0 = 28;       /* coin haut-gauche du quadrillage           */
+var GNX = 9,  GNY = 6;        /* nombre de carreaux en largeur / hauteur   */
+var GX1 = GX0 + GNX * CAR;    /* 190                                        */
+var GY1 = GY0 + GNY * CAR;    /* 148                                        */
+
+var COL_TRAIT = '#3f3d38';
+var COL_GRILLE = '#dcdad1';
+var COL_CADRE = '#b6b4ab';
+var COL_FORCE = '#185FA5';
+var COL_POIDS = '#A32D2D';
+var COL_PT = '#633806';
+
+function f2(n) { return Math.round(n * 100) / 100; }
+
+/* Texte SVG avec garde-fou de débordement : la largeur est estimée puis
+   l'ancre est ramenée dans le cadre. Le facteur 0,56 est mesuré sur Arial,
+   police de la fiche ; l'audit Chromium vérifie ensuite les getBBox réels. */
+function texte(x, y, s, o) {
+  o = o || {};
+  var fs = o.fs || 11;
+  var ancre = o.ancre || 'middle';
+  /* Garde-fou de LARGEUR, distinct du garde-fou de position : une chaîne
+     longue ne peut pas tenir dans 200 unités, quel que soit son ancrage.
+     On réduit alors le corps plutôt que de laisser le texte sortir. */
+  var dispo = (o.dispo || 190);
+  var n = String(s).length;
+  if (n * fs * 0.56 > dispo) fs = Math.max(7, dispo / (n * 0.56));
+  fs = Math.round(fs * 10) / 10;
+  var w = n * fs * 0.56;
+  var avant = (ancre === 'middle') ? w / 2 : (ancre === 'end' ? w : 0);
+  var g = x - avant, d = x + (w - avant);
+  if (g < 4) x += (4 - g);
+  if (d > 196) x -= (d - 196);
+  if (y < fs) y = fs;
+  if (y > 157) y = 157;
+  return '<text x="' + f2(x) + '" y="' + f2(y) + '" text-anchor="' + ancre
+       + '" font-size="' + fs + '" font-family="Arial, Helvetica, sans-serif"'
+       + ' fill="' + (o.col || COL_TRAIT) + '" font-weight="' + (o.poids || 600) + '">'
+       + ech(s) + '</text>';
+}
+
+/* Le quadrillage, support de mesure. C'est lui qui rend l'échelle honnête :
+   l'élève compte des carreaux, exactement comme sur son papier quadrillé. */
+function grille() {
+  var s = '<rect x="' + GX0 + '" y="' + GY0 + '" width="' + (GNX * CAR) + '" height="'
+        + (GNY * CAR) + '" fill="#ffffff"/>';
+  var i;
+  for (i = 1; i < GNX; i++) {
+    s += '<line x1="' + (GX0 + i * CAR) + '" y1="' + GY0 + '" x2="' + (GX0 + i * CAR)
+       + '" y2="' + GY1 + '" stroke="' + COL_GRILLE + '" stroke-width="0.9"/>';
+  }
+  for (i = 1; i < GNY; i++) {
+    s += '<line x1="' + GX0 + '" y1="' + (GY0 + i * CAR) + '" x2="' + GX1
+       + '" y2="' + (GY0 + i * CAR) + '" stroke="' + COL_GRILLE + '" stroke-width="0.9"/>';
+  }
+  s += '<rect x="' + GX0 + '" y="' + GY0 + '" width="' + (GNX * CAR) + '" height="'
+     + (GNY * CAR) + '" fill="none" stroke="' + COL_CADRE + '" stroke-width="1.3"/>';
+  return s;
+}
+
+/* Bandeau d'échelle, en haut du dessin. */
+function bandeauEchelle(k) {
+  return texte(100, 19, 'Échelle : 1 carreau \u2194 ' + fnb(k, 0) + ' N', { fs: 12, col: '#55534e' });
+}
+function bandeauTexte(t) {
+  return texte(100, 19, t, { fs: 12, col: '#55534e' });
+}
+/* Deux informations dans le bandeau : deux lignes, jamais une ligne trop
+   longue écrasée par le garde-fou de largeur. */
+function bandeauDouble(a, b) {
+  return texte(100, 13, a, { fs: 11, col: '#55534e' })
+       + texte(100, 24, b, { fs: 11, col: '#7d7a73', poids: 500 });
+}
+
+/* Sol hachuré. */
+function sol(y) {
+  var s = '<line x1="' + GX0 + '" y1="' + y + '" x2="' + GX1 + '" y2="' + y
+        + '" stroke="#8b8880" stroke-width="2.4"/>';
+  var x;
+  for (x = GX0 + 5; x <= GX1; x += 13) {
+    s += '<line x1="' + x + '" y1="' + y + '" x2="' + (x - 6) + '" y2="' + (y + 7)
+       + '" stroke="#b3b0a8" stroke-width="1.1"/>';
+  }
+  return s;
+}
+
+/* Une flèche complète : segment + pointe pleine, la pointe tombant très
+   exactement sur (x2,y2). L'étiquette est posée PERPENDICULAIREMENT au
+   vecteur, donc jamais sur son tracé, et sur un disque blanc qui la rend
+   lisible même par-dessus l'objet. */
+function fleche(x1, y1, x2, y2, col, lbl) {
+  var dx = x2 - x1, dy = y2 - y1;
+  var L = Math.sqrt(dx * dx + dy * dy);
+  if (L < 2) return '';
+  var ux = dx / L, uy = dy / L;
+  var hl = Math.min(11, L * 0.55), hw = 5.4;
+  var bx = x2 - ux * hl, by = y2 - uy * hl;
+  var px = -uy, py = ux;
+  var s = '<line x1="' + f2(x1) + '" y1="' + f2(y1) + '" x2="' + f2(bx) + '" y2="' + f2(by)
+        + '" stroke="' + col + '" stroke-width="2.8" stroke-linecap="butt"/>'
+        + '<polygon points="' + f2(x2) + ',' + f2(y2) + ' '
+        + f2(bx + px * hw) + ',' + f2(by + py * hw) + ' '
+        + f2(bx - px * hw) + ',' + f2(by - py * hw) + '" fill="' + col + '"/>'
+        + '<circle cx="' + f2(x1) + '" cy="' + f2(y1) + '" r="3" fill="' + col + '"/>';
+  if (lbl) {
+    var mx = x1 + dx * 0.55 + px * 13;
+    var my = y1 + dy * 0.55 + py * 13;
+    if (mx < 12) mx = x1 + dx * 0.55 - px * 13;
+    if (mx > 188) mx = x1 + dx * 0.55 - px * 13;
+    if (my < 32) my = y1 + dy * 0.55 - py * 13;
+    if (my > 150) my = y1 + dy * 0.55 - py * 13;
+    s += pastille(mx, my, lbl, col, 13);
+  }
+  return s;
+}
+
+/* Étiquette sur fond blanc arrondi : lisible par-dessus n'importe quel tracé,
+   et de largeur proportionnelle au texte (une pastille ronde débordait dès
+   que l'étiquette dépassait deux caractères). */
+function pastille(x, y, t, col, fs) {
+  fs = fs || 12;
+  var w = String(t).length * fs * 0.62 + 8;
+  var h = fs + 5;
+  if (x - w / 2 < 4) x = 4 + w / 2;
+  if (x + w / 2 > 196) x = 196 - w / 2;
+  if (y - h / 2 < 4) y = 4 + h / 2;
+  if (y + h / 2 > 156) y = 156 - h / 2;
+  return '<rect x="' + f2(x - w / 2) + '" y="' + f2(y - h / 2) + '" width="' + f2(w)
+       + '" height="' + f2(h) + '" rx="' + f2(h / 2) + '" fill="#ffffff" fill-opacity="0.9"/>'
+       + '<text x="' + f2(x) + '" y="' + f2(y + fs * 0.35) + '" text-anchor="middle" font-size="' + fs
+       + '" font-family="Arial, Helvetica, sans-serif" fill="' + col
+       + '" font-weight="700">' + ech(t) + '</text>';
+}
+
+/* Distance d'un point au SEGMENT (et non à la droite) : sert à savoir si une
+   étiquette tomberait sur le tracé du vecteur. */
+function distSegment(x, y, seg) {
+  if (!seg) return 1e9;
+  var dx = seg.x2 - seg.x1, dy = seg.y2 - seg.y1;
+  var L2 = dx * dx + dy * dy;
+  var t = L2 ? ((x - seg.x1) * dx + (y - seg.y1) * dy) / L2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  var px = seg.x1 + t * dx - x, py = seg.y1 + t * dy - y;
+  return Math.sqrt(px * px + py * py);
+}
+
+/* Point d'application matérialisé, avec sa lettre.
+   Le point qui PORTE la force reçoit un décalage perpendiculaire au vecteur :
+   sa lettre ne peut donc pas tomber sur la flèche. Les autres points sont
+   décalés radialement depuis le centre de gravité — sauf quand ce décalage
+   les amène sur le tracé, ce qui arrive dès qu'une flèche traverse l'objet
+   (l'intrus « sens inversé » du défi « construire », sur un objet dont deux
+   points sont diamétralement opposés). Dans ce cas on bascule aussi sur la
+   perpendiculaire, du côté qui éloigne le plus. */
+var MARGE_LBL = 11;
+
+function marquePoint(p, G, actif, u, seg) {
+  var s = '<circle cx="' + p.x + '" cy="' + p.y + '" r="3.4" fill="#ffffff" stroke="'
+        + (actif ? COL_FORCE : COL_PT) + '" stroke-width="2"/>';
+  var ox, oy, sx, sy, vers;
+  if (actif && u) {
+    sx = -u.uy; sy = u.ux;
+    vers = (p.x - G.x) * sx + (p.y - G.y) * sy;
+    if (vers < 0) { sx = -sx; sy = -sy; }
+    ox = sx * 13; oy = sy * 13;
+  } else {
+    var dx = p.x - G.x, dy = p.y - G.y;
+    var L = Math.sqrt(dx * dx + dy * dy) || 1;
+    ox = dx / L * 13; oy = dy / L * 13;
+    if (u && distSegment(p.x + ox, p.y + oy, seg) < MARGE_LBL) {
+      sx = -u.uy; sy = u.ux;
+      vers = (p.x - G.x) * sx + (p.y - G.y) * sy;
+      if (vers < 0) { sx = -sx; sy = -sy; }
+      ox = sx * 13; oy = sy * 13;
+      if (distSegment(p.x + ox, p.y + oy, seg) < MARGE_LBL) { ox = -ox; oy = -oy; }
+    }
+  }
+  return s + pastille(p.x + ox, p.y + oy, p.n, actif ? COL_FORCE : COL_PT, 12);
+}
+
+/* ─── LES OBJETS ──────────────────────────────────────────────────────────
+   Chaque objet est calé sur les nœuds du quadrillage : les vecteurs partent
+   donc toujours d'un nœud et tombent sur un nœud, ce qui rend la mesure en
+   carreaux exacte à l'œil.                                               */
+
+function svgCaisse(x, y, w, h) {
+  return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h
+       + '" rx="2" fill="#F3E7D2" stroke="#8A6A3A" stroke-width="2.2"/>'
+       + '<line x1="' + x + '" y1="' + (y + 10) + '" x2="' + (x + w) + '" y2="' + (y + 10)
+       + '" stroke="#C4A878" stroke-width="1.3"/>';
+}
+
+var OBJETS = [
+  {
+    v: 'caisse', nom: 'la caisse', art: 'une caisse', leger: true,
+    G: { x: 100, y: 108 },
+    pts: [ { n: 'A', x: 70, y: 88 }, { n: 'B', x: 130, y: 108 }, { n: 'C', x: 100, y: 88 } ],
+    decor: function () { return sol(128); },
+    corps: function () { return svgCaisse(70, 88, 60, 40); }
+  },
+  {
+    v: 'balle', nom: 'le ballon', art: 'un ballon', leger: true,
+    G: { x: 100, y: 108 },
+    pts: [ { n: 'A', x: 100, y: 88 }, { n: 'B', x: 120, y: 108 }, { n: 'C', x: 80, y: 108 } ],
+    decor: function () { return sol(128); },
+    corps: function () {
+      return '<circle cx="100" cy="108" r="20" fill="#E6F1FB" stroke="#2F6FA8" stroke-width="2.2"/>'
+        + '<path d="M84 101 Q100 113 116 101" fill="none" stroke="#2F6FA8" stroke-width="1.2"/>';
+    }
+  },
+  {
+    v: 'panneau', nom: 'le panneau', art: 'un panneau suspendu', leger: false,
+    G: { x: 100, y: 108 },
+    pts: [ { n: 'A', x: 100, y: 88 }, { n: 'B', x: 130, y: 128 }, { n: 'C', x: 70, y: 108 } ],
+    decor: function () {
+      var s = '<line x1="40" y1="48" x2="160" y2="48" stroke="#8b8880" stroke-width="2.4"/>';
+      var x;
+      for (x = 45; x <= 160; x += 13) {
+        s += '<line x1="' + x + '" y1="48" x2="' + (x - 6) + '" y2="41'
+           + '" stroke="#b3b0a8" stroke-width="1.1"/>';
+      }
+      return s + '<line x1="100" y1="48" x2="100" y2="88" stroke="#7d7a73" stroke-width="2"/>';
+    },
+    corps: function () {
+      return '<rect x="70" y="88" width="60" height="40" rx="2" fill="#E1F5EE" stroke="#0F6E56" stroke-width="2.2"/>';
+    }
+  }
+];
+
+/* Objet posé dans son décor (usage courant) ou surélevé de dy unités : le
+   décor reste au sol, seul le corps monte. Un objet surélevé laisse la place
+   au vecteur poids, qui a besoin de trois carreaux sous le centre de gravité. */
+function figureObjet(obj, dy) {
+  dy = dy || 0;
+  if (!dy) return obj.decor() + obj.corps();
+  return '<g transform="translate(0,' + dy + ')">' + obj.corps() + '</g>';
+}
+function ptDecale(p, dy) { return { n: p.n, x: p.x, y: p.y + (dy || 0) }; }
+function GDecale(obj, dy) { return { x: obj.G.x, y: obj.G.y + (dy || 0) }; }
+
+function objetPar(v) {
+  var i;
+  for (i = 0; i < OBJETS.length; i++) if (OBJETS[i].v === v) return OBJETS[i];
+  return OBJETS[0];
+}
+function objetsLegers() {
+  var out = [], i;
+  for (i = 0; i < OBJETS.length; i++) if (OBJETS[i].leger) out.push(OBJETS[i]);
+  return out;
+}
+function pointPar(obj, n) {
+  var i;
+  for (i = 0; i < obj.pts.length; i++) if (obj.pts[i].n === n) return obj.pts[i];
+  return obj.pts[0];
+}
+
+/* ─── DIRECTIONS ET SENS ──────────────────────────────────────────────────
+   Choix pédagogique : les forces tirées dans les défis sont horizontales ou
+   verticales. « Oblique » reste proposé comme réponse possible (c'est un
+   distracteur utile), mais n'est jamais la bonne : à ce niveau, la lecture
+   d'une droite d'action oblique sur un quadrillage n'ajoute rien.        */
+
+var SENS4 = [
+  { v: 'vers la droite',  ux:  1, uy:  0, dir: 'horizontale' },
+  { v: 'vers la gauche',  ux: -1, uy:  0, dir: 'horizontale' },
+  { v: 'vers le haut',    ux:  0, uy: -1, dir: 'verticale' },
+  { v: 'vers le bas',     ux:  0, uy:  1, dir: 'verticale' }
+];
+var LES_DIR = ['horizontale', 'verticale', 'oblique'];
+var LES_SENS = ['vers la droite', 'vers la gauche', 'vers le haut', 'vers le bas'];
+
+function sensPar(v) {
+  var i;
+  for (i = 0; i < SENS4.length; i++) if (SENS4[i].v === v) return SENS4[i];
+  return SENS4[0];
+}
+
+/* La pointe doit rester dans le cadre, marge prise pour la pointe (5,4) et
+   pour l'étiquette. Toute combinaison qui échoue ici n'est jamais tirée. */
+function pointeOk(x, y) {
+  return x >= GX0 + 6 && x <= GX1 - 6 && y >= GY0 + 6 && y <= GY1 - 6;
+}
+
+/* Longueurs admissibles (en carreaux) pour un point et un sens donnés. */
+function longueursPossibles(pt, s, maxCar) {
+  var out = [], n;
+  for (n = 1; n <= (maxCar || 5); n++) {
+    if (pointeOk(pt.x + s.ux * n * CAR, pt.y + s.uy * n * CAR)) out.push(n);
+  }
+  return out;
+}
+
+/* Sens « sortants » : la force s'éloigne du centre de gravité, donc la
+   flèche ne traverse jamais l'objet. */
+function sensSortants(obj, pt) {
+  var out = [], i;
+  for (i = 0; i < SENS4.length; i++) {
+    var s = SENS4[i];
+    var d = (pt.x - obj.G.x) * s.ux + (pt.y - obj.G.y) * s.uy;
+    if (d >= 0 && longueursPossibles(pt, s, 5).length) out.push(s);
+  }
+  return out;
+}
+
+/* ─── LES ASTRES ────────────────────────────────────────────────────────── */
+
+var ASTRES = [
+  { v: 'terre', nom: 'la Terre', lieu: 'sur la Terre', g: 9.81, gTxt: '9,81', col: '#2F6FA8' },
+  { v: 'lune',  nom: 'la Lune',  lieu: 'sur la Lune',  g: 1.62, gTxt: '1,62', col: '#6b6a66' },
+  { v: 'mars',  nom: 'Mars',     lieu: 'sur Mars',     g: 3.71, gTxt: '3,71', col: '#993C1D' }
+];
+function astrePar(v) {
+  var i;
+  for (i = 0; i < ASTRES.length; i++) if (ASTRES[i].v === v) return ASTRES[i];
+  return ASTRES[0];
+}
+
+var ECHELLES = [5, 10, 15, 20, 25, 50];
+var MASSES = [0.5, 1.2, 2, 3.5, 5, 8, 12, 20, 45, 60, 75];
+
+/* ═════════════════════════════════════════════════════════════════════════
+   EXPLORATEUR — quatre panneaux manipulables
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var panCourant = 'vecteur';
+
+function optionsHTML(liste, valeur, libelle) {
+  var h = '', i;
+  for (i = 0; i < liste.length; i++) {
+    h += '<option value="' + ech(valeur(liste[i])) + '">' + ech(libelle(liste[i])) + '</option>';
+  }
+  return h;
+}
+
+/* ─── Panneau 1 : le vecteur force ────────────────────────────────────── */
+
+function remplirVecteur() {
+  el('v-obj').innerHTML = optionsHTML(OBJETS,
+    function (o) { return o.v; }, function (o) { return o.art; });
+  el('v-ech').innerHTML = optionsHTML(ECHELLES,
+    function (k) { return k; }, function (k) { return '1 carreau \u2194 ' + k + ' N'; });
+  el('v-ech').value = '20';
+  majPointsVecteur();
+}
+
+function majPointsVecteur() {
+  var obj = objetPar(el('v-obj').value);
+  var avant = el('v-pt').value;
+  el('v-pt').innerHTML = optionsHTML(obj.pts,
+    function (p) { return p.n; }, function (p) { return 'Point ' + p.n; });
+  el('v-pt').value = pointPar(obj, avant).n;
+  majSensVecteur();
+}
+
+function majSensVecteur() {
+  var obj = objetPar(el('v-obj').value);
+  var pt = pointPar(obj, el('v-pt').value);
+  var poss = sensSortants(obj, pt);
+  if (!poss.length) poss = SENS4;
+  var avant = el('v-sens').value;
+  el('v-sens').innerHTML = optionsHTML(poss,
+    function (s) { return s.v; },
+    function (s) { return s.dir + ', ' + s.v; });
+  var garde = false, i;
+  for (i = 0; i < poss.length; i++) if (poss[i].v === avant) garde = true;
+  el('v-sens').value = garde ? avant : poss[0].v;
+}
+
+function calcVecteur() {
+  majPointsVecteur();
+  var obj = objetPar(el('v-obj').value);
+  var pt  = pointPar(obj, el('v-pt').value);
+  var s   = sensPar(el('v-sens').value);
+  var k   = parseFloat(el('v-ech').value);
+  var F   = lireNb(el('v-F').value);
+  if (F === null || F < 0) F = 0;
+
+  var longCar = F / k;
+  var maxCar = 0;
+  var poss = longueursPossibles(pt, s, 9);
+  if (poss.length) maxCar = poss[poss.length - 1];
+
+  var trace = Math.min(longCar, maxCar);
+  var svg = grille() + bandeauEchelle(k) + figureObjet(obj, 0);
+  var seg = (trace > 0.05)
+    ? { x1: pt.x, y1: pt.y,
+        x2: pt.x + s.ux * trace * CAR, y2: pt.y + s.uy * trace * CAR }
+    : null;
+  var i;
+  for (i = 0; i < obj.pts.length; i++) {
+    svg += marquePoint(obj.pts[i], obj.G, obj.pts[i].n === pt.n, s, seg);
+  }
+  if (seg) svg += fleche(seg.x1, seg.y1, seg.x2, seg.y2, COL_FORCE, 'F');
+  el('v-svg').innerHTML = svg;
+
+  el('v-detail').innerHTML = 'longueur = ' + fnb1(F) + ' \u00F7 ' + k + ' = '
+    + fnb(longCar, 2) + ' carreau' + (longCar > 1 ? 'x' : '');
+  el('v-result').innerHTML = fnb(longCar, 2)
+    + '<span class="result-unit">carreau' + (longCar > 1 ? 'x' : '') + '</span>';
+
+  var fiche = 'Point d\u2019application : ' + pt.n + ' \u00B7 direction : ' + s.dir
+            + ' \u00B7 sens : ' + s.v + ' \u00B7 valeur : ' + fnb1(F) + ' N';
+  if (longCar > maxCar + 0.001) {
+    el('v-sub').innerHTML = fiche + '<br><b>Le vecteur sort du cadre :</b> choisis une '
+      + 'échelle plus grande (plus de newtons par carreau).';
+  } else {
+    el('v-sub').innerHTML = fiche;
+  }
+}
+
+/* ─── Panneau 2 : le poids ────────────────────────────────────────────── */
+
+var astreCourant = 'terre';
+
+function remplirPoids() {
+  el('p-obj').innerHTML = optionsHTML(OBJETS,
+    function (o) { return o.v; }, function (o) { return o.art; });
+  el('p-ech').innerHTML = optionsHTML(ECHELLES,
+    function (k) { return k; }, function (k) { return '1 carreau \u2194 ' + k + ' N'; });
+  el('p-ech').value = '50';
+  var h = '', i;
+  for (i = 0; i < ASTRES.length; i++) {
+    h += '<button type="button" class="astre-btn' + (ASTRES[i].v === astreCourant ? ' on' : '')
+       + '" data-astre="' + ASTRES[i].v + '" onclick="setAstre(this)">' + ASTRES[i].nom
+       + ' \u00B7 g = ' + ASTRES[i].gTxt + '</button>';
+  }
+  el('p-astres').innerHTML = h;
+}
+
+function setAstre(btn) {
+  astreCourant = btn.getAttribute('data-astre');
+  var b = el('p-astres').querySelectorAll('.astre-btn'), i;
+  for (i = 0; i < b.length; i++) b[i].classList.toggle('on', b[i] === btn);
+  calcPoids();
+}
+
+function calcPoids() {
+  var obj = objetPar(el('p-obj').value);
+  var a   = astrePar(astreCourant);
+  var k   = parseFloat(el('p-ech').value);
+  var m   = lireNb(el('p-m').value);
+  if (m === null || m < 0) m = 0;
+  var P = m * a.g;
+
+  var longCar = P / k;
+  var poss = longueursPossibles({ x: obj.G.x, y: obj.G.y }, sensPar('vers le bas'), 9);
+  var maxCar = poss.length ? poss[poss.length - 1] : 0;
+  var trace = Math.min(longCar, maxCar);
+
+  var svg = grille() + bandeauDouble(a.lieu + ' \u00B7 g = ' + a.gTxt + ' N/kg',
+                                     '1 carreau \u2194 ' + k + ' N')
+          + figureObjet(obj, 0)
+          + '<circle cx="' + obj.G.x + '" cy="' + obj.G.y + '" r="3.4" fill="#ffffff" stroke="'
+          + COL_POIDS + '" stroke-width="2"/>'
+          + pastille(obj.G.x - 14, obj.G.y - 11, 'G', COL_POIDS, 12);
+  if (trace > 0.05) {
+    svg += fleche(obj.G.x, obj.G.y, obj.G.x, obj.G.y + trace * CAR, COL_POIDS, 'P');
+  }
+  el('p-svg').innerHTML = svg;
+
+  el('p-detail').innerHTML = 'P = ' + fnb(m, 2) + ' \u00D7 ' + a.gTxt + ' = ' + fnb1(P) + ' N';
+  el('p-result').innerHTML = fnb1(P) + '<span class="result-unit">N</span>';
+  el('p-sub').innerHTML = 'Longueur du vecteur : ' + fnb(longCar, 2) + ' carreaux'
+    + (longCar > maxCar + 0.001 ? ' \u2014 <b>trop long pour le cadre, change d\u2019échelle</b>' : '');
+
+  var h = '<tr><th>Astre</th><th>g (N/kg)</th><th>Masse</th><th>Poids</th></tr>', i;
+  for (i = 0; i < ASTRES.length; i++) {
+    h += '<tr><td>' + ASTRES[i].nom + '</td><td>' + ASTRES[i].gTxt + '</td>'
+       + '<td class="val">' + fnb(m, 2) + ' kg</td>'
+       + '<td class="val">' + fnb1(m * ASTRES[i].g) + ' N</td></tr>';
+  }
+  el('p-table').innerHTML = h;
+}
+
+/* ─── Panneau 3 : l'échelle ───────────────────────────────────────────── */
+
+function remplirEchelle() {
+  el('e-ech').innerHTML = optionsHTML(ECHELLES,
+    function (k) { return k; }, function (k) { return '1 carreau \u2194 ' + k + ' N'; });
+  el('e-ech').value = '20';
+}
+
+/* Règle graduée : chaque carreau porte sa valeur en newtons. */
+function dessinEchelle(k, longCar) {
+  var y = 98;
+  var svg = grille() + bandeauEchelle(k);
+  var i;
+  for (i = 0; i <= GNX; i++) {
+    var x = GX0 + i * CAR;
+    svg += '<line x1="' + x + '" y1="' + (y - 5) + '" x2="' + x + '" y2="' + (y + 5)
+         + '" stroke="#8b8880" stroke-width="1.2"/>';
+    if (i % 2 === 0) svg += texte(x, y + 18, fnb(i * k, 0), { fs: 10, col: '#7d7a73', poids: 500 });
+  }
+  svg += '<line x1="' + GX0 + '" y1="' + y + '" x2="' + GX1 + '" y2="' + y
+       + '" stroke="#b3b0a8" stroke-width="1.2" stroke-dasharray="3,3"/>';
+  var L = Math.max(0, Math.min(longCar, GNX));
+  if (L > 0.05) svg += fleche(GX0, y, GX0 + L * CAR, y, COL_FORCE, 'F');
+  svg += texte(100, 142, 'newtons', { fs: 10, col: '#7d7a73', poids: 500 });
+  return svg;
+}
+
+function majEchelleSVG() {
+  var k = parseFloat(el('e-ech').value);
+  var L = lireNb(el('e-long').value);
+  if (L === null || L < 0) L = 0;
+  el('e-svg').innerHTML = dessinEchelle(k, L);
+}
+
+function calcEchLong() {
+  var k = parseFloat(el('e-ech').value);
+  var L = lireNb(el('e-long').value);
+  if (L === null || L < 0) L = 0;
+  var V = L * k;
+  el('e-val').value = fnb(V, 2);
+  el('e-detail').innerHTML = 'valeur = ' + fnb(L, 2) + ' \u00D7 ' + k + ' = ' + fnb(V, 2) + ' N';
+  el('e-result').innerHTML = fnb(V, 2) + '<span class="result-unit">N</span>';
+  el('e-sub').innerHTML = 'Un vecteur de ' + fnb(L, 2) + ' carreaux représente ' + fnb(V, 2) + ' N.';
+  majEchelleSVG();
+}
+
+function calcEchVal() {
+  var k = parseFloat(el('e-ech').value);
+  var V = lireNb(el('e-val').value);
+  if (V === null || V < 0) V = 0;
+  var L = V / k;
+  el('e-long').value = fnb(L, 2);
+  el('e-detail').innerHTML = 'longueur = ' + fnb(V, 2) + ' \u00F7 ' + k + ' = ' + fnb(L, 2) + ' carreaux';
+  el('e-result').innerHTML = fnb(L, 2) + '<span class="result-unit">carreaux</span>';
+  el('e-sub').innerHTML = 'Une force de ' + fnb(V, 2) + ' N se trace sur ' + fnb(L, 2) + ' carreaux.';
+  majEchelleSVG();
+}
+
+/* ─── Panneau 4 : les actions mécaniques ──────────────────────────────── */
+
+var ACTIONS = [
+  { v: 'poids', nom: 'Poids', qui: 'action de la Terre sur la caisse', type: 'distance',
+    ds: 'verticale, vers le bas', lettre: 'P', col: COL_POIDS,
+    x: 100, y: 108, ux: 0, uy: 1, n: 2 },
+  { v: 'reaction', nom: 'Réaction du sol', qui: 'action du sol sur la caisse', type: 'contact',
+    ds: 'verticale, vers le haut', lettre: 'R', col: '#0F6E56',
+    x: 100, y: 128, ux: 0, uy: -1, n: 2 },
+  { v: 'tension', nom: 'Tension du câble', qui: 'action du câble sur la caisse', type: 'contact',
+    ds: 'horizontale, vers la droite', lettre: 'T', col: COL_FORCE,
+    x: 130, y: 98, ux: 1, uy: 0, n: 2 },
+  { v: 'frottement', nom: 'Frottement du sol', qui: 'action du sol sur la caisse', type: 'contact',
+    ds: 'horizontale, vers la gauche', lettre: 'f', col: '#854F0B',
+    x: 70, y: 128, ux: -1, uy: 0, n: 2 }
+];
+
+function remplirActions() {
+  var h = '', i;
+  for (i = 0; i < ACTIONS.length; i++) {
+    var a = ACTIONS[i];
+    h += '<label class="fp-coche" data-a="' + a.v + '">'
+       + '<input type="checkbox" onchange="calcActions()">'
+       + '<span><b>' + a.lettre + ' \u2014 ' + a.nom + '</b>'
+       + '<span class="fp-tag ' + a.type + '">' + (a.type === 'contact' ? 'contact' : 'à distance') + '</span>'
+       + '<br>' + a.qui + ' \u00B7 ' + a.ds + '</span></label>';
+  }
+  el('a-coches').innerHTML = h;
+}
+
+function calcActions() {
+  var boites = el('a-coches').querySelectorAll('.fp-coche');
+  var svg = grille()
+    + sol(128)
+    + '<line x1="130" y1="98" x2="176" y2="98" stroke="#7d7a73" stroke-width="2"/>'
+    + svgCaisse(70, 88, 60, 40)
+    + '<circle cx="100" cy="108" r="3.2" fill="#ffffff" stroke="#7d7a73" stroke-width="1.8"/>';
+  var n = 0, liste = [], i;
+  for (i = 0; i < boites.length; i++) {
+    var coche = boites[i].querySelector('input').checked;
+    boites[i].classList.toggle('on', coche);
+    if (!coche) continue;
+    var a = ACTIONS[i];
+    n++;
+    liste.push(a.lettre + ' (' + (a.type === 'contact' ? 'contact' : 'à distance') + ')');
+    svg += fleche(a.x, a.y, a.x + a.ux * a.n * CAR, a.y + a.uy * a.n * CAR, a.col, a.lettre);
+  }
+  svg += bandeauTexte('Forces subies par la caisse');
+  el('a-svg').innerHTML = svg;
+  el('a-result').innerHTML = n + '<span class="result-unit">sur 4</span>';
+  el('a-sub').innerHTML = n
+    ? liste.join(' \u00B7 ')
+    : 'Coche une action pour voir la force qui la modélise.';
+}
+
+/* ─── Navigation de l'explorateur ─────────────────────────────────────── */
+
+function setPan(id, btn) {
+  var panneaux = document.querySelectorAll('.panel'), i;
+  for (i = 0; i < panneaux.length; i++) panneaux[i].classList.remove('active');
+  var onglets = document.querySelectorAll('#mode-explo .shape-tab');
+  for (i = 0; i < onglets.length; i++) onglets[i].classList.remove('active');
+  el('panel-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  panCourant = id;
+}
+
+function hasardPanneau() {
+  if (panCourant === 'vecteur') {
+    el('v-obj').value = auHasard(OBJETS).v;
+    majPointsVecteur();
+    var obj = objetPar(el('v-obj').value);
+    el('v-pt').value = auHasard(obj.pts).n;
+    majSensVecteur();
+    var opts = el('v-sens').options;
+    el('v-sens').value = opts[Math.floor(Math.random() * opts.length)].value;
+    var k = auHasard(ECHELLES);
+    el('v-ech').value = String(k);
+    el('v-F').value = fnb(k * entier(1, 4), 0);
+    calcVecteur();
+  } else if (panCourant === 'poids') {
+    el('p-obj').value = auHasard(OBJETS).v;
+    el('p-m').value = fnb(auHasard(MASSES), 2);
+    calcPoids();
+  } else if (panCourant === 'echelle') {
+    el('e-ech').value = String(auHasard(ECHELLES));
+    el('e-long').value = fnb(entier(2, 12) / 2, 1);
+    calcEchLong();
+  } else {
+    var boites = el('a-coches').querySelectorAll('.fp-coche input'), i;
+    for (i = 0; i < boites.length; i++) boites[i].checked = (Math.random() < 0.5);
+    calcActions();
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   MODE DÉFI — le contenu ; la boucle est dans assets/lp-defi.js
+
+   ⚠ CONTENU PÉDAGOGIQUE — PREMIER JET, À RELIRE
+   Énoncés, rappels, indices de second essai, détails de correction, valeurs
+   de g, échelles et jeux de masses sont proposés par Claude et attendent la
+   relecture de l'auteur. Supprimer un indice ne casse rien : le moteur
+   annonce alors simplement qu'il reste un essai.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Vecteur dessiné sur un objet, avec ses points d'application ──────── */
+
+function figureVecteur(obj, pt, s, n, opt) {
+  opt = opt || {};
+  var dy = opt.dy || 0;
+  var svg = grille();
+  if (opt.bandeau) svg += bandeauTexte(opt.bandeau);
+  svg += figureObjet(obj, dy);
+  var G = GDecale(obj, dy);
+  var i;
+  /* Le segment du vecteur est calculé d'abord : les étiquettes des points
+     doivent savoir où il passe pour ne pas se poser dessus. */
+  var seg = null;
+  if (pt && s && n > 0) {
+    var dep = ptDecale(pt, dy);
+    seg = { x1: dep.x, y1: dep.y, x2: dep.x + s.ux * n * CAR, y2: dep.y + s.uy * n * CAR };
+  }
+  if (opt.points !== false) {
+    for (i = 0; i < obj.pts.length; i++) {
+      var p = ptDecale(obj.pts[i], dy);
+      svg += marquePoint(p, G, pt && p.n === pt.n, s, seg);
+    }
+  }
+  if (opt.G) {
+    svg += '<circle cx="' + G.x + '" cy="' + G.y + '" r="3.4" fill="#ffffff" stroke="'
+         + COL_POIDS + '" stroke-width="2"/>'
+         + pastille(G.x - 15, G.y - 12, 'G', COL_POIDS, 12);
+  }
+  if (pt && s && n > 0) {
+    var d = ptDecale(pt, dy);
+    svg += fleche(d.x, d.y, d.x + s.ux * n * CAR, d.y + s.uy * n * CAR,
+                  opt.col || COL_FORCE, opt.lbl || 'F');
+  }
+  if (opt.sup) svg += opt.sup;
+  return svg;
+}
+
+/* Toutes les combinaisons (objet, point, sens, longueur) qui tiennent dans
+   le cadre, calculées une fois pour toutes : aucun tirage ne peut alors
+   produire une flèche qui déborde ou qui traverse l'objet. */
+var COMBOS = [];
+(function () {
+  var i, j, k, m;
+  for (i = 0; i < OBJETS.length; i++) {
+    var obj = OBJETS[i];
+    for (j = 0; j < obj.pts.length; j++) {
+      var pt = obj.pts[j];
+      var sortants = sensSortants(obj, pt);
+      for (k = 0; k < sortants.length; k++) {
+        var longs = longueursPossibles(pt, sortants[k], 5);
+        for (m = 0; m < longs.length; m++) {
+          COMBOS.push({ obj: obj, pt: pt, s: sortants[k], n: longs[m] });
+        }
+      }
+    }
+  }
+})();
+
+/* ─── Famille 1 — Lire les caractéristiques d'une force (Co7, C1) ─────────
+   La réponse n'est pas un QCM : l'élève remplit une fiche d'identité à
+   quatre entrées, injectée dans #defi-cotes (que le moteur repeuple à
+   chaque question). Les quatre entrées sont recomposées en une chaîne que
+   le moteur contrôle par accepteFn, en type « texte ».                    */
+
+function stripLigne(titre, champ, valeurs) {
+  var h = '<div class="fp-ligne"><span class="fp-lbl">' + titre + '</span>'
+        + '<div class="fp-btns" data-champ="' + champ + '">';
+  var i;
+  for (i = 0; i < valeurs.length; i++) {
+    h += '<button type="button" class="fp-opt" data-v="' + ech(valeurs[i]) + '">'
+       + ech(valeurs[i]) + '</button>';
+  }
+  return h + '</div></div>';
+}
+
+function stripFiche(obj) {
+  var noms = [], i;
+  for (i = 0; i < obj.pts.length; i++) noms.push(obj.pts[i].n);
+  return '<div class="fp-carte">'
+    + stripLigne('Point d\u2019application', 'pt', noms)
+    + stripLigne('Direction', 'dir', LES_DIR)
+    + stripLigne('Sens', 'sens', LES_SENS)
+    + '<div class="fp-ligne"><span class="fp-lbl">Valeur</span><div class="fp-btns">'
+    + '<input type="text" inputmode="decimal" autocomplete="off" id="fp-val" class="fp-val" placeholder="?">'
+    + '<span class="fp-unit">N</span></div></div>'
+    + '<div class="fp-etat" id="fp-etat"></div></div>';
+}
+
+function litStrip() {
+  var groupes = document.querySelectorAll('#defi-cotes .fp-btns[data-champ]');
+  var out = { pt: '', dir: '', sens: '', val: '' }, i;
+  for (i = 0; i < groupes.length; i++) {
+    var choisi = groupes[i].querySelector('.fp-opt.on');
+    out[groupes[i].getAttribute('data-champ')] = choisi ? choisi.getAttribute('data-v') : '';
+  }
+  var champ = el('fp-val');
+  out.val = champ ? champ.value : '';
+  return out;
+}
+
+/* Tant que les quatre entrées ne sont pas remplies, le champ du moteur reste
+   VIDE : le moteur répond « entre une valeur » sans consommer d'essai. Une
+   fiche incomplète ne coûte donc jamais une tentative. */
+function majFicheIdentite() {
+  var s = litStrip();
+  var v = lireNb(s.val);
+  var complet = !!(s.pt && s.dir && s.sens && v !== null);
+  var champ = el('defi-input');
+  if (champ) champ.value = complet ? (s.pt + ' | ' + s.dir + ' | ' + s.sens + ' | ' + s.val) : '';
+  var etat = el('fp-etat');
+  if (etat) {
+    etat.className = 'fp-etat' + (complet ? ' ok' : '');
+    etat.innerHTML = complet
+      ? 'Fiche complète : point ' + ech(s.pt) + ' \u00B7 ' + ech(s.dir) + ' \u00B7 '
+        + ech(s.sens) + ' \u00B7 ' + fnb(v, 2) + ' N \u2014 tu peux vérifier.'
+      : 'Complète les quatre caractéristiques avant de vérifier.';
+  }
+}
+
+function genLire() {
+  var c = auHasard(COMBOS);
+  var k = auHasard(ECHELLES);
+  var val = c.n * k;
+  var att = { pt: c.pt.n, dir: c.s.dir, sens: c.s.v, val: val };
+  var svg = figureVecteur(c.obj, c.pt, c.s, c.n,
+    { bandeau: 'Échelle : 1 carreau \u2194 ' + k + ' N' });
+
+  return {
+    type: 'texte',
+    svg: svg,
+    figure: function (o) { return svg; },
+    enonce: 'Lis les quatre caractéristiques de la force F.',
+    cotes: stripFiche(c.obj),
+    label: 'Fiche remplie',
+    reponse: att.pt + ' | ' + att.dir + ' | ' + att.sens + ' | ' + fnb(val, 0),
+    reponseTexte: 'point ' + att.pt + ' \u00B7 ' + att.dir + ' \u00B7 ' + att.sens
+                + ' \u00B7 ' + fnb(val, 0) + ' N',
+    accepteFn: function (saisie) {
+      var p = String(saisie === null || saisie === undefined ? '' : saisie).split('|');
+      if (p.length < 4) return false;
+      var pt = p[0].replace(/\s+/g, '');
+      var dir = p[1].replace(/^\s+|\s+$/g, '');
+      var sens = p[2].replace(/^\s+|\s+$/g, '');
+      var v = lireNb(p[3]);
+      return pt === att.pt && dir === att.dir && sens === att.sens
+          && v !== null && LP.defi.proche(v, att.val, 0);
+    },
+    rappel: 'Une force se décrit par QUATRE caractéristiques : son point d\u2019application, '
+          + 'sa direction (la droite d\u2019action : horizontale, verticale, oblique), son sens '
+          + '(le côté vers lequel pointe la flèche) et sa valeur en newtons (N).',
+    hint: 'Reprends les quatre lignes une par une. Le point d\u2019application est le point '
+        + 'ROND d\u2019où PART la flèche, pas celui où elle arrive. Pour la valeur, compte les '
+        + 'carreaux de la flèche et multiplie par l\u2019échelle indiquée en haut du dessin.',
+    detail: 'La flèche part du point ' + att.pt + ', sa droite d\u2019action est ' + att.dir
+          + ', son sens est ' + att.sens + '. Elle mesure ' + c.n + ' carreau'
+          + (c.n > 1 ? 'x' : '') + ' et l\u2019échelle est 1 carreau \u2194 ' + k + ' N, donc F = '
+          + c.n + ' \u00D7 ' + k + ' = ' + fnb(val, 0) + ' N.',
+    ficheSvg: svg,
+    ficheCotes: 'Échelle : 1 carreau \u2194 ' + k + ' N \u00B7 Donne les quatre '
+              + 'caractéristiques de F.',
+    ficheReponse: 'point ' + att.pt + ' \u00B7 ' + att.dir + ' \u00B7 ' + att.sens
+                + ' \u00B7 ' + fnb(val, 0) + ' N'
+  };
+}
+
+/* ─── Famille 2 — Construire / choisir le bon vecteur (Co7, C4) ──────────
+   Quatre dessins, un seul correct. Les intrus sont les trois erreurs
+   classiques : sens inversé, longueur fausse (échelle mal appliquée),
+   point d'application déplacé.                                           */
+
+function vignette(svg) {
+  return '<svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" class="fp-mini">'
+       + svg + '</svg>';
+}
+
+function sensOppose(s) {
+  var i;
+  for (i = 0; i < SENS4.length; i++) {
+    if (SENS4[i].ux === -s.ux && SENS4[i].uy === -s.uy) return SENS4[i];
+  }
+  return s;
+}
+
+function genConstruire() {
+  var c, k, n2, tries = 0;
+  do {
+    c = auHasard(COMBOS);
+    tries++;
+  } while (tries < 60 && longueursPossibles(c.pt, c.s, 5).length < 2);
+  k = auHasard(ECHELLES);
+  var val = c.n * k;
+
+  var variantes = [];
+  variantes.push({ pt: c.pt, s: c.s, n: c.n, bon: true, quoi: '' });
+
+  /* Intrus 1 — sens inversé */
+  var opp = sensOppose(c.s);
+  if (longueursPossibles(c.pt, opp, c.n).length >= c.n) {
+    variantes.push({ pt: c.pt, s: opp, n: c.n, bon: false, quoi: 'le sens est inversé' });
+  }
+
+  /* Intrus 2 — longueur fausse (échelle mal appliquée) */
+  var autres = longueursPossibles(c.pt, c.s, 5), cand = [], i;
+  for (i = 0; i < autres.length; i++) if (autres[i] !== c.n) cand.push(autres[i]);
+  if (cand.length) {
+    n2 = auHasard(cand);
+    variantes.push({ pt: c.pt, s: c.s, n: n2, bon: false,
+                     quoi: 'la longueur ne respecte pas l\u2019échelle' });
+  }
+
+  /* Intrus 3 — point d'application déplacé */
+  var autrePts = [];
+  for (i = 0; i < c.obj.pts.length; i++) {
+    var p = c.obj.pts[i];
+    if (p.n === c.pt.n) continue;
+    if (longueursPossibles(p, c.s, c.n).length >= c.n) autrePts.push(p);
+  }
+  if (autrePts.length) {
+    variantes.push({ pt: auHasard(autrePts), s: c.s, n: c.n, bon: false,
+                     quoi: 'le point d\u2019application n\u2019est pas le bon' });
+  }
+
+  /* Complément si un intrus n'a pas pu être construit : on rallonge encore. */
+  while (variantes.length < 4 && cand.length) {
+    var reste = [];
+    for (i = 0; i < cand.length; i++) {
+      var deja = false, j;
+      for (j = 1; j < variantes.length; j++) {
+        if (variantes[j].pt.n === c.pt.n && variantes[j].s.v === c.s.v
+            && variantes[j].n === cand[i]) deja = true;
+      }
+      if (!deja) reste.push(cand[i]);
+    }
+    if (!reste.length) break;
+    variantes.push({ pt: c.pt, s: c.s, n: auHasard(reste), bon: false,
+                     quoi: 'la longueur ne respecte pas l\u2019échelle' });
+  }
+  while (variantes.length < 4) {
+    variantes.push({ pt: c.pt, s: opp, n: Math.max(1, c.n - 1), bon: false,
+                     quoi: 'le sens est inversé' });
+  }
+  variantes = melange(variantes.slice(0, 4));
+
+  var choix = [], bonne = '0', explication = '';
+  for (i = 0; i < variantes.length; i++) {
+    var vt = variantes[i];
+    var mini = figureVecteur(c.obj, vt.pt, vt.s, vt.n, { points: true });
+    choix.push({ val: String(i),
+                 label: '<span class="fp-etiq">Dessin ' + (i + 1) + '</span>' + vignette(mini) });
+    if (vt.bon) { bonne = String(i); explication = 'Le dessin ' + (i + 1) + ' est le bon.'; }
+  }
+
+  var support = figureVecteur(c.obj, null, null, 0,
+    { bandeau: 'Échelle : 1 carreau \u2194 ' + k + ' N' });
+  var consigne = 'Point d\u2019application : ' + c.pt.n + ' \u00B7 Direction : ' + c.s.dir
+               + ' \u00B7 Sens : ' + c.s.v + ' \u00B7 Valeur : ' + fnb(val, 0) + ' N'
+               + ' \u00B7 Échelle : 1 carreau \u2194 ' + k + ' N';
+
+  return {
+    type: 'choix',
+    svg: support,
+    figure: function (o) { return support; },
+    enonce: 'Quel dessin représente correctement cette force ?',
+    cotes: consigne,
+    choix: choix,
+    reponse: bonne,
+    reponseTexte: 'dessin ' + (parseInt(bonne, 10) + 1),
+    rappel: 'Pour tracer une force : on part du point d\u2019application, on suit la direction '
+          + 'demandée, on oriente la flèche dans le bon sens, et la longueur vaut '
+          + 'valeur \u00F7 échelle.',
+    hint: 'Vérifie les quatre caractéristiques une par une sur chaque dessin, dans l\u2019ordre : '
+        + 'd\u2019abord d\u2019où PART la flèche, puis sa direction, puis son sens, et enfin sa '
+        + 'longueur. Ici il faut ' + fnb(val, 0) + ' \u00F7 ' + k + ' = ' + c.n + ' carreau'
+        + (c.n > 1 ? 'x' : '') + '.',
+    detail: explication + ' La flèche part de ' + c.pt.n + ', elle est ' + c.s.dir + ', '
+          + c.s.v + ', et mesure ' + fnb(val, 0) + ' \u00F7 ' + k + ' = ' + c.n + ' carreau'
+          + (c.n > 1 ? 'x' : '') + '.',
+    ficheSvg: support,
+    ficheCotes: 'Trace F : point ' + c.pt.n + ', ' + c.s.dir + ', ' + c.s.v
+              + ', ' + fnb(val, 0) + ' N. \u00B7 Échelle : 1 carreau \u2194 ' + k + ' N',
+    ficheReponse: 'flèche de ' + c.n + ' carreau' + (c.n > 1 ? 'x' : '') + ', partant de '
+                + c.pt.n + ', ' + c.s.v
+  };
+}
+
+/* ─── Famille 3 — Modéliser une action mécanique (Co6, C1) ────────────── */
+
+var SCENES = [
+  {
+    v: 'sol', acteur: 'du sol', sur: 'sur la caisse', type: 'contact',
+    ds: 'verticale, vers le haut',
+    situation: 'Une caisse est posée sur le sol.',
+    dessin: function () {
+      return sol(128) + svgCaisse(70, 88, 60, 40)
+        + texte(100, 82, 'caisse', { fs: 11, col: '#8A6A3A' })
+        + texte(32, 145, 'sol', { fs: 11, col: '#7d7a73' });
+    }
+  },
+  {
+    v: 'terre', acteur: 'de la Terre', sur: 'sur la caisse', type: 'distance',
+    ds: 'verticale, vers le bas',
+    situation: 'Une caisse est posée sur le sol, sur la Terre.',
+    dessin: function () {
+      return sol(128) + svgCaisse(70, 88, 60, 40)
+        + texte(100, 82, 'caisse', { fs: 11, col: '#8A6A3A' })
+        + '<circle cx="168" cy="141" r="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.4"/>'
+        + texte(140, 145, 'Terre', { fs: 11, col: '#0F6E56', ancre: 'end' });
+    }
+  },
+  {
+    v: 'cable', acteur: 'du câble', sur: 'sur le panneau', type: 'contact',
+    ds: 'verticale, vers le haut',
+    situation: 'Un panneau est suspendu au plafond par un câble.',
+    dessin: function () {
+      return objetPar('panneau').decor() + objetPar('panneau').corps()
+        + texte(126, 70, 'câble', { fs: 11, col: '#7d7a73' })
+        + texte(100, 142, 'panneau', { fs: 11, col: '#0F6E56' });
+    }
+  },
+  {
+    v: 'aimant', acteur: 'de l\u2019aimant', sur: 'sur le clou', type: 'distance',
+    ds: 'horizontale, vers la droite',
+    situation: 'Un aimant est approché d\u2019un clou, sans le toucher.',
+    dessin: function () {
+      return '<rect x="52" y="102" width="6" height="14" fill="#8b8880"/>'
+        + '<rect x="58" y="105" width="34" height="7" fill="#a5a29a"/>'
+        + '<polygon points="92,105 104,108.5 92,112" fill="#8b8880"/>'
+        + '<rect x="138" y="94" width="15" height="30" fill="#A32D2D"/>'
+        + '<rect x="153" y="94" width="15" height="30" fill="#185FA5"/>'
+        + texte(145.5, 114, 'N', { fs: 12, col: '#ffffff', poids: 700 })
+        + texte(160.5, 114, 'S', { fs: 12, col: '#ffffff', poids: 700 })
+        + texte(74, 96, 'clou', { fs: 11, col: '#7d7a73' })
+        + texte(153, 88, 'aimant', { fs: 11, col: '#55534e' });
+    }
+  },
+  {
+    v: 'main', acteur: 'de la main', sur: 'sur le chariot', type: 'contact',
+    ds: 'horizontale, vers la droite',
+    situation: 'Une main pousse un chariot vers la droite.',
+    dessin: function () {
+      return sol(128)
+        + '<rect x="85" y="88" width="60" height="28" rx="2" fill="#F3E7D2" stroke="#8A6A3A" stroke-width="2.2"/>'
+        + '<circle cx="98" cy="122" r="6" fill="#d8d6ce" stroke="#55534e" stroke-width="1.8"/>'
+        + '<circle cx="132" cy="122" r="6" fill="#d8d6ce" stroke="#55534e" stroke-width="1.8"/>'
+        + '<rect x="56" y="94" width="26" height="18" rx="8" fill="#F2D2B6" stroke="#8A6A3A" stroke-width="1.6"/>'
+        + texte(60, 88, 'main', { fs: 11, col: '#8A6A3A', ancre: 'start' })
+        + texte(115, 82, 'chariot', { fs: 11, col: '#8A6A3A' });
+    }
+  },
+  {
+    v: 'ballon', acteur: 'de la Terre', sur: 'sur le ballon', type: 'distance',
+    ds: 'verticale, vers le bas',
+    situation: 'Un ballon vient d\u2019être lâché : il tombe, sans rien toucher.',
+    dessin: function () {
+      return '<circle cx="100" cy="88" r="19" fill="#E6F1FB" stroke="#2F6FA8" stroke-width="2.2"/>'
+        + '<path d="M85 82 Q100 93 115 82" fill="none" stroke="#2F6FA8" stroke-width="1.2"/>'
+        + '<line x1="84" y1="58" x2="84" y2="46" stroke="#b3b0a8" stroke-width="1.6"/>'
+        + '<line x1="100" y1="56" x2="100" y2="42" stroke="#b3b0a8" stroke-width="1.6"/>'
+        + '<line x1="116" y1="58" x2="116" y2="46" stroke="#b3b0a8" stroke-width="1.6"/>'
+        + texte(100, 130, 'ballon en chute', { fs: 11, col: '#2F6FA8' });
+    }
+  }
+];
+
+var LES_DS = ['verticale, vers le haut', 'verticale, vers le bas',
+              'horizontale, vers la droite', 'horizontale, vers la gauche'];
+
+function libelleModele(type, ds) {
+  return (type === 'contact' ? 'Action de contact' : 'Action à distance') + ' \u2014 force ' + ds;
+}
+
+function genModeliser() {
+  var sc = auHasard(SCENES);
+  var bonLbl = libelleModele(sc.type, sc.ds);
+  var tous = [], i, j;
+  for (i = 0; i < 2; i++) {
+    for (j = 0; j < LES_DS.length; j++) {
+      var t = (i === 0) ? 'contact' : 'distance';
+      var lbl = libelleModele(t, LES_DS[j]);
+      if (lbl !== bonLbl) tous.push(lbl);
+    }
+  }
+  var faux = melange(tous).slice(0, 3);
+  var liste = melange([bonLbl].concat(faux));
+  var choix = [], bonne = '0';
+  for (i = 0; i < liste.length; i++) {
+    choix.push({ val: String(i), label: ech(liste[i]) });
+    if (liste[i] === bonLbl) bonne = String(i);
+  }
+
+  var svg = grille() + bandeauTexte('Action ' + sc.acteur + ' ' + sc.sur) + sc.dessin();
+
+  return {
+    type: 'choix',
+    svg: svg,
+    figure: function (o) { return svg; },
+    enonce: 'Comment se modélise l\u2019action ' + sc.acteur + ' ' + sc.sur + ' ?',
+    cotes: sc.situation,
+    choix: choix,
+    reponse: bonne,
+    reponseTexte: bonLbl,
+    rappel: 'Toute action mécanique se modélise par une FORCE. Action de CONTACT : les deux '
+          + 'objets se touchent. Action à DISTANCE : ils ne se touchent pas (poids, aimant).',
+    hint: 'Deux questions à te poser, dans cet ordre. 1) Les deux objets se touchent-ils ? '
+        + 'Si oui c\u2019est du contact, sinon c\u2019est à distance. 2) Dans quel sens cet objet '
+        + 'pousse-t-il ou tire-t-il celui qui subit l\u2019action ?',
+    detail: 'L\u2019action ' + sc.acteur + ' ' + sc.sur + ' est une action '
+          + (sc.type === 'contact' ? 'de contact (les deux objets se touchent)'
+                                   : 'à distance (les deux objets ne se touchent pas)')
+          + ' ; elle se modélise par une force ' + sc.ds + '.',
+    ficheSvg: svg,
+    ficheCotes: sc.situation + ' \u00B7 Modélise l\u2019action ' + sc.acteur + ' '
+              + sc.sur + '.',
+    ficheReponse: bonLbl
+  };
+}
+
+/* ─── Famille 4 — Échelle : valeur ↔ longueur (Co7, C3) ───────────────── */
+
+/* Règle graduée sans valeurs écrites : sinon la réponse serait lisible sur
+   l'axe. Les graduations restent, ce sont elles qu'on compte. */
+function regleSVG(k, L, avecFleche) {
+  var y = 98;
+  var svg = grille() + bandeauEchelle(k);
+  var i;
+  for (i = 0; i <= GNX; i++) {
+    var x = GX0 + i * CAR;
+    svg += '<line x1="' + x + '" y1="' + (y - 5) + '" x2="' + x + '" y2="' + (y + 5)
+         + '" stroke="#8b8880" stroke-width="1.2"/>';
+  }
+  svg += '<line x1="' + GX0 + '" y1="' + y + '" x2="' + GX1 + '" y2="' + y
+       + '" stroke="#b3b0a8" stroke-width="1.2" stroke-dasharray="3,3"/>';
+  if (avecFleche && L > 0) svg += fleche(GX0, y, GX0 + L * CAR, y, COL_FORCE, 'F');
+  svg += texte(100, 140, '1 graduation = 1 carreau', { fs: 10, col: '#7d7a73', poids: 500 });
+  return svg;
+}
+
+function genEchelle() {
+  var k = auHasard(ECHELLES);
+  var n = entier(2, 8);
+  var sens = (Math.random() < 0.5) ? 'versN' : 'versCar';
+  var val = n * k;
+
+  if (sens === 'versN') {
+    var svgA = regleSVG(k, n, true);
+    return {
+      type: 'nombre',
+      svg: svgA,
+      figure: function (o) { return svgA; },
+      enonce: 'Le vecteur mesure ' + n + ' carreaux. Quelle est la valeur de la force ?',
+      cotes: 'Échelle : 1 carreau \u2194 ' + k + ' N',
+      label: 'F =', unite: 'N', tol: 0,
+      reponse: val,
+      reponseTexte: fnb(val, 0) + ' N',
+      rappel: 'valeur (N) = longueur (carreaux) \u00D7 échelle (N par carreau).',
+      hint: 'Compte les carreaux de la flèche, puis MULTIPLIE par l\u2019échelle. Chaque carreau '
+          + 'vaut ' + k + ' N, il y en a ' + n + '.',
+      detail: 'F = ' + n + ' \u00D7 ' + k + ' = ' + fnb(val, 0) + ' N.',
+      ficheSvg: svgA,
+      ficheCotes: 'Échelle : 1 carreau \u2194 ' + k + ' N \u00B7 Le vecteur mesure ' + n
+                + ' carreaux. Quelle est la valeur de F ?',
+      ficheReponse: fnb(val, 0) + ' N'
+    };
+  }
+  var svgB = regleSVG(k, 0, false);
+  return {
+    type: 'nombre',
+    svg: svgB,
+    figure: function (o) { return svgB; },
+    enonce: 'La force vaut ' + fnb(val, 0) + ' N. Sur combien de carreaux la tracer ?',
+    cotes: 'Échelle : 1 carreau \u2194 ' + k + ' N',
+    label: 'Longueur =', unite: 'carreaux', tol: 0,
+    reponse: n,
+    reponseTexte: n + ' carreaux',
+    rappel: 'longueur (carreaux) = valeur (N) \u00F7 échelle (N par carreau).',
+    hint: 'Ici il faut DIVISER, pas multiplier : on cherche combien de fois ' + k + ' N '
+        + 'tiennent dans ' + fnb(val, 0) + ' N.',
+    detail: 'longueur = ' + fnb(val, 0) + ' \u00F7 ' + k + ' = ' + n + ' carreaux.',
+    ficheSvg: svgB,
+    ficheCotes: 'Échelle : 1 carreau \u2194 ' + k + ' N \u00B7 F vaut ' + fnb(val, 0)
+              + ' N. Sur combien de carreaux la tracer ?',
+    ficheReponse: n + ' carreaux'
+  };
+}
+
+/* ─── Famille 5 — Reconnaître le vecteur poids (Co8, C4) ───────────────── */
+
+function genPoidsVec() {
+  var obj = auHasard(objetsLegers());
+  var dy = -20;                        /* l'objet est remonté : place pour P */
+  var G = GDecale(obj, dy);
+  var n = 2;
+
+  var variantes = [
+    { x: G.x, y: G.y, dx: 0, dy: n * CAR, bon: true, quoi: '' },
+    { x: G.x, y: G.y, dx: 0, dy: -n * CAR, bon: false,
+      quoi: 'le poids ne monte jamais : il est dirigé vers le BAS' },
+    { x: G.x, y: G.y, dx: n * CAR * 0.75, dy: n * CAR * 0.75, bon: false,
+      quoi: 'le poids n\u2019est jamais oblique : il est VERTICAL' },
+    { x: ptDecale(obj.pts[0], dy).x, y: ptDecale(obj.pts[0], dy).y, dx: 0, dy: n * CAR,
+      bon: false, quoi: 'le poids s\u2019applique au centre de gravité G, pas sur un bord' }
+  ];
+  variantes = melange(variantes);
+
+  var choix = [], bonne = '0', i;
+  for (i = 0; i < variantes.length; i++) {
+    var vt = variantes[i];
+    var mini = grille() + figureObjet(obj, dy)
+      + '<circle cx="' + G.x + '" cy="' + G.y + '" r="3.4" fill="#ffffff" stroke="'
+      + COL_POIDS + '" stroke-width="2"/>'
+      + pastille(G.x - 15, G.y - 12, 'G', COL_POIDS, 12)
+      + fleche(vt.x, vt.y, vt.x + vt.dx, vt.y + vt.dy, COL_POIDS, 'P');
+    choix.push({ val: String(i),
+                 label: '<span class="fp-etiq">Dessin ' + (i + 1) + '</span>' + vignette(mini) });
+    if (vt.bon) bonne = String(i);
+  }
+
+  var support = grille() + bandeauTexte('Où et comment tracer le poids ?')
+    + figureObjet(obj, dy)
+    + '<circle cx="' + G.x + '" cy="' + G.y + '" r="3.4" fill="#ffffff" stroke="'
+    + COL_POIDS + '" stroke-width="2"/>'
+    + pastille(G.x - 15, G.y - 12, 'G', COL_POIDS, 12);
+
+  return {
+    type: 'choix',
+    svg: support,
+    figure: function (o) { return support; },
+    enonce: 'Quel dessin représente correctement le poids de ' + obj.art + ' ?',
+    cotes: 'G est le centre de gravité de ' + obj.nom + '.',
+    choix: choix,
+    reponse: bonne,
+    reponseTexte: 'dessin ' + (parseInt(bonne, 10) + 1),
+    rappel: 'Le poids est VERTICAL, dirigé du haut vers le BAS, et appliqué au CENTRE DE '
+          + 'GRAVITÉ G. Sa valeur se mesure en newtons.',
+    hint: 'Élimine les dessins un par un avec les trois critères, dans l\u2019ordre : '
+        + 'part-il bien de G ? est-il bien vertical ? pointe-t-il bien vers le bas ?',
+    detail: 'Le poids part du centre de gravité G, il est vertical et dirigé vers le bas. '
+          + 'Les trois autres dessins se trompent sur le sens, sur la direction ou sur le '
+          + 'point d\u2019application.',
+    ficheSvg: support,
+    ficheCotes: 'G est le centre de gravité de ' + obj.nom
+              + '. Trace le vecteur poids.',
+    ficheReponse: 'flèche verticale vers le bas, partant de G'
+  };
+}
+
+/* ─── Famille 6 — P = m × g (Co9, C3) ─────────────────────────────────── */
+
+function genPMG() {
+  var obj = auHasard(objetsLegers());
+  var a = auHasard(ASTRES);
+  var m = auHasard(MASSES);
+  var P = m * a.g;
+  var dy = -20;
+  var G = GDecale(obj, dy);
+  var versP = (Math.random() < 0.55);
+
+  function figure(inconnue) {
+    return grille()
+      + bandeauTexte(a.lieu + ' \u00B7 g = ' + a.gTxt + ' N/kg')
+      + figureObjet(obj, dy)
+      + texte(100, G.y - 32, inconnue.masse, { fs: 12, col: '#55534e' })
+      + '<circle cx="' + G.x + '" cy="' + G.y + '" r="3.4" fill="#ffffff" stroke="'
+      + COL_POIDS + '" stroke-width="2"/>'
+      + pastille(G.x - 15, G.y - 12, 'G', COL_POIDS, 12)
+      + fleche(G.x, G.y, G.x, G.y + 2 * CAR, COL_POIDS, inconnue.poids);
+  }
+
+  if (versP) {
+    var svgP = figure({ masse: 'm = ' + fnb(m, 2) + ' kg', poids: 'P = ?' });
+    var tolP = Math.max(0.2, P * 0.004);
+    return {
+      type: 'nombre',
+      svg: svgP,
+      figure: function (o) { return svgP; },
+      enonce: 'Calcule le poids de ' + obj.nom + ' ' + a.lieu + '.',
+      cotes: 'm = ' + fnb(m, 2) + ' kg \u00B7 g = ' + a.gTxt + ' N/kg ' + a.lieu
+           + ' \u00B7 Arrondis au dixième.',
+      label: 'P =', unite: 'N', tol: tolP,
+      reponse: P,
+      reponseTexte: fnb1(P) + ' N',
+      rappel: 'P = m \u00D7 g, avec P en newtons (N), m en kilogrammes (kg) et g en N/kg. '
+            + 'g vaut 9,81 N/kg sur la Terre, 1,62 sur la Lune et 3,71 sur Mars.',
+      hint: 'Multiplie la masse en kg par la valeur de g donnée pour cet astre. Attention à '
+          + 'ne pas prendre g = 9,81 partout : ici g = ' + a.gTxt + ' N/kg.',
+      detail: 'P = m \u00D7 g = ' + fnb(m, 2) + ' \u00D7 ' + a.gTxt + ' = ' + fnb1(P) + ' N.',
+      ficheSvg: svgP,
+      ficheCotes: 'm = ' + fnb(m, 2) + ' kg, ' + a.lieu + ' (g = ' + a.gTxt
+                + ' N/kg) \u00B7 Calcule le poids P.',
+      ficheReponse: fnb1(P) + ' N'
+    };
+  }
+
+  var Parr = Math.round(P * 10) / 10;
+  var mAtt = Parr / a.g;
+  var svgM = figure({ masse: 'm = ?', poids: 'P = ' + fnb1(Parr) + ' N' });
+  var tolM = Math.max(0.05, mAtt * 0.006);
+  return {
+    type: 'nombre',
+    svg: svgM,
+    figure: function (o) { return svgM; },
+    enonce: 'Calcule la masse de ' + obj.nom + ' à partir de son poids.',
+    cotes: 'P = ' + fnb1(Parr) + ' N \u00B7 g = ' + a.gTxt + ' N/kg ' + a.lieu
+         + ' \u00B7 Arrondis au centième.',
+    label: 'm =', unite: 'kg', tol: tolM,
+    reponse: mAtt,
+    reponseTexte: fnb(mAtt, 2) + ' kg',
+    rappel: 'P = m \u00D7 g, donc m = P \u00F7 g. P en newtons (N), m en kilogrammes (kg), '
+          + 'g en N/kg.',
+    hint: 'On connaît P et g, on cherche m : il faut DIVISER le poids par g, pas multiplier. '
+        + 'Ici g = ' + a.gTxt + ' N/kg.',
+    detail: 'm = P \u00F7 g = ' + fnb1(Parr) + ' \u00F7 ' + a.gTxt + ' = ' + fnb(mAtt, 2) + ' kg.',
+    ficheSvg: svgM,
+    ficheCotes: 'P = ' + fnb1(Parr) + ' N, ' + a.lieu + ' (g = ' + a.gTxt
+              + ' N/kg) \u00B7 Calcule la masse m.',
+    ficheReponse: fnb(mAtt, 2) + ' kg'
+  };
+}
+
+/* ─── Famille 7 — Piège masse / poids (Co8-Co9, C4) ───────────────────── */
+
+/* Chaque item construit ses propres propositions ; l'ordre est mélangé à
+   chaque tirage, il n'y a donc pas de « bonne réponse toujours en B ». */
+var PIEGES = [
+  function () {
+    var m = auHasard([3, 8, 12, 20, 45]);
+    var a = auHasard([ASTRES[1], ASTRES[2]]);
+    return {
+      etiq: 'm = ' + fnb(m, 0) + ' kg sur la Terre',
+      astre: a,
+      enonce: 'Un objet a une masse de ' + fnb(m, 0) + ' kg sur la Terre. Que vaut sa masse '
+            + a.lieu + ' ?',
+      bon: fnb(m, 0) + ' kg',
+      faux: [fnb(m * a.g / 9.81, 1) + ' kg', fnb(m * a.g, 1) + ' kg', '0 kg'],
+      detail: 'La masse ne change JAMAIS d\u2019un astre à l\u2019autre : elle vaut toujours '
+            + fnb(m, 0) + ' kg. C\u2019est le poids qui change.',
+      hint: 'La masse mesure la quantité de matière de l\u2019objet. En emportant l\u2019objet '
+          + a.lieu + ', on n\u2019en enlève ni n\u2019en ajoute.'
+    };
+  },
+  function () {
+    var a = auHasard([ASTRES[1], ASTRES[2]]);
+    return {
+      etiq: 'Un même objet, deux astres',
+      astre: a,
+      enonce: 'On emporte un objet de la Terre ' + a.lieu + '. Qu\u2019est-ce qui change ?',
+      bon: 'son poids seulement',
+      faux: ['sa masse seulement', 'sa masse et son poids', 'ni sa masse ni son poids'],
+      detail: 'g change d\u2019un astre à l\u2019autre (9,81 N/kg sur la Terre, ' + a.gTxt
+            + ' N/kg ' + a.lieu + '), donc P = m \u00D7 g change. La masse m, elle, reste la même.',
+      hint: 'Regarde la relation P = m \u00D7 g et demande-toi laquelle des trois grandeurs '
+          + 'dépend de l\u2019astre où l\u2019on se trouve.'
+    };
+  },
+  function () {
+    return {
+      etiq: 'Unités', astre: ASTRES[0],
+      enonce: 'Dans quelle unité s\u2019exprime le POIDS d\u2019un corps ?',
+      bon: 'le newton (N)',
+      faux: ['le kilogramme (kg)', 'le gramme (g)', 'le newton par kilogramme (N/kg)'],
+      detail: 'Le poids est une force : il se mesure en newtons (N). Le kilogramme est '
+            + 'l\u2019unité de MASSE, et le N/kg est l\u2019unité de g.',
+      hint: 'Le poids est une force. Toutes les forces se mesurent dans la même unité.'
+    };
+  },
+  function () {
+    var m = auHasard([0.5, 1.2, 2, 3.5]);
+    return {
+      etiq: 'Balance : ' + fnb(m, 2) + ' kg', astre: ASTRES[0],
+      enonce: 'Une balance de cuisine affiche ' + fnb(m, 2) + ' kg. Que mesure-t-elle ?',
+      bon: 'une masse, en kilogrammes',
+      faux: ['un poids, en newtons', 'une force, en kilogrammes', 'un poids, en kilogrammes'],
+      detail: 'Une balance affiche une MASSE, en kilogrammes. Le poids correspondant vaudrait '
+            + fnb1(m * 9.81) + ' N sur la Terre.',
+      hint: 'Regarde l\u2019unité affichée par l\u2019appareil : elle te dit quelle grandeur '
+          + 'il mesure.'
+    };
+  },
+  function () {
+    var m = auHasard([60, 75, 45]);
+    var a = ASTRES[1];
+    var P = m * a.g;
+    return {
+      etiq: 'Astronaute : m = ' + fnb(m, 0) + ' kg', astre: a,
+      enonce: 'Un astronaute a une masse de ' + fnb(m, 0) + ' kg. Combien pèse-t-il '
+            + a.lieu + ' ?',
+      bon: 'environ ' + fnb(P, 0) + ' N',
+      faux: ['environ ' + fnb(m * 9.81, 0) + ' N', fnb(m, 0) + ' kg',
+             'environ ' + fnb(m / a.g, 0) + ' N'],
+      detail: 'P = m \u00D7 g = ' + fnb(m, 0) + ' \u00D7 ' + a.gTxt + ' \u2248 ' + fnb(P, 0)
+            + ' N. Sur la Terre il pèserait environ ' + fnb(m * 9.81, 0) + ' N, six fois plus.',
+      hint: 'Le poids se calcule avec le g de l\u2019astre où l\u2019on se trouve, et le '
+          + 'résultat s\u2019exprime en newtons.'
+    };
+  },
+  function () {
+    return {
+      etiq: 'P = m \u00D7 g', astre: ASTRES[0],
+      enonce: 'Dans la relation P = m \u00D7 g, que représente g ?',
+      bon: 'l\u2019intensité de la pesanteur, en N/kg',
+      faux: ['la masse de l\u2019objet, en kg', 'le poids de l\u2019objet, en N',
+             'la hauteur de chute, en m'],
+      detail: 'g est l\u2019intensité de la pesanteur de l\u2019astre, en N/kg : 9,81 sur la '
+            + 'Terre, 1,62 sur la Lune, 3,71 sur Mars.',
+      hint: 'Dans P = m \u00D7 g, P est le poids et m la masse. Il ne reste qu\u2019une '
+          + 'grandeur, et son unité est le N/kg.'
+    };
+  }
+];
+
+function genPiege() {
+  var it = auHasard(PIEGES)();
+  var liste = melange([it.bon].concat(it.faux));
+  var choix = [], bonne = '0', i;
+  for (i = 0; i < liste.length; i++) {
+    choix.push({ val: String(i), label: ech(liste[i]) });
+    if (liste[i] === it.bon) bonne = String(i);
+  }
+  var dy = -20;
+  var obj = OBJETS[0];
+  var G = GDecale(obj, dy);
+  var svg = grille()
+    + bandeauTexte(it.astre.lieu + ' \u00B7 g = ' + it.astre.gTxt + ' N/kg')
+    + figureObjet(obj, dy)
+    + texte(100, G.y - 32, it.etiq, { fs: 11, col: '#55534e' })
+    + '<circle cx="' + G.x + '" cy="' + G.y + '" r="3.4" fill="#ffffff" stroke="'
+    + COL_POIDS + '" stroke-width="2"/>'
+    + fleche(G.x, G.y, G.x, G.y + 2 * CAR, COL_POIDS, 'P');
+
+  return {
+    type: 'choix',
+    svg: svg,
+    figure: function (o) { return svg; },
+    enonce: it.enonce,
+    cotes: '',
+    choix: choix,
+    reponse: bonne,
+    reponseTexte: it.bon,
+    rappel: 'La MASSE (en kg) est la quantité de matière : elle ne change pas d\u2019un astre '
+          + 'à l\u2019autre. Le POIDS (en N) est une force : il dépend de l\u2019astre, par '
+          + 'P = m \u00D7 g.',
+    hint: it.hint,
+    detail: it.detail,
+    ficheSvg: svg,
+    ficheCotes: it.enonce,
+    ficheReponse: it.bon
+  };
+}
+
+/* ─── Déclaration des familles ────────────────────────────────────────── */
+
+/* Compétences : C1 s'approprier · C3 réaliser · C4 valider.
+   Codes à confirmer par l'auteur (premier jet). */
+var FAMILLES = [
+  { value: 'lire',       label: 'Lire une force',        couleur: 'blue',
+    nom: 'Lire les caractéristiques d\u2019une force', comp: 'C1', co: 'Co7', gen: genLire,
+    ficheAide: 'point d\u2019application \u00B7 direction \u00B7 sens \u00B7 valeur (N)' },
+  { value: 'construire', label: 'Construire le vecteur', couleur: 'teal',
+    nom: 'Construire le bon vecteur',                    comp: 'C4', co: 'Co7', gen: genConstruire,
+    ficheAide: 'longueur = valeur \u00F7 échelle' },
+  { value: 'modeliser',  label: 'Modéliser une action',  couleur: 'amber',
+    nom: 'Modéliser une action mécanique',               comp: 'C1', co: 'Co6', gen: genModeliser,
+    ficheAide: 'contact : les objets se touchent \u2014 sinon, à distance' },
+  { value: 'echelle',    label: 'Échelle',               couleur: 'amber2',
+    nom: 'Échelle : valeur et longueur',                 comp: 'C3', co: 'Co7', gen: genEchelle,
+    ficheAide: 'valeur = longueur \u00D7 échelle' },
+  { value: 'poidsvec',   label: 'Vecteur poids',         couleur: 'coral',
+    nom: 'Reconnaître le vecteur poids',                 comp: 'C4', co: 'Co8', gen: genPoidsVec,
+    ficheAide: 'vertical, vers le bas, appliqué en G' },
+  { value: 'pmg',        label: 'P = m \u00D7 g',        couleur: 'green',
+    nom: 'Calculer un poids ou une masse',               comp: 'C3', co: 'Co9', gen: genPMG,
+    ficheAide: 'P = m \u00D7 g' },
+  { value: 'piege',      label: 'Masse ou poids ?',      couleur: 'pink',
+    nom: 'Distinguer masse et poids',                    comp: 'C4', co: 'Co9', gen: genPiege,
+    ficheAide: 'masse en kg, invariable \u00B7 poids en N, variable' }
+];
+
+var COMPETENCES = {
+  C1: { nom: 'S\u2019approprier' },
+  C3: { nom: 'Réaliser' },
+  C4: { nom: 'Valider' }
+};
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LE MOTEUR — dom: true. Onglets de familles, zone de réponse, fil des
+   essais, score et touche Entrée sont construits par assets/lp-defi.js.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var currentMode = 'explo';
+
+var defi = LP.defi.creer({
+  outil: 'forces_poids',
+  serie: 0,                              /* flux continu ; 10 pour une série */
+  essaisMax: 2,
+  melange: { label: 'Mélange', couleur: 'purple' },
+  modePlus: function () { return currentMode === 'defiplus'; },
+  familles: FAMILLES
+});
+
+/* ─── La fiche d'identité de la famille « lire » ──────────────────────────
+   Deux branchements suffisent, et ils sont posés UNE seule fois.
+
+   1. La délégation sur #defi-cotes : le moteur y réinjecte le HTML du
+      générateur à chaque question, donc les boutons changent, mais
+      l'écouteur, lui, reste en place.
+   2. Un observateur sur #defi-reponse : le champ du moteur n'existe qu'une
+      fois la zone de réponse reconstruite, et c'est le seul moment où l'on
+      peut le passer en lecture seule. On ne le fait qu'à ce moment-là, donc
+      jamais pendant le second essai (le moteur ne reconstruit pas la zone). */
+
+var zoneCotes = el('defi-cotes');
+
+zoneCotes.addEventListener('click', function (e) {
+  var b = e.target;
+  while (b && b !== zoneCotes && !(b.getAttribute && b.getAttribute('data-v') !== null)) {
+    b = b.parentNode;
+  }
+  if (!b || b === zoneCotes || !b.getAttribute) return;
+  if (defi.verrou) return;
+  var groupe = b.parentNode;
+  var freres = groupe.querySelectorAll('.fp-opt'), i;
+  for (i = 0; i < freres.length; i++) freres[i].classList.toggle('on', freres[i] === b);
+  majFicheIdentite();
+});
+
+zoneCotes.addEventListener('input', function (e) {
+  if (e.target && e.target.id === 'fp-val') majFicheIdentite();
+});
+
+/* Entrée depuis le petit champ de la fiche : le moteur écoute déjà la touche
+   au niveau du document, on laisse simplement l'événement remonter. */
+
+if (window.MutationObserver) {
+  var obs = new MutationObserver(function () {
+    var champ = el('defi-input');
+    if (!champ) return;
+    var estLire = !!(defi.q && defi.q.fam === 'lire');
+    champ.classList.toggle('fp-recap', estLire);
+    champ.readOnly = estLire;
+    if (estLire) { champ.value = ''; majFicheIdentite(); }
+  });
+  obs.observe(el('defi-reponse'), { childList: true });
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   FICHE IMPRIMABLE — LP.ficheModal, cases par COMPÉTENCE (C1 / C3 / C4)
+   Les dix exercices sont répartis entre les compétences cochées, puis
+   entre les familles de chaque compétence.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function famillesDeComp(c) {
+  var out = [], i;
+  for (i = 0; i < FAMILLES.length; i++) if (FAMILLES[i].comp === c) out.push(FAMILLES[i]);
+  return out;
+}
+
+function questionFiche(fam, num) {
+  var g = fam.gen();
+  return {
+    num: num,
+    nom: fam.comp + ' \u00B7 ' + fam.label,
+    hint: fam.ficheAide ? 'Rappel : ' + fam.ficheAide : '',
+    svg: g.ficheSvg || g.svg,
+    cotes: (g.ficheCotes !== undefined) ? g.ficheCotes : (g.cotes || g.enonce),
+    answerText: g.ficheReponse || g.reponseTexte
+  };
+}
+
+function ouvrirFiche() {
+  var cases = [], c;
+  for (c in COMPETENCES) if (Object.prototype.hasOwnProperty.call(COMPETENCES, c)) {
+    cases.push({ value: c, label: c + ' \u00B7 ' + COMPETENCES[c].nom });
+  }
+  LP.ficheModal.init({
+    familles: cases,
+    titre: '\uD83D\uDCC4 Fiche d\u2019exercices \u2014 Forces et poids',
+    texte: 'Coche les compétences à inclure. Les 10 exercices seront répartis entre '
+         + 'les compétences sélectionnées.',
+    onConfirm: function (plan, sel, opt) {
+      var sortie = [], num = 1, j, k;
+      for (j = 0; j < plan.length; j++) {
+        var fams = melange(famillesDeComp(plan[j].fam).slice(0));
+        for (k = 0; k < plan[j].n; k++) {
+          sortie.push(questionFiche(fams[k % fams.length], num++));
+        }
+      }
+      var estPlus = (currentMode === 'defiplus');
+      LP.fiche({
+        icon: '\u27A1',
+        title: 'Forces et poids',
+        subtitle: 'Physique-chimie \u00B7 2nde Bac Pro \u00B7 CAP',
+        modeLabel: estPlus ? 'Défi \u207A' : 'Mode défi',
+        isPlus: estPlus,
+        accent: '#993C1D',
+        answerLabel: 'Réponse :',
+        unit: '',
+        aide: 'Une force : point d\u2019application &nbsp;|&nbsp; direction (droite d\u2019action) '
+            + '&nbsp;|&nbsp; sens &nbsp;|&nbsp; valeur en newtons (N) &nbsp;&nbsp;\u2022&nbsp;&nbsp; '
+            + 'longueur = valeur \u00F7 échelle &nbsp;|&nbsp; valeur = longueur \u00D7 échelle '
+            + '&nbsp;&nbsp;\u2022&nbsp;&nbsp; Le poids : vertical, vers le bas, appliqué en G '
+            + '&nbsp;&nbsp;\u2022&nbsp;&nbsp; P = m \u00D7 g &nbsp;|&nbsp; g = 9,81 N/kg (Terre) '
+            + '\u00B7 1,62 (Lune) \u00B7 3,71 (Mars)',
+        questions: sortie,
+        avecCorrige: opt ? opt.avecCorrige : true
+      });
+    }
+  });
+  LP.ficheModal.open();
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   NAVIGATION
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function setMode(m, btn) {
+  currentMode = m;
+  var onglets = document.querySelectorAll('.mode-tab'), i;
+  for (i = 0; i < onglets.length; i++) onglets[i].classList.remove('active');
+  if (btn) btn.classList.add('active');
+
+  el('mode-explo').style.display = (m === 'explo') ? 'block' : 'none';
+
+  var estDefi = (m === 'defi' || m === 'defiplus');
+  /* montrerBloc pose le display ET la classe active d'un seul geste : c'est
+     le piège #mode-defi de lp-ui.css, désormais impossible à rater. */
+  LP.defi.montrerBloc('#mode-defi', estDefi);
+
+  el('defi-mode-title').textContent =
+    (m === 'defiplus') ? 'Défi \u207A — Forces et poids' : 'Mode défi — Forces et poids';
+
+  if (estDefi) defi.ui.suivante();
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   DÉMARRAGE
+   ═════════════════════════════════════════════════════════════════════════ */
+
+remplirVecteur();
+remplirPoids();
+remplirEchelle();
+remplirActions();
+calcVecteur();
+calcPoids();
+calcEchLong();
+calcActions();
+defi.demarrer();
+
+</script>
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio collège</a> &nbsp;·&nbsp;
+  Licence MIT · © 2026 Moïse Muller &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
+</footer>
+</body>
+</html>
