@@ -725,6 +725,61 @@ function astrePar(v) {
 }
 
 var ECHELLES = [5, 10, 15, 20, 25, 50];
+
+/* L'Explorateur laisse saisir n'importe quelle valeur : il lui faut des
+   échelles plus larges que celles tirées dans le défi, sinon un poids de
+   700 N ne tient dans aucun cadre. */
+var ECHELLES_EXPLO = [5, 10, 15, 20, 25, 50, 100, 200];
+
+/* Place réellement disponible devant un point, en carreaux et en valeur
+   FRACTIONNAIRE, jusqu'au bord du quadrillage.
+
+   C'est le correctif du défaut signalé le 7 septembre : l'Explorateur
+   bornait la longueur tracée avec longueursPossibles(), qui ne rend que des
+   carreaux ENTIERS et garde 6 unités de marge — réservées aux figures du
+   défi, où la pointe ne doit pas toucher le cadre. Un vecteur de 3 carreaux
+   partant du point A était donc dessiné sur 2 carreaux alors que le calcul
+   affiché disait bien 3. Ici la pointe a le droit de tomber pile sur le
+   bord : c'est ce que fait l'élève sur son papier quadrillé. */
+function placeDispo(p, s) {
+  if (s.ux > 0) return (GX1 - p.x) / CAR;
+  if (s.ux < 0) return (p.x - GX0) / CAR;
+  if (s.uy > 0) return (GY1 - p.y) / CAR;
+  return (p.y - GY0) / CAR;
+}
+
+/* Plus petite échelle de la liste qui ferait tenir la valeur dans la place
+   disponible. 0 si aucune ne convient. */
+function echelleQuiTient(valeur, dispo, liste) {
+  var i;
+  for (i = 0; i < liste.length; i++) {
+    if (valeur / liste[i] <= dispo + 0.001) return liste[i];
+  }
+  return 0;
+}
+
+/* Vecteur trop long pour le cadre. On ne dessine JAMAIS une longueur fausse :
+   le trait est pointillé, la pointe est remplacée par une marque de coupure,
+   et le message de résultat dit quelle échelle choisir. */
+function flecheCoupee(x1, y1, s, Lcar, col, lbl) {
+  var L = Lcar * CAR;
+  if (L < 2) return '';
+  var x2 = x1 + s.ux * L, y2 = y1 + s.uy * L;
+  var px = -s.uy, py = s.ux;
+  var out = '<line x1="' + f2(x1) + '" y1="' + f2(y1) + '" x2="' + f2(x2) + '" y2="' + f2(y2)
+          + '" stroke="' + col + '" stroke-width="2.6" stroke-dasharray="5,3"'
+          + ' stroke-linecap="butt" opacity="0.75"/>'
+          + '<circle cx="' + f2(x1) + '" cy="' + f2(y1) + '" r="3" fill="' + col + '"/>';
+  var j;
+  for (j = 0; j < 2; j++) {
+    var bx = x2 - s.ux * (5 + j * 5), by = y2 - s.uy * (5 + j * 5);
+    out += '<line x1="' + f2(bx + px * 5 - s.ux * 2.5) + '" y1="' + f2(by + py * 5 - s.uy * 2.5)
+         + '" x2="' + f2(bx - px * 5 + s.ux * 2.5) + '" y2="' + f2(by - py * 5 + s.uy * 2.5)
+         + '" stroke="' + col + '" stroke-width="2"/>';
+  }
+  out += pastille(x1 + s.ux * L * 0.5 + px * 13, y1 + s.uy * L * 0.5 + py * 13, lbl, col, 12);
+  return out;
+}
 var MASSES = [0.5, 1.2, 2, 3.5, 5, 8, 12, 20, 45, 60, 75];
 
 /* ═════════════════════════════════════════════════════════════════════════
@@ -746,7 +801,7 @@ function optionsHTML(liste, valeur, libelle) {
 function remplirVecteur() {
   el('v-obj').innerHTML = optionsHTML(OBJETS,
     function (o) { return o.v; }, function (o) { return o.art; });
-  el('v-ech').innerHTML = optionsHTML(ECHELLES,
+  el('v-ech').innerHTML = optionsHTML(ECHELLES_EXPLO,
     function (k) { return k; }, function (k) { return '1 carreau \u2194 ' + k + ' N'; });
   el('v-ech').value = '20';
   majPointsVecteur();
@@ -785,11 +840,10 @@ function calcVecteur() {
   if (F === null || F < 0) F = 0;
 
   var longCar = F / k;
-  var maxCar = 0;
-  var poss = longueursPossibles(pt, s, 9);
-  if (poss.length) maxCar = poss[poss.length - 1];
+  var dispo = placeDispo(pt, s);
+  var tronque = (longCar > dispo + 0.001);
+  var trace = tronque ? dispo : longCar;
 
-  var trace = Math.min(longCar, maxCar);
   var svg = grille() + bandeauEchelle(k) + figureObjet(obj, 0);
   var seg = (trace > 0.05)
     ? { x1: pt.x, y1: pt.y,
@@ -799,7 +853,11 @@ function calcVecteur() {
   for (i = 0; i < obj.pts.length; i++) {
     svg += marquePoint(obj.pts[i], obj.G, obj.pts[i].n === pt.n, s, seg);
   }
-  if (seg) svg += fleche(seg.x1, seg.y1, seg.x2, seg.y2, COL_FORCE, 'F');
+  if (seg) {
+    svg += tronque
+      ? flecheCoupee(pt.x, pt.y, s, trace, COL_FORCE, 'F')
+      : fleche(seg.x1, seg.y1, seg.x2, seg.y2, COL_FORCE, 'F');
+  }
   el('v-svg').innerHTML = svg;
 
   el('v-detail').innerHTML = 'longueur = ' + fnb1(F) + ' \u00F7 ' + k + ' = '
@@ -809,12 +867,19 @@ function calcVecteur() {
 
   var fiche = 'Point d\u2019application : ' + pt.n + ' \u00B7 direction : ' + s.dir
             + ' \u00B7 sens : ' + s.v + ' \u00B7 valeur : ' + fnb1(F) + ' N';
-  if (longCar > maxCar + 0.001) {
-    el('v-sub').innerHTML = fiche + '<br><b>Le vecteur sort du cadre :</b> choisis une '
-      + 'échelle plus grande (plus de newtons par carreau).';
-  } else {
-    el('v-sub').innerHTML = fiche;
-  }
+  el('v-sub').innerHTML = tronque
+    ? fiche + '<br><b>Le vecteur ne tient pas dans le cadre :</b> il ferait '
+      + fnb(longCar, 2) + ' carreaux et il n\u2019y a que ' + fnb(dispo, 2)
+      + ' carreaux de place devant le point ' + pt.n + '. ' + conseilEchelle(F, dispo)
+    : fiche;
+}
+
+/* Message commun : quelle échelle choisir pour que le vecteur tienne. */
+function conseilEchelle(valeur, dispo) {
+  var mieux = echelleQuiTient(valeur, dispo, ECHELLES_EXPLO);
+  return mieux
+    ? 'Passe à 1 carreau \u2194 ' + mieux + ' N.'
+    : 'Même la plus grande échelle ne suffit pas : diminue la valeur.';
 }
 
 /* ─── Panneau 2 : le poids ────────────────────────────────────────────── */
@@ -822,9 +887,9 @@ function calcVecteur() {
 var astreCourant = 'terre';
 
 function remplirPoids() {
-  el('p-obj').innerHTML = optionsHTML(OBJETS,
+  el('p-obj').innerHTML = optionsHTML(objetsLegers(),
     function (o) { return o.v; }, function (o) { return o.art; });
-  el('p-ech').innerHTML = optionsHTML(ECHELLES,
+  el('p-ech').innerHTML = optionsHTML(ECHELLES_EXPLO,
     function (k) { return k; }, function (k) { return '1 carreau \u2194 ' + k + ' N'; });
   el('p-ech').value = '50';
   var h = '', i;
@@ -851,26 +916,37 @@ function calcPoids() {
   if (m === null || m < 0) m = 0;
   var P = m * a.g;
 
+  /* L'objet est placé haut dans le cadre : le vecteur poids descend sous le
+     centre de gravité et c'est lui qui a besoin de la hauteur. Posé au sol,
+     l'objet ne laissait qu'un seul carreau — d'où le vecteur qui ne
+     dépassait jamais un carreau quelle que soit la masse. À -50 il reste
+     4,5 carreaux, de quoi représenter jusqu'à 900 N à la plus grande
+     échelle, soit un adulte sur la Terre. */
+  var dy = -50;
+  var G = GDecale(obj, dy);
+  var bas = sensPar('vers le bas');
   var longCar = P / k;
-  var poss = longueursPossibles({ x: obj.G.x, y: obj.G.y }, sensPar('vers le bas'), 9);
-  var maxCar = poss.length ? poss[poss.length - 1] : 0;
-  var trace = Math.min(longCar, maxCar);
+  var dispo = placeDispo(G, bas);
+  var tronque = (longCar > dispo + 0.001);
+  var trace = tronque ? dispo : longCar;
 
   var svg = grille() + bandeauDouble(a.lieu + ' \u00B7 g = ' + a.gTxt + ' N/kg',
                                      '1 carreau \u2194 ' + k + ' N')
-          + figureObjet(obj, 0)
-          + '<circle cx="' + obj.G.x + '" cy="' + obj.G.y + '" r="3.4" fill="#ffffff" stroke="'
+          + figureObjet(obj, dy)
+          + '<circle cx="' + G.x + '" cy="' + G.y + '" r="3.4" fill="#ffffff" stroke="'
           + COL_POIDS + '" stroke-width="2"/>'
-          + pastille(obj.G.x - 14, obj.G.y - 11, 'G', COL_POIDS, 12);
+          + pastille(G.x - 15, G.y - 12, 'G', COL_POIDS, 12);
   if (trace > 0.05) {
-    svg += fleche(obj.G.x, obj.G.y, obj.G.x, obj.G.y + trace * CAR, COL_POIDS, 'P');
+    svg += tronque
+      ? flecheCoupee(G.x, G.y, bas, trace, COL_POIDS, 'P')
+      : fleche(G.x, G.y, G.x + bas.ux * trace * CAR, G.y + bas.uy * trace * CAR, COL_POIDS, 'P');
   }
   el('p-svg').innerHTML = svg;
 
   el('p-detail').innerHTML = 'P = ' + fnb(m, 2) + ' \u00D7 ' + a.gTxt + ' = ' + fnb1(P) + ' N';
   el('p-result').innerHTML = fnb1(P) + '<span class="result-unit">N</span>';
   el('p-sub').innerHTML = 'Longueur du vecteur : ' + fnb(longCar, 2) + ' carreaux'
-    + (longCar > maxCar + 0.001 ? ' \u2014 <b>trop long pour le cadre, change d\u2019échelle</b>' : '');
+    + (tronque ? ' \u2014 <b>trop long pour le cadre.</b> ' + conseilEchelle(P, dispo) : '');
 
   var h = '<tr><th>Astre</th><th>g (N/kg)</th><th>Masse</th><th>Poids</th></tr>', i;
   for (i = 0; i < ASTRES.length; i++) {
@@ -884,7 +960,7 @@ function calcPoids() {
 /* ─── Panneau 3 : l'échelle ───────────────────────────────────────────── */
 
 function remplirEchelle() {
-  el('e-ech').innerHTML = optionsHTML(ECHELLES,
+  el('e-ech').innerHTML = optionsHTML(ECHELLES_EXPLO,
     function (k) { return k; }, function (k) { return '1 carreau \u2194 ' + k + ' N'; });
   el('e-ech').value = '20';
 }
@@ -902,8 +978,15 @@ function dessinEchelle(k, longCar) {
   }
   svg += '<line x1="' + GX0 + '" y1="' + y + '" x2="' + GX1 + '" y2="' + y
        + '" stroke="#b3b0a8" stroke-width="1.2" stroke-dasharray="3,3"/>';
-  var L = Math.max(0, Math.min(longCar, GNX));
-  if (L > 0.05) svg += fleche(GX0, y, GX0 + L * CAR, y, COL_FORCE, 'F');
+  var droite = sensPar('vers la droite');
+  var dispo = placeDispo({ x: GX0, y: y }, droite);
+  var tronque = (longCar > dispo + 0.001);
+  var L = Math.max(0, tronque ? dispo : longCar);
+  if (L > 0.05) {
+    svg += tronque
+      ? flecheCoupee(GX0, y, droite, L, COL_FORCE, 'F')
+      : fleche(GX0, y, GX0 + L * CAR, y, COL_FORCE, 'F');
+  }
   svg += texte(100, 142, 'newtons', { fs: 10, col: '#7d7a73', poids: 500 });
   return svg;
 }
@@ -923,7 +1006,8 @@ function calcEchLong() {
   el('e-val').value = fnb(V, 2);
   el('e-detail').innerHTML = 'valeur = ' + fnb(L, 2) + ' \u00D7 ' + k + ' = ' + fnb(V, 2) + ' N';
   el('e-result').innerHTML = fnb(V, 2) + '<span class="result-unit">N</span>';
-  el('e-sub').innerHTML = 'Un vecteur de ' + fnb(L, 2) + ' carreaux représente ' + fnb(V, 2) + ' N.';
+  el('e-sub').innerHTML = 'Un vecteur de ' + fnb(L, 2) + ' carreaux représente ' + fnb(V, 2) + ' N.'
+    + (L > GNX + 0.001 ? ' <b>Il dépasse le cadre</b> (' + GNX + ' carreaux). ' : '');
   majEchelleSVG();
 }
 
@@ -935,7 +1019,9 @@ function calcEchVal() {
   el('e-long').value = fnb(L, 2);
   el('e-detail').innerHTML = 'longueur = ' + fnb(V, 2) + ' \u00F7 ' + k + ' = ' + fnb(L, 2) + ' carreaux';
   el('e-result').innerHTML = fnb(L, 2) + '<span class="result-unit">carreaux</span>';
-  el('e-sub').innerHTML = 'Une force de ' + fnb(V, 2) + ' N se trace sur ' + fnb(L, 2) + ' carreaux.';
+  el('e-sub').innerHTML = 'Une force de ' + fnb(V, 2) + ' N se trace sur ' + fnb(L, 2) + ' carreaux.'
+    + (L > GNX + 0.001 ? ' <b>Il dépasse le cadre</b> (' + GNX + ' carreaux). '
+                       + conseilEchelle(V, GNX) : '');
   majEchelleSVG();
 }
 
@@ -1015,16 +1101,16 @@ function hasardPanneau() {
     majSensVecteur();
     var opts = el('v-sens').options;
     el('v-sens').value = opts[Math.floor(Math.random() * opts.length)].value;
-    var k = auHasard(ECHELLES);
+    var k = auHasard(ECHELLES_EXPLO);
     el('v-ech').value = String(k);
     el('v-F').value = fnb(k * entier(1, 4), 0);
     calcVecteur();
   } else if (panCourant === 'poids') {
-    el('p-obj').value = auHasard(OBJETS).v;
+    el('p-obj').value = auHasard(objetsLegers()).v;
     el('p-m').value = fnb(auHasard(MASSES), 2);
     calcPoids();
   } else if (panCourant === 'echelle') {
-    el('e-ech').value = String(auHasard(ECHELLES));
+    el('e-ech').value = String(auHasard(ECHELLES_EXPLO));
     el('e-long').value = fnb(entier(2, 12) / 2, 1);
     calcEchLong();
   } else {
