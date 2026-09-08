@@ -748,6 +748,28 @@ function placeDispo(p, s) {
   return (p.y - GY0) / CAR;
 }
 
+/* Échelles du panneau Poids. La liste descend à 1 N par carreau et monte à
+   2000 : le poids n'est pas saisi par l'utilisateur, il est CALCULÉ, et il
+   court de quelques centièmes de newton (50 g sur la Lune) à plusieurs
+   milliers. Il faut donc toujours une échelle qui fasse tenir le vecteur.
+   Aucun écart entre deux échelles voisines ne dépasse un facteur 2,5, alors
+   que la bande visée (0,5 à 4,5 carreaux) est large d'un facteur 9 : dès que
+   le poids tombe dans l'intervalle couvert, une échelle convient. */
+var ECHELLES_POIDS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 25, 50,
+                      100, 200, 500, 1000, 2000];
+
+/* Échelle qui place la longueur dans la bande [minCar ; maxCar].
+   On prend la plus petite échelle qui tient, donc le vecteur le plus long
+   possible : c'est le dessin le plus lisible. 0 si aucune ne convient. */
+function echelleAdaptee(valeur, minCar, maxCar, liste) {
+  var i;
+  for (i = 0; i < liste.length; i++) {
+    var L = valeur / liste[i];
+    if (L <= maxCar + 0.001 && L >= minCar - 0.001) return liste[i];
+  }
+  return 0;
+}
+
 /* Plus petite échelle de la liste qui ferait tenir la valeur dans la place
    disponible. 0 si aucune ne convient. */
 function echelleQuiTient(valeur, dispo, liste) {
@@ -889,8 +911,9 @@ var astreCourant = 'terre';
 function remplirPoids() {
   el('p-obj').innerHTML = optionsHTML(objetsLegers(),
     function (o) { return o.v; }, function (o) { return o.art; });
-  el('p-ech').innerHTML = optionsHTML(ECHELLES_EXPLO,
-    function (k) { return k; }, function (k) { return '1 carreau \u2194 ' + k + ' N'; });
+  el('p-ech').innerHTML = optionsHTML(ECHELLES_POIDS,
+    function (k) { return k; },
+    function (k) { return '1 carreau \u2194 ' + fnb(k, 2) + ' N'; });
   el('p-ech').value = '50';
   var h = '', i;
   for (i = 0; i < ASTRES.length; i++) {
@@ -925,13 +948,40 @@ function calcPoids() {
   var dy = -50;
   var G = GDecale(obj, dy);
   var bas = sensPar('vers le bas');
+  var dispo = placeDispo(G, bas);          /* 4,5 carreaux sous G */
+
+  /* Bande utile du dessin. En dessous d'un demi-carreau le vecteur n'est
+     plus lisible, au-dessus de la place disponible il sort du cadre. Le
+     poids n'étant pas saisi mais CALCULÉ, c'est l'échelle qui doit s'y
+     plier : on la réajuste dès que la longueur sort de la bande, et on le
+     dit — c'est exactement le geste demandé à l'élève quand il choisit son
+     échelle avant de tracer. */
+  var MIN_CAR = 0.5, MAX_CAR = dispo;
+  var ajustee = 0;
+  if (P > 0 && (P / k > MAX_CAR + 0.001 || P / k < MIN_CAR - 0.001)) {
+    var kAuto = echelleAdaptee(P, MIN_CAR, MAX_CAR, ECHELLES_POIDS);
+    /* Aucune échelle de la liste ne place la longueur dans la bande : on
+       prend celle qui s'en approche le plus, la plus fine si le poids est
+       minuscule, la plus large s'il est énorme. Garder l'échelle en cours
+       donnerait un vecteur invisible. */
+    if (!kAuto) {
+      kAuto = (P / ECHELLES_POIDS[0] < MIN_CAR)
+        ? ECHELLES_POIDS[0]
+        : ECHELLES_POIDS[ECHELLES_POIDS.length - 1];
+    }
+    if (kAuto !== k) {
+      k = kAuto;
+      el('p-ech').value = String(k);
+      ajustee = k;
+    }
+  }
+
   var longCar = P / k;
-  var dispo = placeDispo(G, bas);
   var tronque = (longCar > dispo + 0.001);
   var trace = tronque ? dispo : longCar;
 
   var svg = grille() + bandeauDouble(a.lieu + ' \u00B7 g = ' + a.gTxt + ' N/kg',
-                                     '1 carreau \u2194 ' + k + ' N')
+                                     '1 carreau \u2194 ' + fnb(k, 2) + ' N')
           + figureObjet(obj, dy)
           + '<circle cx="' + G.x + '" cy="' + G.y + '" r="3.4" fill="#ffffff" stroke="'
           + COL_POIDS + '" stroke-width="2"/>'
@@ -945,8 +995,18 @@ function calcPoids() {
 
   el('p-detail').innerHTML = 'P = ' + fnb(m, 2) + ' \u00D7 ' + a.gTxt + ' = ' + fnb1(P) + ' N';
   el('p-result').innerHTML = fnb1(P) + '<span class="result-unit">N</span>';
-  el('p-sub').innerHTML = 'Longueur du vecteur : ' + fnb(longCar, 2) + ' carreaux'
-    + (tronque ? ' \u2014 <b>trop long pour le cadre.</b> ' + conseilEchelle(P, dispo) : '');
+  var note = 'Longueur du vecteur : ' + fnb(longCar, 2) + ' carreaux';
+  if (tronque) {
+    note += ' \u2014 <b>trop long pour le cadre.</b> Aucune échelle de la liste ne convient : '
+          + 'diminue la masse.';
+  } else if (longCar > 0 && longCar < MIN_CAR - 0.001) {
+    note += ' \u2014 <b>trop court pour être lisible</b> : même à 1 carreau \u2194 '
+          + fnb(ECHELLES_POIDS[0], 2) + ' N, ce poids ne remplit pas un demi-carreau.';
+  } else if (ajustee) {
+    note += ' \u2014 <b>échelle ajustée à 1 carreau \u2194 ' + fnb(ajustee, 2) + ' N</b> pour que le '
+          + 'vecteur tienne entre ' + fnb(MIN_CAR, 1) + ' et ' + fnb(MAX_CAR, 1) + ' carreaux.';
+  }
+  el('p-sub').innerHTML = note;
 
   var h = '<tr><th>Astre</th><th>g (N/kg)</th><th>Masse</th><th>Poids</th></tr>', i;
   for (i = 0; i < ASTRES.length; i++) {
