@@ -1,0 +1,1970 @@
+<!--
+Circuits électriques — câbler, schématiser, mesurer
+Copyright (c) 2026 Moise Muller <lessavoirfairepartager@gmail.com>
+Créé pour outilslp.netlify.app
+
+Items visés (référentiel v5, CAP-PC-ELEC-SignElec — identiques en 2PRO) :
+  Ca1  Lire et représenter un schéma électrique.
+  Ca2  Réaliser un montage à partir d'un schéma.
+  Ca4  Mesurer l'intensité d'un courant électrique.
+  Ca5  Mesurer la tension aux bornes d'un dipôle.
+  Ca9  Distinguer une tension continue d'une tension alternative.
+  Co1  Connaître les appareils de mesure de l'intensité et de la tension.
+  Co2  Connaître les unités de mesure de l'intensité et de la tension.
+
+Structure : design system partagé (lp-ui.css / lp-ui.js / lp-fiche.js),
+boucle de défi déléguée à assets/lp-defi.js en dom:true, sur le modèle
+outils/forces_poids.html. Fiche imprimable via LP.ficheModal, cases par
+compétence (C1 / C2 / C3 / C5).
+
+LE SIMULATEUR. L'atelier ne rejoue pas des cas codés à l'avance : il résout
+réellement le réseau que l'élève a câblé, par analyse nodale (conductances,
+pivot de Gauss). Les fils et les interrupteurs fermés sont traités comme des
+courts-circuits idéaux et fusionnés en noeuds ; lampes, ampèremètre inséré,
+voltmètre et alimentation sont les seuls éléments résistifs. Conséquence
+pédagogique : le court-circuit, la lampe grillée sous 12 V, la chute de
+tension en série et l'égalité des tensions en dérivation ne sont pas écrits
+quelque part — ils tombent du calcul. On ne peut donc pas les contredire.
+
+LES LAMPES sont des 6 V (R = 24 ohms, environ 0,25 A). Une seule lampe sous
+12 V grille : c'est exactement la règle « choisir et justifier la bonne
+tension » du TP papier. Deux lampes en série sous 12 V reçoivent 6 V chacune.
+
+CONTENU PEDAGOGIQUE : énoncés, rappels, indices de second essai, détails de
+correction et codes de compétence sont un PREMIER JET, à relire par l'auteur.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circuits électriques — CAP / 2nde Bac Pro</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--amber); --accent-bg: var(--amber-bg); }
+
+  /* ── Atelier : la planche et ses commandes ───────────────────────────── */
+  #ce-plan { width: 100%; max-width: 620px; touch-action: manipulation; }
+  #ce-plan .ce-borne { cursor: pointer; }
+  #ce-plan .ce-borne circle { transition: r .12s ease; }
+  #ce-plan .ce-borne:hover circle.ce-b-halo { r: 9; }
+  #ce-plan .ce-fil { cursor: pointer; }
+  #ce-plan .ce-clic { cursor: pointer; }
+
+  .ce-outils {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
+  }
+  .ce-outil {
+    padding: 7px 11px; border: 1.5px solid var(--border); border-radius: var(--radius);
+    background: var(--card); color: var(--text2); font-family: inherit;
+    font-size: var(--fs-xs); font-weight: 600; cursor: pointer;
+  }
+  .ce-outil.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+
+  .ce-etat {
+    margin-top: 10px; padding: 10px 12px; border-radius: var(--radius);
+    background: var(--amber-bg); border-left: 3px solid var(--amber);
+    font-size: var(--fs-sm); line-height: 1.5; color: var(--text);
+  }
+  .ce-etat.ok   { background: var(--teal-bg); border-left-color: var(--teal); }
+  .ce-etat.mal  { background: var(--red-bg);  border-left-color: var(--red); }
+
+  /* ── Le multimètre ───────────────────────────────────────────────────── */
+  .ce-mm {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start;
+  }
+  @media (max-width: 560px) { .ce-mm { grid-template-columns: 1fr; } }
+
+  .ce-ecran {
+    background: #223027; color: #b8f5c9; border-radius: 8px; padding: 12px 10px;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 26px; font-weight: 700; text-align: right; letter-spacing: 1px;
+    border: 3px solid #4b4b46; min-height: 30px;
+  }
+  .ce-ecran small { display: block; font-size: 11px; letter-spacing: 0; text-align: left;
+    color: #7fbf94; font-weight: 600; margin-top: 4px; min-height: 14px; }
+
+  .ce-sel { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+  .ce-sel button {
+    padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 999px;
+    background: var(--card); color: var(--text2); font-family: inherit;
+    font-size: var(--fs-xs); font-weight: 700; cursor: pointer; min-width: 44px;
+  }
+  .ce-sel button.active { background: var(--blue-bg); color: var(--blue); border-color: var(--blue); }
+
+  .ce-bornes { display: flex; gap: 10px; margin-top: 10px; }
+  .ce-borne-mm {
+    flex: 1; text-align: center; padding: 9px 4px; border-radius: var(--radius);
+    border: 1.5px solid var(--border); background: var(--card); cursor: pointer;
+    font-size: var(--fs-xs); font-weight: 700; color: var(--text2); line-height: 1.35;
+  }
+  .ce-borne-mm span { display: block; font-size: 10px; font-weight: 600; color: var(--text3); }
+  .ce-borne-mm.rouge { border-color: #c0392b; background: #fbeae7; color: #8e2a1e; }
+  .ce-borne-mm.noire { border-color: #333; background: #ebebe8; color: #222; }
+
+  .ce-leg { font-size: var(--fs-xs); color: var(--text3); line-height: 1.6; margin-top: 8px; }
+  .ce-leg b { color: var(--text2); }
+
+  /* ── Planche de symboles ─────────────────────────────────────────────── */
+  .ce-grille {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px;
+  }
+  .ce-case {
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    background: var(--sketch-bg); padding: 10px 6px 8px; text-align: center;
+  }
+  .ce-case svg { width: 100%; height: 56px; display: block; }
+  .ce-case div { font-size: var(--fs-xs); font-weight: 600; color: var(--text2); margin-top: 6px; }
+  .ce-case small { display: block; font-size: 10px; color: var(--text3); font-weight: 500; }
+
+  /* ── Défi : les boutons-réponse dessinés ─────────────────────────────── */
+  .ce-opts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .ce-opt {
+    border: 2px solid var(--border); border-radius: var(--radius); background: var(--sketch-bg);
+    padding: 6px; cursor: pointer; width: 108px;
+  }
+  .ce-opt svg { width: 100%; height: 62px; display: block; }
+  .ce-opt div { font-size: 10px; font-weight: 700; color: var(--text2); margin-top: 3px; }
+  .ce-opt.on { border-color: var(--accent); background: var(--accent-bg); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="9" stroke="var(--amber)" stroke-width="3" fill="none"/>
+      <line x1="13.6" y1="13.6" x2="26.4" y2="26.4" stroke="var(--amber)" stroke-width="3" stroke-linecap="round"/>
+      <line x1="26.4" y1="13.6" x2="13.6" y2="26.4" stroke="var(--amber)" stroke-width="3" stroke-linecap="round"/>
+      <line x1="4" y1="20" x2="11" y2="20" stroke="var(--amber)" stroke-width="3" stroke-linecap="round" class="lp-draw" style="--dash:8"/>
+      <line x1="29" y1="20" x2="36" y2="20" stroke="var(--amber)" stroke-width="3" stroke-linecap="round" class="lp-draw" style="--dash:8"/>
+    </svg></div>
+  <div>
+    <h1>Circuits électriques</h1>
+    <p>Câbler une pièce &middot; lire un schéma &middot; mesurer U et I au multimètre</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- SELECTEUR DE MODE -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('explo',this)">Atelier</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi &#8314;</button>
+  </div>
+
+  <!-- ═══════════════ ATELIER ═══════════════ -->
+  <div id="mode-explo">
+    <div class="shape-tabs-row">
+      <div class="shape-tabs">
+        <button class="shape-tab active" data-color="amber" onclick="setPan('cablage',this)"><span class="dot" style="background:var(--amber)"></span>Câblage</button>
+        <button class="shape-tab" data-color="blue" onclick="setPan('mesure',this)"><span class="dot" style="background:var(--blue)"></span>Multimètre</button>
+        <button class="shape-tab" data-color="teal" onclick="setPan('schema',this)"><span class="dot" style="background:var(--teal)"></span>Schéma normalisé</button>
+        <button class="shape-tab" data-color="purple" onclick="setPan('symboles',this)"><span class="dot" style="background:var(--purple)"></span>Symboles</button>
+      </div>
+      <button class="btn-rnd" onclick="toutEffacer()">&#128465; Tout effacer</button>
+    </div>
+
+    <!-- ── CÂBLAGE ──────────────────────────────────────────────────── -->
+    <div id="panel-cablage" class="panel active">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--amber-bg);color:var(--amber)">Plan de l'installation</span>
+        <div class="ce-outils" id="ce-outils"></div>
+        <svg id="ce-plan" viewBox="0 0 560 360" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">Clique une borne, puis une autre : le fil se pose. Clique un fil pour l'enlever.</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">L'alimentation du labo</p>
+        <div class="ce-sel" id="ce-alim-u"></div>
+        <div class="ce-leg">Deux sorties séparées : une <b>continue</b> (&#9107;) et une <b>alternative</b> (&#8767;).
+          Le réglage 6 V / 12 V agit sur les deux. Les lampes de la paillasse sont des <b>6 V</b>.</div>
+
+        <p class="section-label" style="margin-top:1.1rem">Le montage</p>
+        <div class="ce-sel" id="ce-scenar"></div>
+
+        <p class="section-label" style="margin-top:1.1rem">Les interrupteurs</p>
+        <div class="ce-sel" id="ce-inters"></div>
+
+        <p class="section-label" style="margin-top:1.1rem">Mise sous tension</p>
+        <div class="ce-sel">
+          <button type="button" onclick="verifierMontage()">&#128269; Faire vérifier</button>
+          <button type="button" id="ce-btn-power" onclick="basculerPower()">&#9889; Mettre sous tension</button>
+        </div>
+        <div class="ce-etat" id="ce-etat">Câble le circuit, puis fais-le vérifier avant de le mettre sous tension.</div>
+      </div>
+    </div>
+
+    <!-- ── MULTIMÈTRE ───────────────────────────────────────────────── -->
+    <div id="panel-mesure" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--blue-bg);color:var(--blue)">Le multimètre</span>
+        <div class="ce-mm">
+          <div>
+            <div class="ce-ecran" id="ce-ecran">- - -<small id="ce-ecran-sub">appareil éteint</small></div>
+            <p class="section-label" style="margin-top:.9rem">Sélecteur</p>
+            <div class="ce-sel" id="ce-mm-sel"></div>
+          </div>
+          <div>
+            <p class="section-label">Bornes — clique pour brancher un cordon</p>
+            <div class="ce-bornes" id="ce-mm-bornes"></div>
+            <div class="ce-leg" id="ce-mm-pointes"></div>
+          </div>
+        </div>
+        <div class="context-label">Les pointes de touche se posent sur le plan : onglet <b>Câblage</b>, outil « pointe rouge » ou « pointe noire ».</div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Mode d'emploi</p>
+        <div class="ce-leg">
+          <b>Voltmètre</b> — cordon noir sur <b>COM</b>, cordon rouge sur <b>V&#937;</b>, sélecteur sur
+          V&#9107; (continu) ou V&#8767; (alternatif). Il se branche <b>en dérivation</b>, c'est-à-dire
+          les deux pointes sur les deux bornes du dipôle, sans rien débrancher.<br><br>
+          <b>Ampèremètre</b> — cordon rouge sur la borne <b>A</b>, sélecteur sur A&#9107; ou A&#8767;.
+          Il se branche <b>en série</b> : il faut ouvrir le circuit et l'insérer dans un fil
+          (outil « ampèremètre » sur le plan).<br><br>
+          <b>Ohmmètre</b> — &#937; : uniquement <b>hors tension</b>, sinon la mesure n'a aucun sens
+          et l'appareil peut être endommagé.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SCHÉMA NORMALISÉ ─────────────────────────────────────────── -->
+    <div id="panel-schema" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--teal-bg);color:var(--teal)">Le schéma de ton montage</span>
+        <svg id="ce-schema" viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg" style="max-width:420px;width:100%"></svg>
+        <div class="context-label" id="ce-schema-txt"></div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Un schéma n'est pas un dessin</p>
+        <div class="ce-leg">
+          Chaque appareil est remplacé par son <b>symbole normalisé</b>. Les fils sont des
+          <b>traits droits</b> et les changements de direction se font <b>à angle droit</b>.
+          La position des appareils sur le plan de la pièce n'a aucune importance : seul compte
+          ce qui est relié à quoi.
+        </div>
+        <p class="section-label" style="margin-top:1.1rem">Série ou dérivation ?</p>
+        <div class="ce-leg">
+          <b>En série</b> : un seul chemin pour le courant. Les lampes se partagent la tension, et
+          si l'une est retirée, l'autre s'éteint.<br>
+          <b>En dérivation</b> : plusieurs chemins. Chaque lampe reçoit la tension complète et
+          reste indépendante. C'est le montage d'un logement.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SYMBOLES ─────────────────────────────────────────────────── -->
+    <div id="panel-symboles" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--purple-bg);color:var(--purple)">Les symboles normalisés</span>
+        <div class="ce-grille" id="ce-symboles"></div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">La tension</p>
+        <div class="ce-leg">
+          Grandeur : <b>tension</b> &middot; symbole : <b>U</b> &middot; unité : le <b>volt</b> &middot;
+          symbole de l'unité : <b>V</b>. On écrit le nom du dipôle en indice :
+          U<sub>lampe</sub> = 6 V. La tension se mesure toujours <b>entre deux points</b>,
+          c'est-à-dire aux bornes d'un appareil.
+          <br><br>Repères : pile bâton 1,5 V &middot; alimentation du labo 6 V ou 12 V &middot;
+          batterie de voiture 12 V &middot; prise du secteur 230 V.
+        </div>
+        <p class="section-label" style="margin-top:1.1rem">L'intensité</p>
+        <div class="ce-leg">
+          Grandeur : <b>intensité</b> &middot; symbole : <b>I</b> &middot; unité : l'<b>ampère</b> &middot;
+          symbole de l'unité : <b>A</b>. Elle se mesure <b>dans</b> le circuit, avec un ampèremètre
+          en série.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ DÉFI + DÉFI ⁺ ═══════════════ -->
+  <div id="mode-defi">
+    <div class="defi-card">
+      <div id="defi-plus-badge" class="defi-mode-badge">&#128274; DÉFI &#8314; — Rappels masqués</div>
+      <div class="defi-header">
+        <div class="defi-title" id="defi-mode-title">Mode défi — Circuits électriques</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
+
+      <div id="defi-familles" style="margin-bottom:1.25rem"></div>
+
+      <div class="defi-aide" id="defi-aide"></div>
+
+      <div class="defi-shape-display" id="defi-figure">
+        <svg id="defi-svg" viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg" style="max-width:340px;width:100%;"></svg>
+        <div class="defi-enonce" id="defi-enonce"></div>
+        <div class="defi-cotes" id="defi-cotes"></div>
+      </div>
+
+      <div id="defi-reponse"></div>
+
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol"></div>
+
+      <button class="btn-check" id="btn-check">Vérifier ma réponse</button>
+      <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
+      <button class="btn-next" id="btn-next" style="display:none">Question suivante →</button>
+
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="ouvrirFiche()">&#128196; Générer une fiche d'exercices</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- La modale de choix des compétences est construite par LP.ficheModal -->
+
+<script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
+<script>
+/* ═════════════════════════════════════════════════════════════════════════
+   CIRCUITS ÉLECTRIQUES — script de l'outil
+   ES5 strict (var / function), apostrophes DROITES uniquement dans le JS :
+   les apostrophes typographiques du texte affiché sont écrites \u2019.
+   Les traits des schémas sont en hexadécimal et non en var(--...) : la
+   fiche imprimable s'ouvre dans un document qui n'a pas nos variables CSS,
+   et le fond des cartes-croquis reste clair même en thème sombre.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ─── OUTILLAGE ───────────────────────────────────────────────────────── */
+
+function fnb(x, d) {
+  var p = (d === undefined) ? 2 : d;
+  var f = Math.pow(10, p);
+  var s = (Math.round(x * f) / f).toFixed(p);
+  s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  return s.replace('.', ',');
+}
+function fnb1(x) { return fnb(x, 1); }
+function melange(t) { return LP.defi.melanger(t); }
+function auHasard(t) { return t[Math.floor(Math.random() * t.length)]; }
+function entier(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
+function el(id) { return document.getElementById(id); }
+function ech(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+var TRAIT = '#2b2926';
+var ROUGE = '#c0392b';
+var NOIR  = '#1c1c1a';
+var VERT  = '#0F6E56';
+var BLEU  = '#185FA5';
+
+/* ─── SYMBOLES NORMALISÉS ─────────────────────────────────────────────────
+   Chaque symbole est dessiné autour de son centre (x, y) et occupe 30 unités
+   le long de son orientation : 'h' horizontal, 'v' vertical. Les deux bouts
+   du symbole sont donc à (x ± 15, y) ou (x, y ± 15), ce qui rend le
+   raccordement des fils purement géométrique. */
+
+function trait(x1, y1, x2, y2, col, w) {
+  return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2
+       + '" stroke="' + (col || TRAIT) + '" stroke-width="' + (w || 1.8)
+       + '" stroke-linecap="round"/>';
+}
+function txt(x, y, s, opt) {
+  opt = opt || {};
+  return '<text x="' + x + '" y="' + y + '" font-family="system-ui,sans-serif" font-size="'
+       + (opt.fs || 9) + '" font-weight="' + (opt.fw || 600) + '" fill="' + (opt.col || TRAIT)
+       + '" text-anchor="' + (opt.anc || 'middle') + '">' + ech(s) + '</text>';
+}
+
+/* Les deux pattes qui relient le corps du symbole aux bouts réglementaires. */
+function pattes(x, y, o, demiCorps) {
+  if (o === 'v') {
+    return trait(x, y - 15, x, y - demiCorps) + trait(x, y + demiCorps, x, y + 15);
+  }
+  return trait(x - 15, y, x - demiCorps, y) + trait(x + demiCorps, y, x + 15, y);
+}
+
+function symLampe(x, y, o, opt) {
+  opt = opt || {};
+  var r = 9, k = r * 0.707;
+  var col = opt.allumee ? '#b8860b' : TRAIT;
+  return (opt.allumee ? '<circle cx="' + x + '" cy="' + y + '" r="14" fill="#ffe9a8" opacity="0.85"/>' : '')
+       + pattes(x, y, o, r)
+       + '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="'
+       + (opt.allumee ? '#fff2c4' : 'none') + '" stroke="' + col + '" stroke-width="1.8"/>'
+       + trait(x - k, y - k, x + k, y + k, col)
+       + trait(x + k, y - k, x - k, y + k, col);
+}
+
+function symInter(x, y, o, ferme) {
+  var s = '';
+  if (o === 'v') {
+    s += trait(x, y - 15, x, y - 8) + trait(x, y + 8, x, y + 15);
+    s += '<circle cx="' + x + '" cy="' + (y - 8) + '" r="1.9" fill="' + TRAIT + '"/>';
+    s += '<circle cx="' + x + '" cy="' + (y + 8) + '" r="1.9" fill="' + TRAIT + '"/>';
+    s += ferme ? trait(x, y + 8, x, y - 8) : trait(x, y + 8, x + 8, y - 6);
+  } else {
+    s += trait(x - 15, y, x - 8, y) + trait(x + 8, y, x + 15, y);
+    s += '<circle cx="' + (x - 8) + '" cy="' + y + '" r="1.9" fill="' + TRAIT + '"/>';
+    s += '<circle cx="' + (x + 8) + '" cy="' + y + '" r="1.9" fill="' + TRAIT + '"/>';
+    s += ferme ? trait(x - 8, y, x + 8, y) : trait(x - 8, y, x + 6, y - 8);
+  }
+  return s;
+}
+
+function symPile(x, y, o) {
+  var s = pattes(x, y, o, 4);
+  if (o === 'v') {
+    s += trait(x - 9, y - 4, x + 9, y - 4, TRAIT, 2.4);
+    s += trait(x - 4.5, y + 4, x + 4.5, y + 4, TRAIT, 4);
+  } else {
+    s += trait(x - 4, y - 9, x - 4, y + 9, TRAIT, 2.4);
+    s += trait(x + 4, y - 4.5, x + 4, y + 4.5, TRAIT, 4);
+  }
+  return s;
+}
+
+/* Source de tension : cercle avec ⎓ (continu) ou ∿ (alternatif). */
+function symSource(x, y, o, alt) {
+  var s = pattes(x, y, o, 10)
+        + '<circle cx="' + x + '" cy="' + y + '" r="10" fill="none" stroke="' + TRAIT + '" stroke-width="1.8"/>';
+  if (alt) {
+    s += '<path d="M' + (x - 6) + ' ' + y + ' q3 -5 6 0 q3 5 6 0" fill="none" stroke="'
+       + TRAIT + '" stroke-width="1.8" stroke-linecap="round"/>';
+  } else {
+    s += trait(x - 5.5, y - 2.5, x + 5.5, y - 2.5, TRAIT, 1.8);
+    s += trait(x - 5.5, y + 2.5, x - 2, y + 2.5, TRAIT, 1.8);
+    s += trait(x - 0.5, y + 2.5, x + 2, y + 2.5, TRAIT, 1.8);
+    s += trait(x + 3.5, y + 2.5, x + 5.5, y + 2.5, TRAIT, 1.8);
+  }
+  return s;
+}
+
+function symAppareil(x, y, o, lettre, col) {
+  return pattes(x, y, o, 9)
+       + '<circle cx="' + x + '" cy="' + y + '" r="9" fill="#ffffff" stroke="'
+       + (col || TRAIT) + '" stroke-width="1.8"/>'
+       + txt(x, y + 3.4, lettre, { fs: 10, fw: 700, col: col || TRAIT });
+}
+function symVolt(x, y, o) { return symAppareil(x, y, o, 'V', BLEU); }
+function symAmp(x, y, o)  { return symAppareil(x, y, o, 'A', VERT); }
+
+function symDel(x, y, o, opt) {
+  opt = opt || {};
+  var col = opt.allumee ? '#b8860b' : TRAIT;
+  var s = pattes(x, y, o, 7);
+  if (o === 'v') {
+    s += '<polygon points="' + (x - 7) + ',' + (y - 7) + ' ' + (x + 7) + ',' + (y - 7) + ' '
+       + x + ',' + (y + 7) + '" fill="' + (opt.allumee ? '#fff2c4' : 'none') + '" stroke="' + col + '" stroke-width="1.8"/>';
+    s += trait(x - 7, y + 7, x + 7, y + 7, col, 2.2);
+  } else {
+    s += '<polygon points="' + (x - 7) + ',' + (y - 7) + ' ' + (x - 7) + ',' + (y + 7) + ' '
+       + (x + 7) + ',' + y + '" fill="' + (opt.allumee ? '#fff2c4' : 'none') + '" stroke="' + col + '" stroke-width="1.8"/>';
+    s += trait(x + 7, y - 7, x + 7, y + 7, col, 2.2);
+  }
+  s += trait(x + 8, y - 12, x + 13, y - 17, col, 1.4) + trait(x + 12, y - 9, x + 17, y - 14, col, 1.4);
+  return s;
+}
+
+function symFil(x, y, o) {
+  return (o === 'v') ? trait(x, y - 15, x, y + 15) : trait(x - 15, y, x + 15, y);
+}
+
+/* La planche de l'onglet Symboles. */
+var PLANCHE = [
+  { f: function (x, y) { return symPile(x, y, 'h'); },              n: 'Pile ou batterie',        s: 'source continue' },
+  { f: function (x, y) { return symSource(x, y, 'h', false); },     n: 'Source continue',         s: 'symbole \u9033' },
+  { f: function (x, y) { return symSource(x, y, 'h', true); },      n: 'Source alternative',      s: 'symbole \u223C' },
+  { f: function (x, y) { return symLampe(x, y, 'h'); },             n: 'Lampe',                   s: 'récepteur' },
+  { f: function (x, y) { return symInter(x, y, 'h', false); },      n: 'Interrupteur ouvert',     s: 'le courant ne passe pas' },
+  { f: function (x, y) { return symInter(x, y, 'h', true); },       n: 'Interrupteur fermé',      s: 'le courant passe' },
+  { f: function (x, y) { return symVolt(x, y, 'h'); },              n: 'Voltmètre',               s: 'en dérivation \u00B7 volt (V)' },
+  { f: function (x, y) { return symAmp(x, y, 'h'); },               n: 'Ampèremètre',             s: 'en série \u00B7 ampère (A)' },
+  { f: function (x, y) { return symDel(x, y, 'h'); },               n: 'DEL',                     s: 'un seul sens' },
+  { f: function (x, y) { return symFil(x, y, 'h'); },               n: 'Conducteur (fil)',        s: 'trait droit' }
+];
+
+function remplirPlanche() {
+  var h = '', i;
+  for (i = 0; i < PLANCHE.length; i++) {
+    h += '<div class="ce-case"><svg viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg">'
+       + PLANCHE[i].f(30, 20) + '</svg><div>' + ech(PLANCHE[i].n) + '</div><small>'
+       + ech(PLANCHE[i].s) + '</small></div>';
+  }
+  el('ce-symboles').innerHTML = h;
+}
+
+/* ─── SCHÉMAS NORMALISÉS ──────────────────────────────────────────────────
+   Un schéma se décrit par une liste de dipôles posés sur un rectangle, et
+   éventuellement par une ou deux branches verticales pour la dérivation.
+   Tout tient dans un viewBox 220 x 150 : c'est aussi le format de la fiche. */
+
+var CADRE = { xg: 35, xd: 185, yh: 30, yb: 120 };
+
+function bouclePlein() {
+  var c = CADRE;
+  return trait(c.xg, c.yh, c.xd, c.yh) + trait(c.xd, c.yh, c.xd, c.yb)
+       + trait(c.xd, c.yb, c.xg, c.yb) + trait(c.xg, c.yb, c.xg, c.yh);
+}
+
+/* « Trou » : on efface un segment de 30 unités du rectangle pour y poser un
+   dipôle. Plutôt que d'effacer, on dessine le rectangle par morceaux. */
+function boucleTrouee(places) {
+  var c = CADRE, s = '', i;
+  var cotes = [
+    { n: 'haut',   x1: c.xg, y1: c.yh, x2: c.xd, y2: c.yh, o: 'h' },
+    { n: 'droite', x1: c.xd, y1: c.yh, x2: c.xd, y2: c.yb, o: 'v' },
+    { n: 'bas',    x1: c.xd, y1: c.yb, x2: c.xg, y2: c.yb, o: 'h' },
+    { n: 'gauche', x1: c.xg, y1: c.yb, x2: c.xg, y2: c.yh, o: 'v' }
+  ];
+  for (i = 0; i < cotes.length; i++) {
+    var ct = cotes[i];
+    var sur = [], j;
+    for (j = 0; j < places.length; j++) if (places[j].cote === ct.n) sur.push(places[j]);
+    if (!sur.length) { s += trait(ct.x1, ct.y1, ct.x2, ct.y2); continue; }
+    /* Les pattes des symboles couvrent déjà 15 unités de part et d'autre :
+       il suffit de relier les bouts du côté aux bouts des symboles. */
+    var pts = [];
+    for (j = 0; j < sur.length; j++) pts.push(sur[j]);
+    pts.sort(function (a, b) {
+      return (ct.o === 'h') ? (Math.abs(a.x - ct.x1) - Math.abs(b.x - ct.x1))
+                            : (Math.abs(a.y - ct.y1) - Math.abs(b.y - ct.y1));
+    });
+    var cx = ct.x1, cy = ct.y1;
+    for (j = 0; j < pts.length; j++) {
+      var p = pts[j];
+      if (ct.o === 'h') { s += trait(cx, cy, p.x - 15 * sgn(ct.x2 - ct.x1), cy); cx = p.x + 15 * sgn(ct.x2 - ct.x1); }
+      else              { s += trait(cx, cy, cx, p.y - 15 * sgn(ct.y2 - ct.y1)); cy = p.y + 15 * sgn(ct.y2 - ct.y1); }
+    }
+    s += trait(cx, cy, ct.x2, ct.y2);
+  }
+  return s;
+}
+function sgn(v) { return v < 0 ? -1 : 1; }
+
+/* Un dipôle posé sur le cadre : { cote, t, ... }. t = 'lampe' | 'inter' |
+   'source' | 'volt' | 'amp' | 'del'. */
+function poser(p, alt) {
+  var o = (p.cote === 'haut' || p.cote === 'bas') ? 'h' : 'v';
+  if (p.t === 'lampe')  return symLampe(p.x, p.y, o, { allumee: p.allumee });
+  if (p.t === 'inter')  return symInter(p.x, p.y, o, !!p.ferme);
+  if (p.t === 'source') return symSource(p.x, p.y, o, !!alt);
+  if (p.t === 'pile')   return symPile(p.x, p.y, o);
+  if (p.t === 'volt')   return symVolt(p.x, p.y, o);
+  if (p.t === 'amp')    return symAmp(p.x, p.y, o);
+  if (p.t === 'del')    return symDel(p.x, p.y, o, { allumee: p.allumee });
+  return '';
+}
+
+/* Schéma série : tout sur une seule boucle. */
+function schemaSerie(spec) {
+  spec = spec || {};
+  var c = CADRE;
+  var places = [{ cote: 'gauche', x: c.xg, y: 75, t: spec.pile ? 'pile' : 'source' }];
+  var n = spec.lampes === undefined ? 1 : spec.lampes;
+  if (spec.inter !== false) places.push({ cote: 'haut', x: 110, y: c.yh, t: 'inter', ferme: spec.ferme !== false });
+  if (n === 1) places.push({ cote: 'droite', x: c.xd, y: 75, t: 'lampe', allumee: spec.allumee });
+  if (n === 2) {
+    places.push({ cote: 'droite', x: c.xd, y: 75, t: 'lampe', allumee: spec.allumee });
+    places.push({ cote: 'bas', x: 110, y: c.yb, t: 'lampe', allumee: spec.allumee });
+  }
+  if (spec.amp) places.push({ cote: 'bas', x: 70, y: c.yb, t: 'amp' });
+  if (spec.del) places.push({ cote: 'haut', x: 60, y: c.yh, t: 'del', allumee: spec.allumee });
+  if (spec.extra) places = places.concat(spec.extra);
+  var s = boucleTrouee(places), i;
+  for (i = 0; i < places.length; i++) s += poser(places[i], spec.alt);
+  if (spec.etiqSource !== false) s += txt(c.xg - 6, 78, spec.uTxt || '6 V', { anc: 'end', fs: 9 });
+  if (spec.volt) s += voltEnDerivation(spec.volt);
+  if (spec.titre) s += txt(110, 14, spec.titre, { fs: 10, fw: 700, col: '#55534e' });
+  return s;
+}
+
+/* Schéma dérivation : deux branches verticales entre les deux rails. */
+function schemaDerivation(spec) {
+  spec = spec || {};
+  var c = CADRE;
+  var xb = [100, 160];
+  var places = [{ cote: 'gauche', x: c.xg, y: 75, t: spec.pile ? 'pile' : 'source' }];
+  if (spec.interGeneral) places.push({ cote: 'haut', x: 62, y: c.yh, t: 'inter', ferme: spec.ferme !== false });
+  var s = boucleTrouee(places), i;
+  for (i = 0; i < places.length; i++) s += poser(places[i], spec.alt);
+
+  for (i = 0; i < xb.length; i++) {
+    var x = xb[i];
+    var fermeB = spec.inters ? (spec.inters[i] !== false) : true;
+    var allum = spec.allumees ? !!spec.allumees[i] : !!spec.allumee;
+    s += trait(x, c.yh, x, 45) + symInter(x, 57, 'v', fermeB)
+       + trait(x, 72, x, 78) + symLampe(x, 93, 'v', { allumee: allum })
+       + trait(x, 108, x, c.yb);
+    s += '<circle cx="' + x + '" cy="' + c.yh + '" r="2.6" fill="' + TRAIT + '"/>';
+    s += '<circle cx="' + x + '" cy="' + c.yb + '" r="2.6" fill="' + TRAIT + '"/>';
+    if (spec.etiqBranches) s += txt(x + 14, 96, (i === 0 ? 'L1' : 'L2'), { fs: 9, col: '#55534e' });
+  }
+  if (spec.etiqSource !== false) s += txt(c.xg - 6, 78, spec.uTxt || '6 V', { anc: 'end', fs: 9 });
+  if (spec.volt) s += voltEnDerivation(spec.volt);
+  if (spec.titre) s += txt(110, 14, spec.titre, { fs: 10, fw: 700, col: '#55534e' });
+  return s;
+}
+
+/* Un voltmètre posé en dérivation : deux fils qui partent de deux points du
+   schéma vers un cercle V placé à l'écart. */
+function voltEnDerivation(v) {
+  var s = trait(v.x1, v.y1, v.x1, v.yv) + trait(v.x2, v.y2, v.x2, v.yv)
+        + trait(v.x1, v.yv, (v.x1 + v.x2) / 2 - 15, v.yv)
+        + trait((v.x1 + v.x2) / 2 + 15, v.yv, v.x2, v.yv)
+        + symVolt((v.x1 + v.x2) / 2, v.yv, 'h');
+  s += '<circle cx="' + v.x1 + '" cy="' + v.y1 + '" r="2.6" fill="' + BLEU + '"/>';
+  s += '<circle cx="' + v.x2 + '" cy="' + v.y2 + '" r="2.6" fill="' + BLEU + '"/>';
+  return s;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   L'ATELIER — modèle
+   Le plan porte des BORNES. Un fil relie deux bornes. Rien d'autre n'est
+   mémorisé : tout le reste (série, dérivation, court-circuit, lampe
+   grillée, valeur lue au multimètre) est RECALCULÉ à chaque changement par
+   le solveur ci-dessous. Il n'y a donc aucun cas particulier écrit en dur,
+   et l'élève ne peut pas tomber sur une situation « non prévue ».
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var R_LAMPE = 24;        /* lampe 6 V - 0,25 A */
+var R_INT   = 0.05;      /* résistance interne de l'alimentation */
+var R_AMP   = 0.05;      /* ampèremètre : presque un fil */
+var R_VOLT  = 1e6;       /* voltmètre : presque un isolant */
+var U_NOM   = 6;         /* tension nominale des lampes */
+
+var SCENARIOS = {
+  p1:  { label: 'Une pièce',        pieces: 1, general: false },
+  p2:  { label: 'Deux pièces',      pieces: 2, general: false },
+  p2g: { label: '+ interrupteur général', pieces: 2, general: true }
+};
+
+/* Les bornes du plan. cx/cy = position ; lib = ce qu'on affiche à côté. */
+var BORNES = {
+  'DC+':  { x: 132, y: 158, lib: '+',  col: ROUGE, grp: 'alim' },
+  'DC-':  { x: 132, y: 186, lib: '\u2013', col: NOIR, grp: 'alim' },
+  'AC1':  { x: 132, y: 232, lib: '',   col: '#7a6a20', grp: 'alim' },
+  'AC2':  { x: 132, y: 260, lib: '',   col: '#7a6a20', grp: 'alim' },
+  'K0a':  { x: 168, y: 59,  lib: '',   col: TRAIT, grp: 'k0' },
+  'K0b':  { x: 168, y: 89,  lib: '',   col: TRAIT, grp: 'k0' },
+  'L1a':  { x: 315, y: 96,  lib: '',   col: TRAIT, grp: 'p1' },
+  'L1b':  { x: 345, y: 96,  lib: '',   col: TRAIT, grp: 'p1' },
+  'K1a':  { x: 514, y: 81,  lib: '',   col: TRAIT, grp: 'p1' },
+  'K1b':  { x: 514, y: 111, lib: '',   col: TRAIT, grp: 'p1' },
+  'L2a':  { x: 315, y: 264, lib: '',   col: TRAIT, grp: 'p2' },
+  'L2b':  { x: 345, y: 264, lib: '',   col: TRAIT, grp: 'p2' },
+  'K2a':  { x: 514, y: 249, lib: '',   col: TRAIT, grp: 'p2' },
+  'K2b':  { x: 514, y: 279, lib: '',   col: TRAIT, grp: 'p2' }
+};
+
+/* L'état complet de l'atelier. */
+var A = {
+  scenario: 'p1',
+  u: 6,                    /* 6 ou 12 V, commun aux deux sorties */
+  power: false,
+  inters: { K0: true, K1: false, K2: false },   /* true = fermé */
+  fils: [],                /* [{a:'DC+', b:'L1a'}, ...] */
+  outil: 'cable',          /* cable | rouge | noire */
+  attente: null,           /* première borne cliquée */
+  pointes: { rouge: null, noire: null },
+  mm: { sel: 'off', com: null, vohm: null, amp: null }  /* quel cordon dans quelle borne */
+};
+
+function bornesActives() {
+  var sc = SCENARIOS[A.scenario], out = [], k;
+  for (k in BORNES) if (Object.prototype.hasOwnProperty.call(BORNES, k)) {
+    var g = BORNES[k].grp;
+    if (g === 'k0' && !sc.general) continue;
+    if (g === 'p2' && sc.pieces < 2) continue;
+    out.push(k);
+  }
+  return out;
+}
+
+function bornePresente(id) {
+  var a = bornesActives(), i;
+  for (i = 0; i < a.length; i++) if (a[i] === id) return true;
+  return false;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LE SOLVEUR — analyse nodale
+   Fils et interrupteurs fermés sont des courts-circuits idéaux : on les
+   fusionne en NOEUDS par union-find. Restent les seuls éléments résistifs
+   (lampes, multimètre, alimentation), sur lesquels on écrit la loi des
+   noeuds. Le système est résolu par pivot de Gauss. Une conductance
+   minuscule vers la masse régularise les noeuds flottants, sinon la matrice
+   est singulière dès qu'une branche pend dans le vide.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function UF(ids) {
+  var p = {}, i;
+  for (i = 0; i < ids.length; i++) p[ids[i]] = ids[i];
+  function find(x) { while (p[x] !== x) { p[x] = p[p[x]]; x = p[x]; } return x; }
+  return {
+    find: find,
+    union: function (a, b) { var ra = find(a), rb = find(b); if (ra !== rb) p[ra] = rb; }
+  };
+}
+
+/* Construit le réseau : noeuds + éléments. Renvoie null si rien à résoudre. */
+function construireReseau() {
+  var ids = bornesActives(), i;
+  var uf = UF(ids);
+  var elems = [];            /* {a, b, R, quoi, ref} */
+
+  /* 1. les fils */
+  for (i = 0; i < A.fils.length; i++) {
+    var f = A.fils[i];
+    if (bornePresente(f.a) && bornePresente(f.b)) uf.union(f.a, f.b);
+  }
+  /* 2. les interrupteurs fermés */
+  var KS = [['K0', 'K0a', 'K0b'], ['K1', 'K1a', 'K1b'], ['K2', 'K2a', 'K2b']];
+  for (i = 0; i < KS.length; i++) {
+    if (!bornePresente(KS[i][1])) continue;
+    if (A.inters[KS[i][0]]) uf.union(KS[i][1], KS[i][2]);
+  }
+  /* 3. les lampes */
+  if (bornePresente('L1a')) elems.push({ a: 'L1a', b: 'L1b', R: R_LAMPE, quoi: 'lampe', ref: 'L1' });
+  if (bornePresente('L2a')) elems.push({ a: 'L2a', b: 'L2b', R: R_LAMPE, quoi: 'lampe', ref: 'L2' });
+  /* 4. le multimètre, s'il est posé et branché */
+  var mm = etatMultimetre();
+  if (mm.elem && A.pointes.rouge && A.pointes.noire
+      && bornePresente(A.pointes.rouge) && bornePresente(A.pointes.noire)) {
+    elems.push({ a: A.pointes.rouge, b: A.pointes.noire, R: mm.R, quoi: 'mm', ref: 'MM' });
+  }
+  return { uf: uf, ids: ids, elems: elems };
+}
+
+/* Deux bornes sont-elles reliées par le réseau (hors alimentation) ? */
+function relieesPar(res, a, b) {
+  if (!bornePresente(a) || !bornePresente(b)) return false;
+  var ra = res.uf.find(a), rb = res.uf.find(b);
+  if (ra === rb) return true;
+  /* parcours en largeur sur les éléments */
+  var vus = {}, file = [ra], i;
+  vus[ra] = true;
+  while (file.length) {
+    var n = file.shift();
+    for (i = 0; i < res.elems.length; i++) {
+      var e = res.elems[i];
+      var na = res.uf.find(e.a), nb = res.uf.find(e.b);
+      var autre = (na === n) ? nb : ((nb === n) ? na : null);
+      if (autre && !vus[autre]) { vus[autre] = true; file.push(autre); }
+    }
+  }
+  return !!vus[rb];
+}
+
+/* Résout le réseau avec une source entre p et m, de f.é.m. u. Renvoie les
+   potentiels par noeud, ou null. */
+function resoudre(res, p, m, u) {
+  var uf = res.uf, i, j;
+  var racines = {}, liste = [];
+  for (i = 0; i < res.ids.length; i++) {
+    var r = uf.find(res.ids[i]);
+    if (!(r in racines)) { racines[r] = liste.length; liste.push(r); }
+  }
+  var n = liste.length;
+  var G = [], I = [];
+  for (i = 0; i < n; i++) { G.push([]); I.push(0); for (j = 0; j < n; j++) G[i].push(0); }
+  for (i = 0; i < n; i++) G[i][i] += 1e-9;      /* régularisation */
+
+  function ajouter(a, b, g) {
+    var ia = racines[uf.find(a)], ib = racines[uf.find(b)];
+    if (ia === ib) return;
+    G[ia][ia] += g; G[ib][ib] += g; G[ia][ib] -= g; G[ib][ia] -= g;
+  }
+  for (i = 0; i < res.elems.length; i++) ajouter(res.elems[i].a, res.elems[i].b, 1 / res.elems[i].R);
+
+  var ip = racines[uf.find(p)], im = racines[uf.find(m)];
+  if (u !== null) {
+    ajouter(p, m, 1 / R_INT);
+    if (ip !== im) { I[ip] += u / R_INT; I[im] -= u / R_INT; }
+  }
+  /* masse = borne moins */
+  var V = gauss(G, I, im, n);
+  if (!V) return null;
+  return { V: V, idx: racines, uf: uf, ip: ip, im: im };
+}
+
+/* Pivot de Gauss, ligne et colonne de la masse retirées. */
+function gauss(G, I, masse, n) {
+  var map = [], i, j, k;
+  for (i = 0; i < n; i++) if (i !== masse) map.push(i);
+  var m = map.length;
+  if (!m) { var Z = []; for (i = 0; i < n; i++) Z.push(0); return Z; }
+  var M = [];
+  for (i = 0; i < m; i++) {
+    var lig = [];
+    for (j = 0; j < m; j++) lig.push(G[map[i]][map[j]]);
+    lig.push(I[map[i]]);
+    M.push(lig);
+  }
+  for (k = 0; k < m; k++) {
+    var piv = k;
+    for (i = k + 1; i < m; i++) if (Math.abs(M[i][k]) > Math.abs(M[piv][k])) piv = i;
+    if (Math.abs(M[piv][k]) < 1e-14) return null;
+    var tmp = M[k]; M[k] = M[piv]; M[piv] = tmp;
+    for (i = k + 1; i < m; i++) {
+      var c = M[i][k] / M[k][k];
+      if (!c) continue;
+      for (j = k; j <= m; j++) M[i][j] -= c * M[k][j];
+    }
+  }
+  var x = [];
+  for (i = 0; i < m; i++) x.push(0);
+  for (i = m - 1; i >= 0; i--) {
+    var s = M[i][m];
+    for (j = i + 1; j < m; j++) s -= M[i][j] * x[j];
+    x[i] = s / M[i][i];
+  }
+  var V = [];
+  for (i = 0; i < n; i++) V.push(0);
+  for (i = 0; i < m; i++) V[map[i]] = x[i];
+  return V;
+}
+
+/* ─── Le diagnostic complet du montage ──────────────────────────────────── */
+
+function analyser() {
+  var res = construireReseau();
+  var out = {
+    source: null, alt: false, u: A.u, melange: false,
+    lampes: {}, i_source: 0, court: false, V: null, res: res
+  };
+  var dcOk = relieesPar(res, 'DC+', 'DC-');
+  var acOk = relieesPar(res, 'AC1', 'AC2');
+  /* Mélange : une borne continue et une borne alternative dans le même
+     noeud, ou reliées par des éléments. */
+  var croise = relieesPar(res, 'DC+', 'AC1') || relieesPar(res, 'DC+', 'AC2')
+            || relieesPar(res, 'DC-', 'AC1') || relieesPar(res, 'DC-', 'AC2');
+  out.melange = croise;
+
+  if (dcOk)      { out.source = ['DC+', 'DC-']; out.alt = false; }
+  else if (acOk) { out.source = ['AC1', 'AC2']; out.alt = true; }
+
+  if (!A.power || !out.source) {
+    out.V = resoudre(res, out.source ? out.source[0] : 'DC+', out.source ? out.source[1] : 'DC-', null);
+    remplirLampes(out, res, 0);
+    return out;
+  }
+  var sol = resoudre(res, out.source[0], out.source[1], A.u);
+  out.V = sol;
+  if (!sol) { remplirLampes(out, res, 0); return out; }
+
+  var vp = sol.V[sol.ip], vm = sol.V[sol.im];
+  out.i_source = Math.abs((A.u - (vp - vm)) / R_INT);
+  out.court = (out.i_source > 3);
+  remplirLampes(out, res, 1);
+  return out;
+}
+
+function remplirLampes(out, res, actif) {
+  var noms = ['L1', 'L2'], i;
+  for (i = 0; i < noms.length; i++) {
+    var a = noms[i] + 'a', b = noms[i] + 'b';
+    if (!bornePresente(a)) continue;
+    var u = 0;
+    if (actif && out.V) u = Math.abs(potentiel(out.V, a) - potentiel(out.V, b));
+    if (out.court) u = 0;
+    out.lampes[noms[i]] = {
+      u: u, i: u / R_LAMPE,
+      allumee: (u > 1.2 && !out.court),
+      faible: (u > 1.2 && u < U_NOM * 0.8),
+      grillee: (u > U_NOM * 1.25)
+    };
+  }
+}
+
+function potentiel(sol, borne) {
+  if (!sol) return 0;
+  var r = sol.uf.find(borne);
+  var k = sol.idx[r];
+  return (k === undefined) ? 0 : sol.V[k];
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LE MULTIMÈTRE
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var MODES = [
+  { v: 'off',  l: 'OFF' },
+  { v: 'Vdc',  l: 'V\u2393' },
+  { v: 'Vac',  l: 'V\u223F' },
+  { v: 'Adc',  l: 'A\u2393' },
+  { v: 'Aac',  l: 'A\u223F' },
+  { v: 'ohm',  l: '\u03A9' }
+];
+
+/* Un afficheur de multimetre garde ses decimales : 6,0 V et non 6 V. */
+function afficheur(x, d) {
+  return x.toFixed(d).replace('.', ',');
+}
+
+function etatMultimetre() {
+  var s = A.mm.sel;
+  if (s === 'Vdc' || s === 'Vac') return { elem: true, R: R_VOLT, fam: 'V', alt: (s === 'Vac') };
+  if (s === 'Adc' || s === 'Aac') return { elem: true, R: R_AMP,  fam: 'A', alt: (s === 'Aac') };
+  if (s === 'ohm') return { elem: false, R: 0, fam: 'R', alt: false };
+  return { elem: false, R: 0, fam: null, alt: false };
+}
+
+/* Résistance vue entre deux bornes, appareil hors tension : on injecte 1 A
+   dans la première et on lit la tension qui apparaît. */
+function ohmmetre(res, a, b) {
+  var uf = res.uf, i, j;
+  var racines = {}, liste = [];
+  for (i = 0; i < res.ids.length; i++) {
+    var r = uf.find(res.ids[i]);
+    if (!(r in racines)) { racines[r] = liste.length; liste.push(r); }
+  }
+  var n = liste.length, G = [], I = [];
+  for (i = 0; i < n; i++) { G.push([]); I.push(0); for (j = 0; j < n; j++) G[i].push(0); }
+  for (i = 0; i < n; i++) G[i][i] += 1e-12;
+  for (i = 0; i < res.elems.length; i++) {
+    var e = res.elems[i];
+    if (e.quoi === 'mm') continue;                 /* l'ohmmètre ne se mesure pas lui-même */
+    var ia = racines[uf.find(e.a)], ib = racines[uf.find(e.b)];
+    if (ia === ib) continue;
+    var g = 1 / e.R;
+    G[ia][ia] += g; G[ib][ib] += g; G[ia][ib] -= g; G[ib][ia] -= g;
+  }
+  var ia2 = racines[uf.find(a)], ib2 = racines[uf.find(b)];
+  if (ia2 === ib2) return 0;
+  I[ia2] += 1; I[ib2] -= 1;
+  var V = gauss(G, I, ib2, n);
+  if (!V) return Infinity;
+  var R = V[ia2] - V[ib2];
+  return (R > 5e5 || R < 0) ? Infinity : R;
+}
+
+function lireMultimetre(diag) {
+  var s = A.mm.sel;
+  if (s === 'off') return { val: '- - -', sub: 'appareil \u00E9teint' };
+  var noirCom  = (A.mm.com === 'noire');
+  var rougeV   = (A.mm.vohm === 'rouge');
+  var rougeA   = (A.mm.amp === 'rouge');
+  var mm = etatMultimetre();
+
+  if (!noirCom) return { val: '- - -', sub: 'le cordon noir se branche sur COM', mal: true };
+  if (mm.fam === 'A' && !rougeA) {
+    return { val: '- - -', sub: 'pour mesurer une intensit\u00E9, le cordon rouge va sur la borne A', mal: true };
+  }
+  if ((mm.fam === 'V' || mm.fam === 'R') && !rougeV) {
+    return { val: '- - -', sub: 'pour mesurer une tension, le cordon rouge va sur la borne V\u03A9', mal: true };
+  }
+  if (!A.pointes.rouge || !A.pointes.noire) {
+    return { val: '- - -', sub: 'pose les deux pointes de touche sur le plan' };
+  }
+  if (A.pointes.rouge === A.pointes.noire) {
+    return { val: mm.fam === 'R' ? '0,0 \u03A9' : '0,0', sub: 'les deux pointes sont au m\u00EAme endroit' };
+  }
+
+  if (mm.fam === 'R') {
+    if (A.power) return { val: 'Err', sub: 'un ohmm\u00E8tre ne se branche JAMAIS sous tension', mal: true };
+    var R = ohmmetre(diag.res, A.pointes.rouge, A.pointes.noire);
+    if (!isFinite(R)) return { val: '1', sub: 'circuit ouvert entre les deux pointes' };
+    return { val: afficheur(R, 1) + ' \u03A9', sub: 'r\u00E9sistance mesur\u00E9e hors tension' };
+  }
+
+  var dv = potentiel(diag.V, A.pointes.rouge) - potentiel(diag.V, A.pointes.noire);
+  if (!A.power || !diag.source) {
+    return { val: mm.fam === 'V' ? '0,0 V' : '0 mA', sub: 'le circuit n\u2019est pas sous tension' };
+  }
+  /* Le bon type de courant, ou rien. C'est le point du cours. */
+  if (diag.alt !== mm.alt) {
+    return {
+      val: mm.fam === 'V' ? '0,0 V' : '0 mA',
+      sub: 'le s\u00E9lecteur est sur ' + (mm.alt ? 'alternatif' : 'continu')
+         + ' et la source est ' + (diag.alt ? 'alternative' : 'continue'),
+      mal: true
+    };
+  }
+  if (diag.alt) dv = Math.abs(dv);
+  if (mm.fam === 'V') {
+    return { val: afficheur(dv, 1) + ' V', sub: 'tension mesur\u00E9e en d\u00E9rivation' };
+  }
+  var i = dv / R_AMP;
+  var txtI = (Math.abs(i) < 1) ? (fnb(i * 1000, 0) + ' mA') : (afficheur(i, 2) + ' A');
+  return { val: txtI, sub: 'intensit\u00E9 mesur\u00E9e en s\u00E9rie' };
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   RENDU DU PLAN
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function mur(x, y, w, h, titre) {
+  return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h
+       + '" rx="4" fill="#fcfcfa" stroke="#b9b6ae" stroke-width="6"/>'
+       + txt(x + 14, y + 22, titre, { anc: 'start', fs: 11, col: '#8a877f' });
+}
+
+function cheminFil(a, b, dec) {
+  var A1 = BORNES[a], B1 = BORNES[b];
+  if (!A1 || !B1) return '';
+  var mx = (A1.x + B1.x) / 2 + dec;
+  if (A1.y === B1.y) return 'M' + A1.x + ' ' + A1.y + ' L' + B1.x + ' ' + B1.y;
+  return 'M' + A1.x + ' ' + A1.y + ' L' + mx + ' ' + A1.y + ' L' + mx + ' ' + B1.y + ' L' + B1.x + ' ' + B1.y;
+}
+
+function dessinerPlan(diag) {
+  var sc = SCENARIOS[A.scenario], s = '', i;
+
+  /* les pièces */
+  s += mur(196, 14, 350, 166, 'Pi\u00E8ce 1');
+  if (sc.pieces > 1) s += mur(196, 188, 350, 158, 'Pi\u00E8ce 2');
+
+  /* l'alimentation */
+  s += '<rect x="16" y="120" width="120" height="170" rx="8" fill="#efeee9" stroke="#8a877f" stroke-width="2"/>';
+  s += txt(76, 141, 'Alimentation', { fs: 11, fw: 700, col: '#55534e' });
+  s += txt(76, 155, fnb(A.u, 0) + ' V', { fs: 13, fw: 700, col: (A.power ? '#b8860b' : '#8a877f') });
+  s += symSource(60, 172, 'h', false) + txt(30, 176, '', { fs: 9 });
+  s += symSource(60, 246, 'h', true);
+  s += txt(118, 162, '+', { anc: 'end', fs: 12, fw: 700, col: ROUGE });
+  s += txt(118, 190, '\u2013', { anc: 'end', fs: 14, fw: 700, col: NOIR });
+  s += txt(30, 214, 'alternatif', { anc: 'start', fs: 9, col: '#7a6a20' });
+  s += txt(30, 130, 'continu', { anc: 'start', fs: 9, col: '#55534e' });
+
+  /* les appareils */
+  var L1 = diag.lampes.L1 || {}, L2 = diag.lampes.L2 || {};
+  s += symLampe(330, 96, 'h', { allumee: !!L1.allumee });
+  s += txt(330, 122, 'Lampe 1', { fs: 10, col: '#55534e' });
+  s += symInter(514, 96, 'v', A.inters.K1);
+  s += txt(536, 99, 'K1', { fs: 10, col: '#55534e' });
+  if (sc.pieces > 1) {
+    s += symLampe(330, 264, 'h', { allumee: !!L2.allumee });
+    s += txt(330, 290, 'Lampe 2', { fs: 10, col: '#55534e' });
+    s += symInter(514, 264, 'v', A.inters.K2);
+    s += txt(536, 267, 'K2', { fs: 10, col: '#55534e' });
+  }
+  if (sc.general) {
+    s += symInter(168, 74, 'v', A.inters.K0);
+    s += txt(168, 116, 'g\u00E9n\u00E9ral', { fs: 9, col: '#55534e' });
+  }
+
+  /* les fils */
+  for (i = 0; i < A.fils.length; i++) {
+    var f = A.fils[i];
+    if (!bornePresente(f.a) || !bornePresente(f.b)) continue;
+    var d = cheminFil(f.a, f.b, ((i % 3) - 1) * 11);
+    s += '<path d="' + d + '" fill="none" stroke="' + ROUGE + '" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>';
+    s += '<path class="ce-fil" data-fil="' + i + '" d="' + d
+       + '" fill="none" stroke="transparent" stroke-width="14"/>';
+  }
+
+  /* les bornes */
+  var act = bornesActives();
+  for (i = 0; i < act.length; i++) {
+    var id = act[i], b = BORNES[id];
+    var choisie = (A.attente === id);
+    s += '<g class="ce-borne" data-borne="' + id + '">'
+       + '<circle class="ce-b-halo" cx="' + b.x + '" cy="' + b.y + '" r="'
+       + (choisie ? 9 : 6) + '" fill="' + (choisie ? '#ffd76a' : 'transparent') + '"/>'
+       + '<circle cx="' + b.x + '" cy="' + b.y + '" r="3.6" fill="' + b.col + '"/>'
+       + '<circle cx="' + b.x + '" cy="' + b.y + '" r="12" fill="transparent"/></g>';
+  }
+
+  /* les pointes de touche */
+  s += pointe(A.pointes.rouge, ROUGE, -1);
+  s += pointe(A.pointes.noire, NOIR, 1);
+  return s;
+}
+
+function pointe(id, col, sens) {
+  if (!id || !BORNES[id] || !bornePresente(id)) return '';
+  var b = BORNES[id], dx = 13 * sens, dy = -16;
+  return '<line x1="' + (b.x + dx) + '" y1="' + (b.y + dy) + '" x2="' + b.x + '" y2="' + b.y
+       + '" stroke="' + col + '" stroke-width="3.4" stroke-linecap="round"/>'
+       + '<circle cx="' + (b.x + dx) + '" cy="' + (b.y + dy) + '" r="4.6" fill="' + col + '"/>';
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LE TEXTE D'ÉTAT — ce que dirait le professeur en passant derrière l'élève
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function texteEtat(diag, force) {
+  var sc = SCENARIOS[A.scenario];
+  var t = [], classe = '';
+  if (diag.melange) {
+    return { txt: 'Tu as reli\u00E9 la sortie <b>continue</b> et la sortie <b>alternative</b> : '
+       + 'ce sont deux sources diff\u00E9rentes, elles ne se m\u00E9langent pas. Choisis-en une.', cl: 'mal' };
+  }
+  if (!diag.source) {
+    return { txt: 'Le circuit n\u2019est pas ferm\u00E9 : il n\u2019y a pas de chemin complet qui parte '
+       + 'd\u2019une borne de l\u2019alimentation et qui y revienne par l\u2019autre.', cl: '' };
+  }
+  if (!A.power && !force) {
+    return { txt: 'Le circuit est ferm\u00E9 sur la sortie <b>'
+       + (diag.alt ? 'alternative' : 'continue') + '</b>. Tu peux le mettre sous tension.', cl: 'ok' };
+  }
+  if (diag.court) {
+    return { txt: '<b>Court-circuit !</b> Le courant trouve un chemin qui revient \u00E0 '
+       + 'l\u2019alimentation sans traverser de r\u00E9cepteur. En vrai, le fusible fond ou le '
+       + 'disjoncteur saute. Cherche le fil qui relie les deux bornes sans passer par une lampe.', cl: 'mal' };
+  }
+  var noms = ['L1', 'L2'], i, allumees = 0, tensions = [];
+  for (i = 0; i < noms.length; i++) {
+    var L = diag.lampes[noms[i]];
+    if (!L) continue;
+    var nom = 'Lampe ' + (i + 1);
+    if (L.grillee) {
+      t.push('<b>' + nom + ' grill\u00E9e</b> : elle re\u00E7oit ' + afficheur(L.u, 1)
+           + ' V alors que c\u2019est une lampe 6 V.');
+      classe = 'mal';
+    } else if (L.allumee) {
+      allumees++;
+      tensions.push(L.u);
+      t.push(nom + ' allum\u00E9e' + (L.faible ? ' <b>faiblement</b>' : '') + ' \u2014 U = ' + afficheur(L.u, 1)
+           + ' V, I = ' + fnb(L.i * 1000, 0) + ' mA.');
+    } else {
+      t.push(nom + ' \u00E9teinte.');
+    }
+  }
+  if (sc.pieces > 1 && allumees === 2) {
+    var ecart = Math.abs(tensions[0] - tensions[1]);
+    if (tensions[0] < A.u * 0.75 && ecart < 0.5) {
+      t.push('Les deux lampes se partagent la tension : elles sont en <b>s\u00E9rie</b>. '
+           + 'Si tu en retires une, l\u2019autre s\u2019\u00E9teint.');
+    } else {
+      t.push('Chaque lampe re\u00E7oit la tension compl\u00E8te : elles sont en <b>d\u00E9rivation</b>. '
+           + 'C\u2019est le montage d\u2019un logement.');
+    }
+  }
+  if (!classe) classe = allumees ? 'ok' : '';
+  return { txt: t.join(' '), cl: classe };
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LE SCHÉMA NORMALISÉ DU MONTAGE COURANT
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function majSchema(diag) {
+  var svg = el('ce-schema'), lg = el('ce-schema-txt');
+  if (!diag.source) {
+    svg.innerHTML = schemaSerie({ ferme: false, uTxt: fnb(A.u, 0) + ' V', titre: 'Circuit ouvert' });
+    lg.innerHTML = 'C\u00E2ble d\u2019abord un circuit ferm\u00E9 : le sch\u00E9ma se dessinera tout seul.';
+    return;
+  }
+  var L1 = diag.lampes.L1 || {}, L2 = diag.lampes.L2 || {};
+  var deux = (SCENARIOS[A.scenario].pieces > 1) && (L1.u > 0.5 || L2.u > 0.5);
+  var spec = {
+    alt: diag.alt, uTxt: fnb(A.u, 0) + ' V',
+    ferme: A.inters.K1, allumee: !!L1.allumee
+  };
+  if (!deux) {
+    svg.innerHTML = schemaSerie(spec);
+    lg.innerHTML = 'Une seule boucle : un seul chemin pour le courant. '
+      + 'Source ' + (diag.alt ? '<b>alternative</b>' : '<b>continue</b>') + '.';
+    return;
+  }
+  var serie = (L1.u > 0.5 && L2.u > 0.5 && L1.u < A.u * 0.75);
+  if (serie) {
+    svg.innerHTML = schemaSerie({ alt: diag.alt, uTxt: spec.uTxt, lampes: 2,
+      ferme: A.inters.K1, allumee: !!L1.allumee, titre: 'En s\u00E9rie' });
+    lg.innerHTML = 'Les deux lampes sont sur la <b>m\u00EAme boucle</b> : en s\u00E9rie. '
+      + 'Chacune ne re\u00E7oit que la moiti\u00E9 de la tension.';
+  } else {
+    svg.innerHTML = schemaDerivation({ alt: diag.alt, uTxt: spec.uTxt, etiqBranches: true,
+      inters: [A.inters.K1, A.inters.K2], allumees: [!!L1.allumee, !!L2.allumee],
+      interGeneral: SCENARIOS[A.scenario].general, ferme: A.inters.K0, titre: 'En d\u00E9rivation' });
+    lg.innerHTML = 'Deux branches entre les m\u00EAmes deux points : en <b>d\u00E9rivation</b>. '
+      + 'Chaque lampe re\u00E7oit la tension compl\u00E8te et reste ind\u00E9pendante.';
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   COMMANDES ET INTERACTIONS
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var OUTILS = [
+  { v: 'cable', l: '\uD83D\uDD0C C\u00E2bler' },
+  { v: 'rouge', l: '\uD83D\uDD34 Pointe rouge' },
+  { v: 'noire', l: '\u26AB Pointe noire' }
+];
+
+function construireCommandes() {
+  var h = '', i;
+  for (i = 0; i < OUTILS.length; i++) {
+    h += '<button type="button" class="ce-outil" data-outil="' + OUTILS[i].v + '">'
+       + OUTILS[i].l + '</button>';
+  }
+  el('ce-outils').innerHTML = h;
+
+  h = '';
+  var us = [6, 12];
+  for (i = 0; i < us.length; i++) h += '<button type="button" data-u="' + us[i] + '">' + us[i] + ' V</button>';
+  el('ce-alim-u').innerHTML = h;
+
+  h = '';
+  var k;
+  for (k in SCENARIOS) if (Object.prototype.hasOwnProperty.call(SCENARIOS, k)) {
+    h += '<button type="button" data-sc="' + k + '">' + ech(SCENARIOS[k].label) + '</button>';
+  }
+  el('ce-scenar').innerHTML = h;
+
+  h = '';
+  for (i = 0; i < MODES.length; i++) {
+    h += '<button type="button" data-mode="' + MODES[i].v + '">' + MODES[i].l + '</button>';
+  }
+  el('ce-mm-sel').innerHTML = h;
+
+  var bornes = [{ v: 'com', l: 'COM', s: 'commun' }, { v: 'vohm', l: 'V\u03A9', s: 'tension' },
+                { v: 'amp', l: 'A', s: 'intensit\u00E9' }];
+  h = '';
+  for (i = 0; i < bornes.length; i++) {
+    h += '<div class="ce-borne-mm" data-socket="' + bornes[i].v + '">' + bornes[i].l
+       + '<span>' + bornes[i].s + '</span></div>';
+  }
+  el('ce-mm-bornes').innerHTML = h;
+}
+
+function brancherInterrupteurs() {
+  var sc = SCENARIOS[A.scenario], h = '';
+  h += btnInter('K1', 'Interrupteur 1');
+  if (sc.pieces > 1) h += btnInter('K2', 'Interrupteur 2');
+  if (sc.general) h += btnInter('K0', 'G\u00E9n\u00E9ral');
+  el('ce-inters').innerHTML = h;
+}
+function btnInter(k, lib) {
+  return '<button type="button" data-inter="' + k + '" class="' + (A.inters[k] ? 'active' : '') + '">'
+       + ech(lib) + ' : ' + (A.inters[k] ? 'ferm\u00E9' : 'ouvert') + '</button>';
+}
+
+function majBoutons() {
+  marquer('#ce-outils button', 'data-outil', A.outil);
+  marquer('#ce-alim-u button', 'data-u', String(A.u));
+  marquer('#ce-scenar button', 'data-sc', A.scenario);
+  marquer('#ce-mm-sel button', 'data-mode', A.mm.sel);
+  var socks = document.querySelectorAll('#ce-mm-bornes .ce-borne-mm'), i;
+  for (i = 0; i < socks.length; i++) {
+    var s = socks[i].getAttribute('data-socket');
+    socks[i].className = 'ce-borne-mm' + (A.mm[s] ? (' ' + A.mm[s]) : '');
+  }
+  el('ce-btn-power').innerHTML = A.power ? '\u26A1 Couper' : '\u26A1 Mettre sous tension';
+  el('ce-btn-power').className = A.power ? 'active' : '';
+}
+function marquer(sel, attr, val) {
+  var b = document.querySelectorAll(sel), i;
+  for (i = 0; i < b.length; i++) {
+    b[i].classList.toggle('active', b[i].getAttribute(attr) === val);
+  }
+}
+
+function majTout(force) {
+  var diag = analyser();
+  el('ce-plan').innerHTML = dessinerPlan(diag);
+  var e = texteEtat(diag, force);
+  var boite = el('ce-etat');
+  boite.innerHTML = e.txt;
+  boite.className = 'ce-etat' + (e.cl ? ' ' + e.cl : '');
+  majSchema(diag);
+  var lec = lireMultimetre(diag);
+  el('ce-ecran').innerHTML = ech(lec.val) + '<small id="ce-ecran-sub">' + lec.sub + '</small>';
+  el('ce-mm-pointes').innerHTML =
+    'Pointe rouge : <b>' + (A.pointes.rouge || 'non pos\u00E9e') + '</b> &middot; '
+    + 'pointe noire : <b>' + (A.pointes.noire || 'non pos\u00E9e') + '</b>';
+  brancherInterrupteurs();
+  majBoutons();
+}
+
+/* ─── Les clics ───────────────────────────────────────────────────────── */
+
+function clicBorne(id) {
+  if (A.outil === 'rouge' || A.outil === 'noire') {
+    A.pointes[A.outil] = (A.pointes[A.outil] === id) ? null : id;
+    majTout(); return;
+  }
+  if (A.attente === null) { A.attente = id; majTout(); return; }
+  if (A.attente === id) { A.attente = null; majTout(); return; }
+  var a = A.attente, b = id, i;
+  A.attente = null;
+  for (i = 0; i < A.fils.length; i++) {
+    var f = A.fils[i];
+    if ((f.a === a && f.b === b) || (f.a === b && f.b === a)) { majTout(); return; }
+  }
+  A.fils.push({ a: a, b: b });
+  majTout();
+}
+
+function clicFil(i) {
+  if (A.outil !== 'cable') return;
+  A.fils.splice(i, 1);
+  majTout();
+}
+
+function brancherEvenements() {
+  el('ce-plan').addEventListener('click', function (ev) {
+    var n = ev.target;
+    while (n && n !== this) {
+      if (n.getAttribute && n.getAttribute('data-borne')) { clicBorne(n.getAttribute('data-borne')); return; }
+      if (n.getAttribute && n.getAttribute('data-fil') !== null && n.getAttribute('data-fil') !== undefined
+          && n.getAttribute('data-fil') !== '') { clicFil(parseInt(n.getAttribute('data-fil'), 10)); return; }
+      n = n.parentNode;
+    }
+  });
+
+  el('ce-outils').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('[data-outil]') : null;
+    if (!b) return;
+    A.outil = b.getAttribute('data-outil'); A.attente = null; majTout();
+  });
+  el('ce-alim-u').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('[data-u]') : null;
+    if (!b) return;
+    A.u = parseInt(b.getAttribute('data-u'), 10); majTout();
+  });
+  el('ce-scenar').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('[data-sc]') : null;
+    if (!b) return;
+    A.scenario = b.getAttribute('data-sc');
+    A.attente = null;
+    nettoyerFils();
+    majTout();
+  });
+  el('ce-inters').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('[data-inter]') : null;
+    if (!b) return;
+    var k = b.getAttribute('data-inter');
+    A.inters[k] = !A.inters[k]; majTout();
+  });
+  el('ce-mm-sel').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('[data-mode]') : null;
+    if (!b) return;
+    A.mm.sel = b.getAttribute('data-mode'); majTout();
+  });
+  el('ce-mm-bornes').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('[data-socket]') : null;
+    if (!b) return;
+    var s = b.getAttribute('data-socket');
+    A.mm[s] = (A.mm[s] === null) ? 'rouge' : (A.mm[s] === 'rouge' ? 'noire' : null);
+    majTout();
+  });
+}
+
+function nettoyerFils() {
+  var out = [], i;
+  for (i = 0; i < A.fils.length; i++) {
+    if (bornePresente(A.fils[i].a) && bornePresente(A.fils[i].b)) out.push(A.fils[i]);
+  }
+  A.fils = out;
+  if (A.pointes.rouge && !bornePresente(A.pointes.rouge)) A.pointes.rouge = null;
+  if (A.pointes.noire && !bornePresente(A.pointes.noire)) A.pointes.noire = null;
+}
+
+function basculerPower() {
+  A.power = !A.power;
+  majTout();
+}
+function verifierMontage() { majTout(true); }
+function toutEffacer() {
+  A.fils = []; A.attente = null; A.power = false;
+  A.pointes = { rouge: null, noire: null };
+  majTout();
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   MODE DÉFI — le contenu ; la boucle est dans assets/lp-defi.js
+
+   ⚠ CONTENU PÉDAGOGIQUE — PREMIER JET, À RELIRE
+   Énoncés, rappels, indices de second essai, détails de correction et codes
+   de compétence sont proposés par Claude et attendent la relecture de
+   l'auteur. Supprimer un indice ne casse rien : le moteur annonce alors
+   simplement qu'il reste un essai.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Un jeu de choix mélangé, la bonne réponse repérée par son rang. */
+function faireChoix(bon, faux) {
+  var liste = melange([bon].concat(faux)), out = [], rep = '0', i;
+  for (i = 0; i < liste.length; i++) {
+    out.push({ val: String(i), label: liste[i] });
+    if (liste[i] === bon) rep = String(i);
+  }
+  return { choix: out, reponse: rep, reponseTexte: bon };
+}
+
+/* Oscillogramme : ce que l'on verrait à l'écran. */
+function oscillo(alt, titre) {
+  var s = '<rect x="45" y="35" width="130" height="80" rx="4" fill="#fbfbf8" stroke="#8a877f" stroke-width="1.6"/>';
+  var i;
+  for (i = 1; i < 5; i++) s += trait(45 + i * 26, 35, 45 + i * 26, 115, '#e2e0d9', 1);
+  for (i = 1; i < 4; i++) s += trait(45, 35 + i * 20, 175, 35 + i * 20, '#e2e0d9', 1);
+  s += trait(45, 75, 175, 75, '#b9b6ae', 1.2);
+  if (alt) {
+    var d = 'M45 75', x;
+    for (x = 0; x <= 130; x += 2) {
+      d += ' L' + (45 + x) + ' ' + (75 - 28 * Math.sin(2 * Math.PI * x / 65)).toFixed(1);
+    }
+    s += '<path d="' + d + '" fill="none" stroke="' + VERT + '" stroke-width="2.2"/>';
+  } else {
+    s += trait(45, 55, 175, 55, VERT, 2.4);
+  }
+  if (titre) s += txt(110, 25, titre, { fs: 10, fw: 700, col: '#55534e' });
+  s += txt(110, 132, 'temps', { fs: 9, col: '#8a877f' });
+  return s;
+}
+
+/* Un appareil de mesure posé « pour de vrai » sur un schéma, à valider. */
+function appareilPose(spec) {
+  var c = CADRE;
+  var places = [{ cote: 'gauche', x: c.xg, y: 75, t: 'source' },
+                { cote: 'haut',   x: 110,  y: c.yh, t: 'inter', ferme: true }];
+  if (spec.pos === 'serie') places.push({ cote: 'bas', x: 90, y: c.yb, t: spec.app });
+  places.push({ cote: 'droite', x: c.xd, y: 75, t: 'lampe' });
+  var s = boucleTrouee(places), i;
+  for (i = 0; i < places.length; i++) s += poser(places[i], spec.alt);
+  if (spec.pos === 'lampe') {
+    s += appareilParallele(c.xd, 60, c.xd, 90, 118, spec.app);
+  } else if (spec.pos === 'inter') {
+    s += appareilParallele(95, c.yh, 125, c.yh, 62, spec.app, true);
+  }
+  s += txt(110, 14, spec.titre || '', { fs: 10, fw: 700, col: '#55534e' });
+  return s;
+}
+
+/* Appareil branché en dérivation entre deux points du schéma. */
+function appareilParallele(x1, y1, x2, y2, coord, app, horizontal) {
+  var col = (app === 'volt') ? BLEU : VERT;
+  var s, cx, cy;
+  if (horizontal) {
+    s = trait(x1, y1, x1, coord) + trait(x2, y2, x2, coord);
+    cx = (x1 + x2) / 2; cy = coord;
+    s += trait(x1, coord, cx - 15, coord) + trait(cx + 15, coord, x2, coord);
+    s += (app === 'volt') ? symVolt(cx, cy, 'h') : symAmp(cx, cy, 'h');
+  } else {
+    s = trait(x1, y1, coord, y1) + trait(x2, y2, coord, y2);
+    cx = coord; cy = (y1 + y2) / 2;
+    s += trait(coord, y1, coord, cy - 15) + trait(coord, cy + 15, coord, y2);
+    s += (app === 'volt') ? symVolt(cx, cy, 'v') : symAmp(cx, cy, 'v');
+  }
+  s += '<circle cx="' + x1 + '" cy="' + y1 + '" r="2.6" fill="' + col + '"/>';
+  s += '<circle cx="' + x2 + '" cy="' + y2 + '" r="2.6" fill="' + col + '"/>';
+  return s;
+}
+
+/* ─── 1. Nommer un symbole (C1) ───────────────────────────────────────── */
+
+var JEU_SYMBOLES = [
+  { f: function (x, y) { return symLampe(x, y, 'h'); },          n: 'une lampe' },
+  { f: function (x, y) { return symInter(x, y, 'h', false); },   n: 'un interrupteur ouvert' },
+  { f: function (x, y) { return symInter(x, y, 'h', true); },    n: 'un interrupteur ferm\u00E9' },
+  { f: function (x, y) { return symPile(x, y, 'h'); },           n: 'une pile' },
+  { f: function (x, y) { return symSource(x, y, 'h', false); },  n: 'une source de tension continue' },
+  { f: function (x, y) { return symSource(x, y, 'h', true); },   n: 'une source de tension alternative' },
+  { f: function (x, y) { return symVolt(x, y, 'h'); },           n: 'un voltm\u00E8tre' },
+  { f: function (x, y) { return symAmp(x, y, 'h'); },            n: 'un amp\u00E8rem\u00E8tre' },
+  { f: function (x, y) { return symDel(x, y, 'h'); },            n: 'une DEL' }
+];
+
+function genSymbole() {
+  var it = auHasard(JEU_SYMBOLES);
+  var faux = [], i, pool = melange(JEU_SYMBOLES.slice(0));
+  for (i = 0; i < pool.length && faux.length < 3; i++) if (pool[i].n !== it.n) faux.push(pool[i].n);
+  var c = faireChoix(it.n, faux);
+  var svg = '<rect x="60" y="45" width="100" height="60" rx="6" fill="#fbfbf8" stroke="#e2e0d9" stroke-width="1.5"/>'
+          + it.f(110, 75);
+  return {
+    type: 'choix', svg: svg, enonce: 'Quel appareil ce symbole repr\u00E9sente-t-il ?',
+    cotes: '', choix: c.choix, reponse: c.reponse, reponseTexte: c.reponseTexte,
+    rappel: 'Sur un sch\u00E9ma, chaque appareil est remplac\u00E9 par son symbole normalis\u00E9. '
+          + 'Un sch\u00E9ma n\u2019est pas un dessin.',
+    hint: 'Regarde le d\u00E9tail : un rond barr\u00E9 d\u2019une croix \u00E9claire, un rond avec une '
+        + 'lettre mesure, deux trin\u00E9gaux alimentent.',
+    detail: 'C\u2019est ' + it.n + '.',
+    ficheSvg: svg, ficheCotes: 'Quel appareil ce symbole repr\u00E9sente-t-il ?', ficheReponse: it.n
+  };
+}
+
+/* ─── 2. Lire un schéma (C2) ──────────────────────────────────────────── */
+
+function genLireSchema() {
+  var der = (Math.random() < 0.5);
+  var ferme = (Math.random() < 0.7);
+  var svg = der
+    ? schemaDerivation({ etiqBranches: true, inters: [ferme, true], allumees: [false, false], uTxt: '6 V' })
+    : schemaSerie({ lampes: 2, ferme: ferme, uTxt: '12 V' });
+  var q, bon, faux;
+  if (Math.random() < 0.5) {
+    q = 'Comment les deux lampes sont-elles branch\u00E9es ?';
+    bon = der ? 'en d\u00E9rivation' : 'en s\u00E9rie';
+    faux = [der ? 'en s\u00E9rie' : 'en d\u00E9rivation',
+            'l\u2019une en s\u00E9rie, l\u2019autre en d\u00E9rivation'];
+  } else {
+    q = 'On d\u00E9visse la lampe 1. Que devient la lampe 2 ?';
+    bon = der ? 'elle reste allum\u00E9e' : 'elle s\u2019\u00E9teint aussi';
+    faux = [der ? 'elle s\u2019\u00E9teint aussi' : 'elle reste allum\u00E9e',
+            'elle brille deux fois plus'];
+  }
+  var c = faireChoix(bon, faux);
+  return {
+    type: 'choix', svg: svg, enonce: q, cotes: '',
+    choix: c.choix, reponse: c.reponse, reponseTexte: c.reponseTexte,
+    rappel: 'En <b>s\u00E9rie</b>, il n\u2019y a qu\u2019un seul chemin pour le courant. '
+          + 'En <b>d\u00E9rivation</b>, il y en a plusieurs : le circuit se s\u00E9pare en branches.',
+    hint: 'Suis le trajet du courant avec ton doigt depuis une borne de la source. '
+        + 'S\u2019il doit traverser les deux lampes, c\u2019est une s\u00E9rie.',
+    detail: der
+      ? 'Les lampes sont sur DEUX branches s\u00E9par\u00E9es : en d\u00E9rivation. Chacune re\u00E7oit '
+      + 'la tension compl\u00E8te et reste ind\u00E9pendante de l\u2019autre.'
+      : 'Les lampes sont sur la M\u00CAME boucle : en s\u00E9rie. Elles se partagent la tension et '
+      + 'd\u00E9pendent l\u2019une de l\u2019autre.',
+    ficheSvg: svg, ficheCotes: q, ficheReponse: bon
+  };
+}
+
+/* ─── 3. Valider un branchement d'appareil (C4) ───────────────────────── */
+
+function genBranchement() {
+  var app = (Math.random() < 0.5) ? 'volt' : 'amp';
+  var pos = auHasard(['lampe', 'serie', 'inter']);
+  var nomApp = (app === 'volt') ? 'voltm\u00E8tre' : 'amp\u00E8rem\u00E8tre';
+  var but = (app === 'volt') ? 'mesurer la tension aux bornes de la lampe'
+                             : 'mesurer l\u2019intensit\u00E9 du courant dans la lampe';
+  var svg = appareilPose({ app: app, pos: pos });
+  var bon, faux, det;
+  var okVolt = (app === 'volt' && pos === 'lampe');
+  var okAmp  = (app === 'amp'  && pos === 'serie');
+  if (okVolt || okAmp) {
+    bon = 'oui, le branchement est correct';
+    det = (app === 'volt')
+      ? 'Le voltm\u00E8tre est bien en d\u00E9rivation, ses deux bornes sur les deux bornes de la lampe.'
+      : 'L\u2019amp\u00E8rem\u00E8tre est bien en s\u00E9rie : le courant de la lampe le traverse.';
+  } else if (app === 'volt' && pos === 'serie') {
+    bon = 'non, il est en s\u00E9rie alors qu\u2019un voltm\u00E8tre se branche en d\u00E9rivation';
+    det = 'Un voltm\u00E8tre plac\u00E9 en s\u00E9rie coupe pratiquement le circuit : la lampe ne '
+        + 's\u2019allume plus et l\u2019appareil affiche la tension de la source.';
+  } else if (app === 'volt' && pos === 'inter') {
+    bon = 'non, il mesure la tension aux bornes de l\u2019interrupteur';
+    det = 'Il est bien en d\u00E9rivation, mais sur le mauvais dip\u00F4le : il faut le poser sur les '
+        + 'deux bornes de la LAMPE.';
+  } else if (app === 'amp' && pos === 'lampe') {
+    bon = 'non, un amp\u00E8rem\u00E8tre ne se branche jamais en d\u00E9rivation';
+    det = 'Un amp\u00E8rem\u00E8tre est presque un fil : plac\u00E9 en d\u00E9rivation sur la lampe, il la '
+        + 'court-circuite. C\u2019est la faute qui d\u00E9truit l\u2019appareil.';
+  } else {
+    bon = 'non, un amp\u00E8rem\u00E8tre ne se branche jamais en d\u00E9rivation';
+    det = 'Il faut OUVRIR le circuit et ins\u00E9rer l\u2019amp\u00E8rem\u00E8tre dans la boucle, en s\u00E9rie.';
+  }
+  var toutes = ['oui, le branchement est correct',
+    'non, il est en s\u00E9rie alors qu\u2019un voltm\u00E8tre se branche en d\u00E9rivation',
+    'non, il mesure la tension aux bornes de l\u2019interrupteur',
+    'non, un amp\u00E8rem\u00E8tre ne se branche jamais en d\u00E9rivation'];
+  var faux2 = [], i;
+  for (i = 0; i < toutes.length; i++) if (toutes[i] !== bon) faux2.push(toutes[i]);
+  var c = faireChoix(bon, melange(faux2).slice(0, 2));
+  var q = 'On veut ' + but + '. Ce branchement du ' + nomApp + ' convient-il ?';
+  return {
+    type: 'choix', svg: svg, enonce: q, cotes: '',
+    choix: c.choix, reponse: c.reponse, reponseTexte: c.reponseTexte,
+    rappel: 'Le <b>voltm\u00E8tre</b> se branche en d\u00E9rivation, aux bornes du dip\u00F4le, sans rien '
+          + 'd\u00E9brancher. L\u2019<b>amp\u00E8rem\u00E8tre</b> se branche en s\u00E9rie : il faut ouvrir le '
+          + 'circuit pour l\u2019ins\u00E9rer.',
+    hint: 'Demande-toi si le courant de la lampe traverse l\u2019appareil (s\u00E9rie) ou s\u2019il se '
+        + 'contente de le c\u00F4toyer (d\u00E9rivation).',
+    detail: det,
+    ficheSvg: svg, ficheCotes: q, ficheReponse: bon
+  };
+}
+
+/* ─── 4. Régler le multimètre (C3) ────────────────────────────────────── */
+
+function genReglage() {
+  var alt = (Math.random() < 0.5);
+  var tension = (Math.random() < 0.6);
+  var src = alt ? 'une source alternative' : 'une source continue';
+  var bon = (tension ? 'cordon noir sur COM, cordon rouge sur V\u03A9, s\u00E9lecteur sur V'
+                     : 'cordon noir sur COM, cordon rouge sur A, s\u00E9lecteur sur A')
+          + (alt ? '\u223F' : '\u2393');
+  var faux = [
+    (tension ? 'cordon noir sur COM, cordon rouge sur V\u03A9, s\u00E9lecteur sur V'
+             : 'cordon noir sur COM, cordon rouge sur A, s\u00E9lecteur sur A') + (alt ? '\u2393' : '\u223F'),
+    (tension ? 'cordon noir sur COM, cordon rouge sur A, s\u00E9lecteur sur A'
+             : 'cordon noir sur COM, cordon rouge sur V\u03A9, s\u00E9lecteur sur V') + (alt ? '\u223F' : '\u2393'),
+    'les deux cordons sur V\u03A9, s\u00E9lecteur sur \u03A9'
+  ];
+  var c = faireChoix(bon, faux);
+  var svg = oscillo(alt, alt ? 'la source' : 'la source');
+  var q = 'Tu veux mesurer ' + (tension ? 'la TENSION aux bornes d\u2019une lampe' : 'l\u2019INTENSIT\u00C9 dans une lampe')
+        + ' aliment\u00E9e par ' + src + '. Comment r\u00E8gles-tu le multim\u00E8tre ?';
+  return {
+    type: 'choix', svg: svg, enonce: q,
+    cotes: 'L\u2019\u00E9cran de l\u2019oscilloscope montre la tension d\u00E9livr\u00E9e par la source.',
+    choix: c.choix, reponse: c.reponse, reponseTexte: c.reponseTexte,
+    rappel: 'Le cordon noir va toujours sur <b>COM</b>. Le rouge va sur <b>V\u03A9</b> pour une '
+          + 'tension, sur <b>A</b> pour une intensit\u00E9. Le s\u00E9lecteur doit \u00EAtre sur le bon '
+          + 'type de courant : \u2393 continu, \u223F alternatif.',
+    hint: 'Une trace plate, c\u2019est du continu. Une trace qui ondule autour de z\u00E9ro, c\u2019est '
+        + 'de l\u2019alternatif.',
+    detail: 'La source est ' + (alt ? 'alternative' : 'continue') + ' (trace '
+          + (alt ? 'sinuso\u00EFdale' : 'plate') + ') : ' + bon + '.',
+    ficheSvg: svg, ficheCotes: q, ficheReponse: bon
+  };
+}
+
+/* ─── 5. Continu ou alternatif ? (C2) ─────────────────────────────────── */
+
+var SOURCES_AC = ['la prise du secteur (230 V)', 'l\u2019alternateur d\u2019une centrale',
+  'une \u00E9olienne', 'la sortie \u223F de l\u2019alimentation du labo'];
+var SOURCES_DC = ['une pile b\u00E2ton', 'la batterie d\u2019une voiture', 'un panneau solaire',
+  'une prise USB', 'la sortie \u2393 de l\u2019alimentation du labo'];
+
+function genAcDc() {
+  var alt = (Math.random() < 0.5);
+  var par = Math.random();
+  var svg, q;
+  if (par < 0.45) {
+    svg = oscillo(alt, 'oscillogramme');
+    q = 'Cette tension est-elle continue ou alternative ?';
+  } else {
+    var src = alt ? auHasard(SOURCES_AC) : auHasard(SOURCES_DC);
+    svg = '<rect x="40" y="48" width="140" height="54" rx="6" fill="#fbfbf8" stroke="#e2e0d9" stroke-width="1.5"/>'
+        + symSource(110, 75, 'h', alt);
+    q = 'Le courant d\u00E9livr\u00E9 par ' + src + ' est-il continu ou alternatif ?';
+    svg = svg + txt(110, 120, '', { fs: 9 });
+  }
+  var bon = alt ? 'alternatif' : 'continu';
+  var c = faireChoix(bon, [alt ? 'continu' : 'alternatif']);
+  return {
+    type: 'choix', svg: svg, enonce: q, cotes: '',
+    choix: c.choix, reponse: c.reponse, reponseTexte: c.reponseTexte,
+    rappel: 'En <b>continu</b> (\u2393), le courant circule toujours dans le m\u00EAme sens : piles, '
+          + 'batteries, USB. En <b>alternatif</b> (\u223F), il change de sens p\u00E9riodiquement : '
+          + 'le secteur, 230 V et 50 Hz.',
+    hint: 'Les sources qui se rechargent ou se stockent donnent du continu ; ce qui tourne dans '
+        + 'une centrale donne de l\u2019alternatif.',
+    detail: 'C\u2019est du ' + bon + '.',
+    ficheSvg: svg, ficheCotes: q, ficheReponse: bon
+  };
+}
+
+/* ─── 6. Repères de tension (C1) ──────────────────────────────────────── */
+
+var REPERES = [
+  { o: 'une pile b\u00E2ton', u: '1,5 V' },
+  { o: 'l\u2019alimentation du labo', u: '6 V ou 12 V' },
+  { o: 'la batterie d\u2019une voiture', u: '12 V' },
+  { o: 'la prise du secteur en France', u: '230 V' }
+];
+
+function genReperes() {
+  if (Math.random() < 0.5) {
+    var it = auHasard(REPERES);
+    var faux = [], i, pool = melange(REPERES.slice(0));
+    for (i = 0; i < pool.length && faux.length < 2; i++) if (pool[i].u !== it.u) faux.push(pool[i].u);
+    var c = faireChoix(it.u, faux);
+    return {
+      type: 'choix', svg: symSource(110, 75, 'h', it.u === '230 V'),
+      enonce: 'Quelle est la tension de ' + it.o + ' ?', cotes: '',
+      choix: c.choix, reponse: c.reponse, reponseTexte: c.reponseTexte,
+      rappel: 'Rep\u00E8res : pile b\u00E2ton 1,5 V \u00B7 alimentation du labo 6 V ou 12 V \u00B7 '
+            + 'batterie de voiture 12 V \u00B7 secteur 230 V.',
+      hint: 'Classe-les du plus petit au plus grand : pile, labo, voiture, secteur.',
+      detail: it.o.charAt(0).toUpperCase() + it.o.slice(1) + ' : ' + it.u + '.',
+      ficheSvg: '', ficheCotes: 'Quelle est la tension de ' + it.o + ' ?', ficheReponse: it.u
+    };
+  }
+  var jeux = [
+    { q: 'Quelle est l\u2019unit\u00E9 de la tension \u00E9lectrique ?', b: 'le volt (V)',
+      f: ['l\u2019amp\u00E8re (A)', 'le watt (W)', 'l\u2019ohm (\u03A9)'] },
+    { q: 'Quelle est l\u2019unit\u00E9 de l\u2019intensit\u00E9 du courant ?', b: 'l\u2019amp\u00E8re (A)',
+      f: ['le volt (V)', 'le watt (W)', 'le hertz (Hz)'] },
+    { q: 'Quel symbole d\u00E9signe la grandeur « tension » ?', b: 'U',
+      f: ['I', 'V', 'R'] },
+    { q: 'Quel symbole d\u00E9signe la grandeur « intensit\u00E9 » ?', b: 'I',
+      f: ['U', 'A', 'P'] },
+    { q: 'Avec quel appareil mesure-t-on une tension ?', b: 'un voltm\u00E8tre',
+      f: ['un amp\u00E8rem\u00E8tre', 'un ohmm\u00E8tre', 'un chronom\u00E8tre'] },
+    { q: 'Avec quel appareil mesure-t-on une intensit\u00E9 ?', b: 'un amp\u00E8rem\u00E8tre',
+      f: ['un voltm\u00E8tre', 'un ohmm\u00E8tre', 'un thermom\u00E8tre'] }
+  ];
+  var j = auHasard(jeux);
+  var c2 = faireChoix(j.b, j.f);
+  return {
+    type: 'choix', svg: '', enonce: j.q, cotes: '',
+    choix: c2.choix, reponse: c2.reponse, reponseTexte: c2.reponseTexte,
+    rappel: 'Tension : grandeur <b>U</b>, unit\u00E9 le <b>volt</b>, symbole <b>V</b>, mesur\u00E9e au '
+          + 'voltm\u00E8tre. Intensit\u00E9 : grandeur <b>I</b>, unit\u00E9 l\u2019<b>amp\u00E8re</b>, symbole '
+          + '<b>A</b>, mesur\u00E9e \u00E0 l\u2019amp\u00E8rem\u00E8tre.',
+    hint: 'Ne confonds pas le symbole de la GRANDEUR (U, I) et celui de l\u2019UNIT\u00C9 (V, A).',
+    detail: j.b + '.',
+    ficheSvg: '', ficheCotes: j.q, ficheReponse: j.b
+  };
+}
+
+/* ─── 7. Calculer une tension (C3) ────────────────────────────────────── */
+
+function genTensions() {
+  var u = auHasard([6, 12]);
+  var der = (Math.random() < 0.5);
+  var svg = der
+    ? schemaDerivation({ etiqBranches: true, allumees: [true, true], uTxt: fnb(u, 0) + ' V' })
+    : schemaSerie({ lampes: 2, ferme: true, allumee: true, uTxt: fnb(u, 0) + ' V' });
+  var rep = der ? u : u / 2;
+  return {
+    type: 'nombre', svg: svg,
+    enonce: 'Les deux lampes sont identiques. Quelle tension re\u00E7oit CHAQUE lampe ?',
+    cotes: 'Tension de la source : U = ' + fnb(u, 0) + ' V.',
+    label: 'U\u2097\u2090\u2098\u209A\u2091 =', unite: 'V', tol: 0.05,
+    reponse: rep, reponseTexte: fnb1(rep) + ' V',
+    rappel: 'En <b>d\u00E9rivation</b>, chaque branche re\u00E7oit la tension compl\u00E8te de la source. '
+          + 'En <b>s\u00E9rie</b>, les dip\u00F4les se partagent la tension : U = U\u2081 + U\u2082.',
+    hint: der
+      ? 'Les deux lampes sont branch\u00E9es entre les m\u00EAmes deux points : elles voient donc la '
+      + 'm\u00EAme tension que la source.'
+      : 'Deux lampes identiques en s\u00E9rie se partagent la tension \u00E0 parts \u00E9gales.',
+    detail: der
+      ? 'En d\u00E9rivation : chaque lampe re\u00E7oit ' + fnb1(u) + ' V, comme la source.'
+      : 'En s\u00E9rie : ' + fnb(u, 0) + ' V \u00F7 2 = ' + fnb1(rep) + ' V par lampe.'
+      + (u === 12 ? ' Avec des lampes 6 V et une source 12 V, c\u2019est justement le bon montage.'
+                  : ' Avec des lampes 6 V, elles brillent faiblement : la tension ne suffit pas.'),
+    ficheSvg: svg,
+    ficheCotes: 'Source : U = ' + fnb(u, 0) + ' V. Les deux lampes sont identiques. '
+              + 'Quelle tension re\u00E7oit chaque lampe ?',
+    ficheReponse: fnb1(rep) + ' V'
+  };
+}
+
+/* ─── 8. Écrire correctement (C5) ─────────────────────────────────────── */
+
+function genNotation() {
+  var u = auHasard([1.5, 6, 12, 230]);
+  var bon = 'U' + '\u2097\u2090\u2098\u209A\u2091 = ' + fnb1(u) + ' V';
+  var faux = ['U = ' + fnb1(u) + ' v', 'V = ' + fnb1(u) + ' U', fnb1(u) + ' V = U\u2097\u2090\u2098\u209A\u2091'];
+  var c = faireChoix(bon, [faux[0], faux[1]]);
+  return {
+    type: 'choix', svg: symLampe(110, 75, 'h'),
+    enonce: 'La tension aux bornes de la lampe vaut ' + fnb1(u)
+          + ' V. Quelle est l\u2019\u00E9criture correcte ?',
+    cotes: '', choix: c.choix, reponse: c.reponse, reponseTexte: c.reponseTexte,
+    rappel: 'On \u00E9crit la tension avec le nom du dip\u00F4le <b>en indice</b>, et l\u2019unit\u00E9 avec '
+          + 'un <b>V majuscule</b> : U\u2097\u2090\u2098\u209A\u2091 = 6 V.',
+    hint: 'La grandeur s\u2019\u00E9crit U, l\u2019unit\u00E9 s\u2019\u00E9crit V, et le volt prend toujours une '
+        + 'majuscule car il vient d\u2019un nom propre.',
+    detail: 'L\u2019\u00E9criture correcte est ' + bon + '.',
+    ficheSvg: '', ficheCotes: 'La tension aux bornes de la lampe vaut ' + fnb1(u)
+            + ' V. \u00C9cris-la correctement.', ficheReponse: bon
+  };
+}
+
+/* ─── 9. La DEL pour trancher (C4) ────────────────────────────────────── */
+
+function genDel() {
+  var alt = (Math.random() < 0.5);
+  var avecDel = (Math.random() < 0.6);
+  var svg = schemaSerie({ alt: alt, del: avecDel, allumee: true, ferme: true,
+    uTxt: alt ? '6 V \u223F' : '6 V \u2393', etiqSource: true });
+  var q, bon, faux;
+  if (avecDel) {
+    q = 'On a remplac\u00E9 la lampe par une DEL et elle reste allum\u00E9e sans clignoter. '
+      + 'Que peut-on conclure sur la source ?';
+    bon = 'elle d\u00E9livre un courant continu';
+    faux = ['elle d\u00E9livre un courant alternatif', 'on ne peut rien conclure'];
+  } else {
+    q = 'La lampe brille. Peut-on savoir si la source est continue ou alternative ?';
+    bon = 'non, la lampe brille dans les deux cas';
+    faux = ['oui, la source est forc\u00E9ment continue', 'oui, la source est forc\u00E9ment alternative'];
+  }
+  var c = faireChoix(bon, faux);
+  return {
+    type: 'choix', svg: svg, enonce: q, cotes: '',
+    choix: c.choix, reponse: c.reponse, reponseTexte: c.reponseTexte,
+    rappel: 'La lampe \u00E9claire parce que son filament <b>chauffe</b>, et le chauffage ne '
+          + 'd\u00E9pend pas du sens du courant. La <b>DEL</b>, elle, ne s\u2019allume que dans un seul '
+          + 'sens.',
+    hint: 'Demande-toi si l\u2019appareil se comporte diff\u00E9remment selon le sens du courant.',
+    detail: avecDel
+      ? 'Une DEL ne conduit que dans un sens. Si elle reste allum\u00E9e franchement, le courant '
+      + 'garde toujours le m\u00EAme sens : la source est continue.'
+      : 'Non. La lampe brille en continu comme en alternatif : elle ne permet pas de trancher. '
+      + 'Il faut une DEL.',
+    ficheSvg: svg, ficheCotes: q, ficheReponse: bon
+  };
+}
+
+/* ─── Déclaration des familles ────────────────────────────────────────── */
+
+var FAMILLES = [
+  { value: 'symbole',  label: 'Symboles',        couleur: 'purple',
+    nom: 'Reconna\u00EEtre un symbole normalis\u00E9', comp: 'C1', gen: genSymbole,
+    ficheAide: 'un sch\u00E9ma n\u2019est pas un dessin' },
+  { value: 'lire',     label: 'Lire un sch\u00E9ma', couleur: 'blue',
+    nom: 'Lire un sch\u00E9ma : s\u00E9rie ou d\u00E9rivation', comp: 'C2', gen: genLireSchema,
+    ficheAide: 's\u00E9rie : un seul chemin \u00B7 d\u00E9rivation : plusieurs branches' },
+  { value: 'branch',   label: 'Branchement',     couleur: 'coral',
+    nom: 'Valider le branchement d\u2019un appareil de mesure', comp: 'C4', gen: genBranchement,
+    ficheAide: 'voltm\u00E8tre en d\u00E9rivation \u00B7 amp\u00E8rem\u00E8tre en s\u00E9rie' },
+  { value: 'reglage',  label: 'R\u00E9glage du multim\u00E8tre', couleur: 'teal',
+    nom: 'R\u00E9gler le multim\u00E8tre', comp: 'C3', gen: genReglage,
+    ficheAide: 'COM \u00B7 V\u03A9 ou A \u00B7 \u2393 ou \u223F' },
+  { value: 'acdc',     label: 'Continu / alternatif', couleur: 'green',
+    nom: 'Distinguer continu et alternatif', comp: 'C2', gen: genAcDc,
+    ficheAide: '\u2393 continu \u00B7 \u223F alternatif' },
+  { value: 'reperes',  label: 'Grandeurs et unit\u00E9s', couleur: 'amber',
+    nom: 'Grandeurs, unit\u00E9s et rep\u00E8res de tension', comp: 'C1', gen: genReperes,
+    ficheAide: 'U en volts (V) \u00B7 I en amp\u00E8res (A)' },
+  { value: 'tensions', label: 'Calculer U',      couleur: 'amber2',
+    nom: 'Calculer une tension dans un montage', comp: 'C3', gen: genTensions,
+    ficheAide: 'd\u00E9rivation : m\u00EAme tension \u00B7 s\u00E9rie : U = U\u2081 + U\u2082' },
+  { value: 'notation', label: '\u00C9crire U',   couleur: 'pink',
+    nom: '\u00C9crire correctement une tension', comp: 'C5', gen: genNotation,
+    ficheAide: 'U avec le dip\u00F4le en indice, unit\u00E9 V' },
+  { value: 'del',      label: 'La DEL',          couleur: 'purple',
+    nom: 'Conclure avec une DEL', comp: 'C4', gen: genDel,
+    ficheAide: 'la lampe ne permet pas de trancher' }
+];
+
+var COMPETENCES = {
+  C1: { nom: 'S\u2019approprier' },
+  C2: { nom: 'Analyser / Raisonner' },
+  C3: { nom: 'R\u00E9aliser' },
+  C4: { nom: 'Valider' },
+  C5: { nom: 'Communiquer' }
+};
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LE MOTEUR — dom: true. Onglets de familles, zone de réponse, fil des
+   essais, score et touche Entrée sont construits par assets/lp-defi.js.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var currentMode = 'explo';
+
+var defi = LP.defi.creer({
+  outil: 'circuit_elec',
+  serie: 0,
+  essaisMax: 2,
+  melange: { label: 'M\u00E9lange', couleur: 'purple' },
+  modePlus: function () { return currentMode === 'defiplus'; },
+  familles: FAMILLES
+});
+
+/* ═════════════════════════════════════════════════════════════════════════
+   FICHE IMPRIMABLE — LP.ficheModal, cases par COMPÉTENCE
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function famillesDeComp(c) {
+  var out = [], i;
+  for (i = 0; i < FAMILLES.length; i++) if (FAMILLES[i].comp === c) out.push(FAMILLES[i]);
+  return out;
+}
+
+function questionFiche(fam, num) {
+  var g = fam.gen();
+  return {
+    num: num,
+    nom: fam.comp + ' \u00B7 ' + fam.label,
+    hint: fam.ficheAide ? 'Rappel : ' + fam.ficheAide : '',
+    svg: (g.ficheSvg !== undefined) ? g.ficheSvg : g.svg,
+    cotes: (g.ficheCotes !== undefined) ? g.ficheCotes : (g.cotes || g.enonce),
+    answerText: g.ficheReponse || g.reponseTexte
+  };
+}
+
+function ouvrirFiche() {
+  var cases = [], c;
+  for (c in COMPETENCES) if (Object.prototype.hasOwnProperty.call(COMPETENCES, c)) {
+    cases.push({ value: c, label: c + ' \u00B7 ' + COMPETENCES[c].nom });
+  }
+  LP.ficheModal.init({
+    familles: cases,
+    titre: '\uD83D\uDCC4 Fiche d\u2019exercices \u2014 Circuits \u00E9lectriques',
+    texte: 'Coche les comp\u00E9tences \u00E0 inclure. Les 10 exercices seront r\u00E9partis entre '
+         + 'les comp\u00E9tences s\u00E9lectionn\u00E9es.',
+    onConfirm: function (plan, sel, opt) {
+      var sortie = [], num = 1, j, k;
+      for (j = 0; j < plan.length; j++) {
+        var fams = melange(famillesDeComp(plan[j].fam).slice(0));
+        if (!fams.length) continue;
+        for (k = 0; k < plan[j].n; k++) sortie.push(questionFiche(fams[k % fams.length], num++));
+      }
+      var estPlus = (currentMode === 'defiplus');
+      LP.fiche({
+        icon: '\u26A1',
+        title: 'Circuits \u00E9lectriques',
+        subtitle: 'Physique-chimie \u00B7 CAP \u00B7 2nde Bac Pro',
+        modeLabel: estPlus ? 'D\u00E9fi \u207A' : 'Mode d\u00E9fi',
+        isPlus: estPlus,
+        accent: '#854F0B',
+        answerLabel: 'R\u00E9ponse :',
+        unit: '',
+        aide: 'Tension : U, en volts (V), mesur\u00E9e au voltm\u00E8tre <b>en d\u00E9rivation</b> '
+            + '&nbsp;&nbsp;\u2022&nbsp;&nbsp; Intensit\u00E9 : I, en amp\u00E8res (A), mesur\u00E9e \u00E0 '
+            + 'l\u2019amp\u00E8rem\u00E8tre <b>en s\u00E9rie</b> &nbsp;&nbsp;\u2022&nbsp;&nbsp; '
+            + 'S\u00E9rie : un seul chemin, U = U\u2081 + U\u2082 &nbsp;|&nbsp; D\u00E9rivation : plusieurs '
+            + 'branches, m\u00EAme tension pour chacune &nbsp;&nbsp;\u2022&nbsp;&nbsp; '
+            + '\u2393 continu \u00B7 \u223F alternatif \u00B7 secteur 230 V',
+        questions: sortie,
+        avecCorrige: opt ? opt.avecCorrige : true
+      });
+    }
+  });
+  LP.ficheModal.open();
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   NAVIGATION
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function setPan(nom, btn) {
+  var t = document.querySelectorAll('#mode-explo .shape-tab'), i;
+  for (i = 0; i < t.length; i++) t[i].classList.remove('active');
+  if (btn) btn.classList.add('active');
+  var p = document.querySelectorAll('#mode-explo .panel');
+  for (i = 0; i < p.length; i++) p[i].classList.toggle('active', p[i].id === 'panel-' + nom);
+}
+
+function setMode(m, btn) {
+  currentMode = m;
+  var onglets = document.querySelectorAll('.mode-tab'), i;
+  for (i = 0; i < onglets.length; i++) onglets[i].classList.remove('active');
+  if (btn) btn.classList.add('active');
+
+  el('mode-explo').style.display = (m === 'explo') ? 'block' : 'none';
+
+  var estDefi = (m === 'defi' || m === 'defiplus');
+  /* montrerBloc pose le display ET la classe active d'un seul geste : c'est
+     le piège #mode-defi de lp-ui.css. */
+  LP.defi.montrerBloc('#mode-defi', estDefi);
+
+  el('defi-mode-title').textContent =
+    (m === 'defiplus') ? 'D\u00E9fi \u207A \u2014 Circuits \u00E9lectriques'
+                       : 'Mode d\u00E9fi \u2014 Circuits \u00E9lectriques';
+
+  if (estDefi) defi.ui.suivante();
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   DÉMARRAGE
+   ═════════════════════════════════════════════════════════════════════════ */
+
+construireCommandes();
+brancherEvenements();
+remplirPlanche();
+majTout();
+defi.demarrer();
+
+</script>
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio collège</a> &nbsp;·&nbsp;
+  Licence MIT · © 2026 Moïse Muller &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
+</footer>
+</body>
+</html>
