@@ -485,6 +485,18 @@ brain:`<path d="M7 20.5 H23.5 a2.5 2.5 0 0 1 2.5 2.5 V29 a2.5 2.5 0 0 1 -2.5 2.5
 <rect x="27" y="9" width="7.5" height="2.8" rx="1.4" fill="currentColor" opacity=".8" class="lp-rise" style="animation-delay:.6s"/>
 <rect x="21.5" y="4.5" width="5.5" height="2.5" rx="1.25" fill="currentColor" opacity=".55" class="lp-rise" style="animation-delay:1.2s"/>`,
 
+/* Circuit fermé : le courant parcourt la boucle et la lampe s'allume */
+elec:`<line x1="5.5" y1="17.6" x2="12.5" y2="17.6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+<line x1="6.9" y1="22.4" x2="11.1" y2="22.4" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+<circle cx="16.5" cy="11" r="1.5" fill="currentColor"/><circle cx="23.5" cy="11" r="1.5" fill="currentColor"/>
+<line x1="16.5" y1="11" x2="23.2" y2="7.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+<path d="M9 22.4 V29 H31 V24.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="lp-draw" style="--dash:34"/>
+<path d="M31 15.5 V11 H23.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="lp-draw" style="--dash:13;animation-delay:.3s"/>
+<path d="M16.5 11 H9 V17.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="lp-draw" style="--dash:15;animation-delay:.6s"/>
+<g class="lp-blink"><circle cx="31" cy="20" r="4.6" fill="none" stroke="currentColor" stroke-width="2.2"/>
+<line x1="27.7" y1="16.7" x2="34.3" y2="23.3" stroke="currentColor" stroke-width="2"/>
+<line x1="34.3" y1="16.7" x2="27.7" y2="23.3" stroke="currentColor" stroke-width="2"/></g>`,
+
 /* Vecteur force qui se trace depuis son point d'application */
 force:`<circle cx="8" cy="20" r="3.2" fill="currentColor"/>
 <line x1="8" y1="20" x2="27" y2="20" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" class="lp-draw" style="--dash:20"/>
@@ -523,6 +535,7 @@ const SECTIONS = [
     { url:'outils/atome_bohr2.html', nom:'Atomes — modèle de Bohr', desc:"Tableau périodique et structure de l'atome", ico:'atom', cats:['science','outil'] },
 	{ url:'outils/forces_poids.html', nom:'Forces et poids', desc:'Modéliser une action, lire et construire un vecteur, P = m × g', ico:'force', cats:['science','outil'] },
     { url:'outils/sonometre.html', nom:'Sonomètre de classe', desc:'Mesure le niveau sonore, repères de risque auditif et mode défi', ico:'sound', cats:['science','outil'] },
+    { url:'outils/circuit_elec.html', nom:'Circuits électriques', desc:'Câbler une pièce, lire un schéma, mesurer U et I au multimètre', ico:'elec', cats:['science','outil'] },
     { url:'outils/infographie_nuisances_sonores.html', nom:'Nuisances sonores', desc:'Infographie sur les dangers du bruit', ico:'ripple', cats:['science','outil'] },
     { url:'outils/horloge.html', nom:'Horloge interactive', desc:"Lecture de l'heure et calcul de durées, au tableau", ico:'clock', cats:['outil'] },
 	{ url:'outils/nuage_brainstorming.html', nom:'Brainstorming', desc:"Un sujet, des souvenirs", ico:'brain', cats:['prof','outil'] },
