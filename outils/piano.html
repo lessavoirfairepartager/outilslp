@@ -130,6 +130,33 @@
   .pn-slot .act .pn-btn { padding: 6px 10px; }
   .pn-msg { font-size: var(--fs-xs); color: var(--text2); min-height: 1.4em; margin-top: 8px; }
   .pn-aide { font-size: var(--fs-xs); color: var(--text2); line-height: 1.5; }
+  /* ── Mode jeu : clavier plein écran, en main, téléphone en paysage ──── */
+  .pn-jeu-barre { display: none; }
+  body.pn-jeu { overflow: hidden; }
+  body.pn-jeu header, body.pn-jeu .lp-footer, body.pn-jeu .lp-toolbar,
+  body.pn-jeu .main > .pn-card:not(#carte-clavier) { display: none !important; }
+  body.pn-jeu .main { max-width: none; padding: 0; }
+  body.pn-jeu #carte-clavier {
+    position: fixed; inset: 0; z-index: 900; margin: 0; border-radius: 0; border: none;
+    padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+             max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    display: flex; flex-direction: column; gap: 6px; background: var(--bg);
+  }
+  body.pn-jeu #carte-clavier .pn-nav { display: none; }
+  body.pn-jeu .pn-jeu-barre { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
+    overflow-x: auto; scrollbar-width: none; }
+  body.pn-jeu .pn-clavier-wrap { flex: 1; min-height: 0; overflow: hidden; padding-top: 6px; }
+  .pn-jeu-barre .pn-btn { padding: 7px 11px; font-size: 16px; flex: none; }
+  .pn-jeu-barre .sep { flex: 1; min-width: 4px; }
+  .pn-jeu-note { flex: none; font-size: 18px; font-weight: 800; color: var(--accent);
+    white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 9.5em; }
+  .pn-jeu-note small { font-weight: 600; color: var(--text2); }
+  .pn-jeu-tourner { display: none; font-size: 16px; color: var(--text2); white-space: nowrap; }
+  @media (orientation: portrait) { body.pn-jeu .pn-jeu-tourner { display: inline; } }
+  body.pn-jeu .pn-k .lb { font-size: 17px; }
+  body.pn-jeu .pn-k .hz { font-size: 14px; }
+  @media (pointer: coarse) { body.pn-jeu .pn-k .kb { display: none; } }
+
   .pn-aide kbd { font-family: inherit; font-weight: 700; border: 1px solid var(--border2);
     border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface); }
 </style>
@@ -230,9 +257,22 @@
   </div>
 
   <!-- CLAVIER -->
-  <div class="pn-card">
+  <div class="pn-card" id="carte-clavier">
+    <div class="pn-jeu-barre" role="toolbar" aria-label="Mode jeu">
+      <span class="pn-jeu-note" id="jeu-note">—</span>
+      <button class="pn-btn" id="jeu-timbre" type="button" title="Changer de timbre">Piano</button>
+      <button class="pn-btn" id="jeu-moins" type="button" title="Octave plus grave">◀</button>
+      <button class="pn-btn" id="jeu-plus" type="button" title="Octave plus aiguë">▶</button>
+      <button class="pn-btn" id="jeu-nb" type="button" title="Une ou deux octaves à l'écran">2 oct.</button>
+      <button class="pn-btn" id="jeu-pedale" type="button" aria-pressed="false" title="Pédale forte">Pédale</button>
+      <button class="pn-btn rec" id="jeu-rec" type="button" aria-pressed="false" title="Enregistrer dans le premier emplacement libre">⏺</button>
+      <span class="pn-jeu-tourner">↻ Tournez le téléphone</span>
+      <span class="sep"></span>
+      <button class="pn-btn" id="jeu-quitter" type="button" title="Quitter le mode jeu (Échap)">✕</button>
+    </div>
     <div class="pn-clavier-wrap" id="wrap"><div class="pn-clavier" id="clavier"></div></div>
     <div class="pn-nav">
+      <button class="pn-btn" id="btn-jeu" type="button" title="Clavier plein écran, 1 ou 2 octaves, idéal téléphone en paysage">🎹 Mode jeu</button>
       <button class="pn-btn" id="btn-kb" type="button" aria-pressed="true" title="Jouer avec le clavier de l'ordinateur">⌨ Clavier ordinateur</button>
       <button class="pn-btn" id="oct-m" type="button" title="Octave plus grave (flèche gauche)">◀ Octave</button>
       <button class="pn-btn" id="oct-p" type="button" title="Octave plus aiguë (flèche droite)">Octave ▶</button>
@@ -547,6 +587,7 @@ function toutRelacher() {
 function setPedale(on) {
   pedale = on;
   el('btn-pedale').setAttribute('aria-pressed', on ? 'true' : 'false');
+  el('jeu-pedale').setAttribute('aria-pressed', on ? 'true' : 'false');
   if (!on) {
     for (var m in voix) if (voix.hasOwnProperty(m) && voix[m].tenue) {
       voix[m].vivante = false; voix[m].relacher(); delete voix[m];
@@ -566,6 +607,10 @@ function afficherNote(m) {
   var s = document.createElement('small'); s.id = 'lec-en';
   s.textContent = 'en anglais : ' + nomEN(m); el('lec-nom').appendChild(s);
   el('lec-f').textContent = 'f = ' + fmt(f, 2) + ' Hz';
+  el('jeu-note').innerHTML = '';
+  el('jeu-note').appendChild(document.createTextNode(nomFR(m) + ' '));
+  var sj = document.createElement('small'); sj.textContent = nomEN(m) + ' · ' + fmt(f, 2) + ' Hz';
+  el('jeu-note').appendChild(sj);
   var T = 1000 / f;
   el('lec-T').textContent = 'T = ' + (T >= 10 ? fmt(T, 2) : fmt(T, 3)) + ' ms';
   var lam = 340 / f;
@@ -595,6 +640,7 @@ var KB_AZERTY = { KeyA: 'Q', KeyS: 'S', KeyD: 'D', KeyF: 'F', KeyG: 'G', KeyH: '
   KeyK: 'K', KeyL: 'L', Semicolon: 'M', Quote: 'Ù', KeyW: 'Z', KeyE: 'E', KeyT: 'T', KeyY: 'Y',
   KeyU: 'U', KeyO: 'O', KeyP: 'P' };
 var kbBase = 60, kbMap = {}, kbLabels = KB_AZERTY;
+var jeu = { actif: false, auto: false, refus: false, base: 60, oct: 2, choixOct: 0 };
 
 function majKbMap() {
   kbMap = {};
@@ -613,17 +659,26 @@ if (navigator.keyboard && navigator.keyboard.getLayoutMap) {
   }).catch(function () {});
 }
 
+function blanchesEntre(a, b) { var n = 0; for (var i = a; i <= b; i++) if (!NOIRE[i % 12]) n++; return n; }
 function construireClavier() {
   var cl = el('clavier'), wrap = el('wrap');
-  if (R.taille === 'entier') largeur = Math.max(12, (wrap.clientWidth - 14) / 52);
-  else largeur = parseInt(R.taille, 10) || 46;
+  var mMin = MIDI_MIN, mMax = MIDI_MAX;
+  if (jeu.actif) {
+    mMin = jeu.base; mMax = Math.min(MIDI_MAX, jeu.base + 12 * jeu.oct);
+    largeur = Math.max(20, (wrap.clientWidth - 14) / blanchesEntre(mMin, mMax));
+    cl.style.height = Math.max(120, wrap.clientHeight - 8) + 'px';
+  } else {
+    cl.style.height = '';
+    if (R.taille === 'entier') largeur = Math.max(12, (wrap.clientWidth - 14) / 52);
+    else largeur = parseInt(R.taille, 10) || 46;
+  }
   document.documentElement.style.setProperty('--kw', largeur + 'px');
   cl.innerHTML = ''; cles = {};
   var x = 0, montrer = largeur >= 30;
   majKbMap();
   var kbInv = {};
   if (R.kb) for (var code in kbMap) if (kbMap.hasOwnProperty(code)) kbInv[kbMap[code]] = kbLabels[code];
-  for (var m = MIDI_MIN; m <= MIDI_MAX; m++) {
+  for (var m = mMin; m <= mMax; m++) {
     var noire = NOIRE[m % 12] === 1;
     var k = document.createElement('div');
     k.className = 'pn-k ' + (noire ? 'b1' : 'b0') + (m % 12 === 0 && !noire ? ' do' : '') + (m === 60 ? ' do3' : '');
@@ -731,6 +786,7 @@ window.addEventListener('blur', function () {
   kbTenues = {}; setPedale(false);
 });
 function changerOctave(d) {
+  if (jeu.actif) { jeuDecaler(d); return; }
   kbBase = Math.max(24, Math.min(96, kbBase + d));
   construireClavier(); centrerSur(kbBase + 7);
 }
@@ -912,6 +968,8 @@ var NOM_TIMBRE = { piano: 'piano', clarinette: 'clarinette', sinus: 'sinusoïde'
 
 function rendreSlots() {
   var z = el('slots'); z.innerHTML = '';
+  el('jeu-rec').setAttribute('aria-pressed', rec.slot >= 0 ? 'true' : 'false');
+  el('jeu-rec').textContent = rec.slot >= 0 ? '■ ' + (rec.slot + 1) : '⏺';
   for (var i = 0; i < NB_SLOTS; i++) z.appendChild(carteSlot(i));
 }
 function bouton(txt, titre, fn, cls) {
@@ -1056,10 +1114,105 @@ el('btn-pedale').addEventListener('click', function () { setPedale(!pedale); });
 function majKb() { el('btn-kb').setAttribute('aria-pressed', R.kb ? 'true' : 'false'); }
 el('btn-kb').addEventListener('click', function () { R.kb = !R.kb; sauverR(); majKb(); construireClavier(); });
 
+/* ── Mode jeu ──────────────────────────────────────────────────────── */
+var NOM_COURT = { piano: 'Piano', clarinette: 'Clarinette', sinus: 'Sinus' };
+var ORDRE_T = ['piano', 'clarinette', 'sinus'];
+function choisirTimbre(t) {
+  var b = document.querySelector('#timbres .shape-tab[data-t="' + t + '"]');
+  if (b) b.click();
+  el('jeu-timbre').textContent = NOM_COURT[R.timbre];
+}
+function octavesConseillees() {
+  /* 2 octaves si chaque touche blanche garde au moins ~44 px (largeur d'un doigt) */
+  return window.innerWidth / 15 >= 44 ? 2 : 1;
+}
+function majJeuBoutons() {
+  el('jeu-nb').textContent = jeu.oct + ' oct.';
+  el('jeu-moins').disabled = jeu.base - 12 < 24;
+  el('jeu-plus').disabled = jeu.base + 12 + 12 * jeu.oct > MIDI_MAX;
+  el('jeu-timbre').textContent = NOM_COURT[R.timbre];
+}
+function jeuDecaler(d) {
+  var nb = jeu.base + d;
+  if (nb < 24 || nb + 12 * jeu.oct > MIDI_MAX) return;
+  toutRelacherClavier();
+  jeu.base = nb; kbBase = nb;
+  construireClavier(); majJeuBoutons();
+}
+function toutRelacherClavier() {
+  for (var id in pointeurs) if (pointeurs.hasOwnProperty(id)) noteOff(pointeurs[id]);
+  pointeurs = {};
+}
+function entrerJeu(auto) {
+  if (jeu.actif) return;
+  jeu.actif = true; jeu.auto = !!auto;
+  jeu.oct = jeu.choixOct || octavesConseillees();
+  if (jeu.base + 12 * jeu.oct > MIDI_MAX) jeu.base = MIDI_MAX - 12 * jeu.oct;
+  kbBase = jeu.base;
+  document.body.classList.add('pn-jeu');
+  if (!auto) {
+    var de = document.documentElement;
+    try {
+      var pr = de.requestFullscreen ? de.requestFullscreen({ navigationUI: 'hide' }) : (de.webkitRequestFullscreen ? de.webkitRequestFullscreen() : null);
+      if (pr && pr.then) pr.then(function () {
+        try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function () {}); } catch (e) {}
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  audio();
+  majJeuBoutons();
+  setTimeout(construireClavier, 30);
+  setTimeout(construireClavier, 350);   /* après le passage en plein écran */
+}
+function quitterJeu() {
+  if (!jeu.actif) return;
+  toutRelacherClavier();
+  jeu.actif = false; jeu.auto = false;
+  document.body.classList.remove('pn-jeu');
+  try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); } catch (e) {}
+  try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+  setTimeout(function () { construireClavier(); centrerSur(jeu.base + 7); }, 60);
+}
+el('btn-jeu').addEventListener('click', function () { entrerJeu(false); });
+el('jeu-quitter').addEventListener('click', function () { jeu.refus = true; quitterJeu(); });
+el('jeu-moins').addEventListener('click', function () { jeuDecaler(-12); });
+el('jeu-plus').addEventListener('click', function () { jeuDecaler(12); });
+el('jeu-nb').addEventListener('click', function () {
+  jeu.oct = jeu.oct === 1 ? 2 : 1; jeu.choixOct = jeu.oct;
+  if (jeu.base + 12 * jeu.oct > MIDI_MAX) jeu.base = MIDI_MAX - 12 * jeu.oct;
+  kbBase = jeu.base; construireClavier(); majJeuBoutons();
+});
+el('jeu-timbre').addEventListener('click', function () {
+  choisirTimbre(ORDRE_T[(ORDRE_T.indexOf(R.timbre) + 1) % ORDRE_T.length]);
+});
+el('jeu-pedale').addEventListener('click', function () { setPedale(!pedale); });
+el('jeu-rec').addEventListener('click', function () {
+  if (rec.slot >= 0) { arreterEnreg(); return; }
+  for (var i = 0; i < NB_SLOTS; i++) if (!slots[i]) { demarrerEnreg(i); return; }
+  alert('Les 5 emplacements sont pleins : libérez-en un dans la page (🗑) pour enregistrer.');
+});
+document.addEventListener('keydown', function (e) { if (jeu.actif && e.key === 'Escape') { jeu.refus = true; quitterJeu(); } });
+document.addEventListener('fullscreenchange', function () {
+  if (jeu.actif) setTimeout(construireClavier, 60);
+});
+
+/* Téléphone ou tablette tourné en paysage : le mode jeu s'ouvre tout seul,
+   et se referme quand on revient en portrait (sauf s'il a été demandé). */
+var mqPaysage = window.matchMedia ? window.matchMedia('(orientation: landscape) and (max-height: 540px) and (pointer: coarse)') : null;
+function suivreOrientation() {
+  if (!mqPaysage) return;
+  if (mqPaysage.matches) { if (!jeu.actif && !jeu.refus) entrerJeu(true); }
+  else { jeu.refus = false; if (jeu.actif && jeu.auto) quitterJeu(); }
+}
+if (mqPaysage) {
+  if (mqPaysage.addEventListener) mqPaysage.addEventListener('change', suivreOrientation);
+  else if (mqPaysage.addListener) mqPaysage.addListener(suivreOrientation);
+}
+
 var attente;
 window.addEventListener('resize', function () {
   clearTimeout(attente);
-  attente = setTimeout(function () { if (R.taille === 'entier') construireClavier(); majDefil(); }, 150);
+  attente = setTimeout(function () { if (R.taille === 'entier' || jeu.actif) construireClavier(); majDefil(); }, 150);
 });
 new MutationObserver(function () {
   lireCouleurs(); setTimeout(function () { if (R.taille === 'entier') construireClavier(); majDefil(); }, 50);
@@ -1070,6 +1223,7 @@ lireCouleurs(); majAlt(); majReverb(); majKb();
 construireClavier();
 centrerSur(65);
 rendreSlots();
+suivreOrientation();
 })();
 </script>
 
