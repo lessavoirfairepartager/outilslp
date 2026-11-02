@@ -338,6 +338,14 @@ clock:`<circle cx="20" cy="20" r="14" fill="none" stroke="currentColor" stroke-w
 <line x1="20" y1="20" x2="20" y2="10" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" class="lp-spin"/>
 <circle cx="20" cy="20" r="2.1" fill="currentColor"/>`,
 
+/* Clavier dont une touche noire s'enfonce */
+piano:`<rect x="6" y="10" width="28" height="21" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/>
+<line x1="13" y1="10" x2="13" y2="31" stroke="currentColor" stroke-width="1.5"/>
+<line x1="20" y1="10" x2="20" y2="31" stroke="currentColor" stroke-width="1.5"/>
+<line x1="27" y1="10" x2="27" y2="31" stroke="currentColor" stroke-width="1.5"/>
+<rect x="10.6" y="10" width="4.8" height="12" fill="currentColor" class="lp-beat"/>
+<rect x="24.6" y="10" width="4.8" height="12" fill="currentColor"/>`,
+
 /* Barres de niveau qui montent et descendent */
 sound:`<rect x="9" y="15" width="5" height="15" rx="2" fill="currentColor" class="i-bar"/>
 <rect x="17.5" y="9" width="5" height="21" rx="2" fill="currentColor" class="i-bar" style="animation-delay:.3s"/>
@@ -535,6 +543,7 @@ const SECTIONS = [
     { url:'outils/atome_bohr2.html', nom:'Atomes — modèle de Bohr', desc:"Tableau périodique et structure de l'atome", ico:'atom', cats:['science','outil'] },
 	{ url:'outils/forces_poids.html', nom:'Forces et poids', desc:'Modéliser une action, lire et construire un vecteur, P = m × g', ico:'force', cats:['science','outil'] },
     { url:'outils/sonometre.html', nom:'Sonomètre de classe', desc:'Mesure le niveau sonore, repères de risque auditif et mode défi', ico:'sound', cats:['science','outil'] },
+    { url:'outils/piano.html', nom:'Piano des fréquences', desc:'Notes, fréquences, notations FR/EN, timbres et spectres, mélodies', ico:'piano', cats:['science','outil'] },
     { url:'outils/circuit_elec.html', nom:'Circuits électriques', desc:'Câbler une pièce, lire un schéma, mesurer U et I au multimètre', ico:'elec', cats:['science','outil'] },
     { url:'outils/infographie_nuisances_sonores.html', nom:'Nuisances sonores', desc:'Infographie sur les dangers du bruit', ico:'ripple', cats:['science','outil'] },
     { url:'outils/horloge.html', nom:'Horloge interactive', desc:"Lecture de l'heure et calcul de durées, au tableau", ico:'clock', cats:['outil'] },
