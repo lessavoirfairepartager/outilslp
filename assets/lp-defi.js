@@ -161,6 +161,43 @@
     return t;
   }
 
+  /* ═══ FICHE SANS DOUBLON ═══════════════════════════════════════════════
+     Remplit une fiche à partir du plan de LP.ficheModal ([{fam, n}, ...])
+     en refusant deux exercices identiques (même énoncé, même figure, même
+     réponse). Certaines familles n'ont que quelques scènes : sans ce
+     contrôle, une fiche de 10 en répétait souvent une.
+       famillesDe(cle) -> tableau de familles candidates pour une case
+       fabrique(fam, num) -> objet question au format lp-fiche.js
+     Ordre de repli : on retire dans la famille prévue, puis dans les autres
+     familles de la même case ; en dernier recours on accepte un doublon
+     plutôt qu'une fiche incomplète. */
+  function empreinteFiche(q) {
+    return String(q.cotes || '') + '|' + String(q.answerText || '') + '|' + String(q.svg || '');
+  }
+
+  function remplirFiche(plan, famillesDe, fabrique, essais) {
+    var out = [], vus = {}, num = 1, j, k, m, e, fams, q, cle;
+    essais = essais || 40;
+    for (j = 0; j < plan.length; j++) {
+      fams = melangerTableau(famillesDe(plan[j].fam).slice(0));
+      if (!fams.length) continue;
+      for (k = 0; k < plan[j].n; k++) {
+        q = null;
+        for (m = 0; m < fams.length && !q; m++) {
+          for (e = 0; e < essais; e++) {
+            var essai = fabrique(fams[(k + m) % fams.length], num);
+            cle = empreinteFiche(essai);
+            if (!vus[cle]) { vus[cle] = true; q = essai; break; }
+          }
+        }
+        if (!q) q = fabrique(fams[k % fams.length], num);
+        q.num = num++;
+        out.push(q);
+      }
+    }
+    return out;
+  }
+
   /* ═══ LE MOTEUR ════════════════════════════════════════════════════════ */
 
   function creer(cfg) {
@@ -465,13 +502,11 @@
 
     /* plan = ce que renvoie LP.ficheModal : [{fam, n}, …] */
     M.questionsFiche = function (plan) {
-      var out = [], num = 1, j, k;
-      for (j = 0; j < plan.length; j++) {
-        for (k = 0; k < plan[j].n; k++) {
-          out.push(M.versFiche(normaliser(parCle[plan[j].fam].gen(), plan[j].fam, true), num++));
-        }
-      }
-      return out;
+      return remplirFiche(plan,
+        function (cle) { return parCle[cle] ? [cle] : []; },
+        function (cle, num) {
+          return M.versFiche(normaliser(parCle[cle].gen(), cle, true), num);
+        });
     };
 
     if (cfg.dom !== false) monter(M, cfg);
@@ -827,7 +862,8 @@
     lireNombre:   lireNombre,
     proche:       proche,
     melanger:     melangerTableau,
-    version:      '2026-08-10'
+    remplirFiche: remplirFiche,
+    version:      '2026-11-03'
   };
 
   window.LP.nb  = window.LP.nb  || nb;
