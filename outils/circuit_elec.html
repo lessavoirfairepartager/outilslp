@@ -1887,12 +1887,7 @@ function ouvrirFiche() {
     texte: 'Coche les comp\u00E9tences \u00E0 inclure. Les 10 exercices seront r\u00E9partis entre '
          + 'les comp\u00E9tences s\u00E9lectionn\u00E9es.',
     onConfirm: function (plan, sel, opt) {
-      var sortie = [], num = 1, j, k;
-      for (j = 0; j < plan.length; j++) {
-        var fams = melange(famillesDeComp(plan[j].fam).slice(0));
-        if (!fams.length) continue;
-        for (k = 0; k < plan[j].n; k++) sortie.push(questionFiche(fams[k % fams.length], num++));
-      }
+      var sortie = LP.defi.remplirFiche(plan, famillesDeComp, questionFiche);
       var estPlus = (currentMode === 'defiplus');
       LP.fiche({
         icon: '\u26A1',

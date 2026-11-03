@@ -1590,13 +1590,7 @@ function ouvrirFiche(){
     titre: `\u{1F50A} Fiche d\u2019exercices \u2014 Bruit et risque auditif`,
     texte: `Coche les comp\u00e9tences \u00e0 inclure. Les 10 exercices seront r\u00e9partis entre les comp\u00e9tences s\u00e9lectionn\u00e9es.`,
     onConfirm: function(plan, sel, opt){
-      const out = []; let num = 1;
-      for(let j=0;j<plan.length;j++){
-        const fams = melange(famillesDeComp(plan[j].fam).slice());
-        for(let k=0;k<plan[j].n;k++){
-          out.push(questionFiche(fams[k % fams.length], num++));
-        }
-      }
+      const out = LP.defi.remplirFiche(plan, famillesDeComp, questionFiche);
       LP.fiche({
         icon: `\u{1F50A}`,
         title: `Bruit et risque auditif`,

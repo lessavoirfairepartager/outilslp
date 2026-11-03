@@ -2069,13 +2069,7 @@ function ouvrirFiche() {
     texte: 'Coche les compétences à inclure. Les 10 exercices seront répartis entre '
          + 'les compétences sélectionnées.',
     onConfirm: function (plan, sel, opt) {
-      var sortie = [], num = 1, j, k;
-      for (j = 0; j < plan.length; j++) {
-        var fams = melange(famillesDeComp(plan[j].fam).slice(0));
-        for (k = 0; k < plan[j].n; k++) {
-          sortie.push(questionFiche(fams[k % fams.length], num++));
-        }
-      }
+      var sortie = LP.defi.remplirFiche(plan, famillesDeComp, questionFiche);
       var estPlus = (currentMode === 'defiplus');
       LP.fiche({
         icon: '\u27A1',
