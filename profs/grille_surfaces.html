@@ -149,6 +149,26 @@
         </label>
       </div>
 
+      <div class="section-label">Générateur aléatoire</div>
+      <label class="gs-check" style="gap:6px">Niveau
+        <select class="gs-sel" id="sel-niv">
+          <option value="1">1 · Rectangles et carrés</option>
+          <option value="2">2 · Assemblages de carreaux</option>
+          <option value="3" selected>3 · Polygones à côtés obliques</option>
+          <option value="4">4 · Polygones composés</option>
+          <option value="5">5 · Polygones composés évidés</option>
+        </select>
+      </label>
+      <div class="gs-row">
+        <label class="gs-check" style="gap:6px">Nombre de figures <input class="gs-num" id="in-nb" type="text" inputmode="numeric" value="6"></label>
+      </div>
+      <div class="gs-row">
+        <label class="gs-check"><input type="checkbox" id="ck-varie" checked> Remplissages variés</label>
+        <label class="gs-check"><input type="checkbox" id="ck-unite" checked> Carreau unité</label>
+        <label class="gs-check" id="lab-sect"><input type="checkbox" id="ck-sect"> Avec secteurs (niv. 4-5)</label>
+      </div>
+      <button class="gs-btn-main" type="button" id="b-generer">Générer</button>
+
       <div class="section-label">Image PNG</div>
       <div class="gs-row">
         <label class="gs-check" style="gap:6px">Résolution
@@ -935,7 +955,8 @@ function rendre(ctx, px, vue, o) {
     poserCalque(ctx, bordureFigure(masques[g], lc * ctx.getTransform().a));
   });
   D.arcs.forEach(function (sc) {
-    if (!sc.g) { ctx.beginPath(); tracerSecteur(ctx, sc, X, Y); ctx.stroke(); }
+    if (sc.g) { return; }               // dans une figure composée : pas de centre marqué
+    ctx.beginPath(); tracerSecteur(ctx, sc, X, Y); ctx.stroke();
     ctx.fillStyle = ENCRE;              // centre marqué
     ctx.beginPath(); ctx.arc(X(sc.c[0]), Y(sc.c[1]), lc * 0.75, 0, 2 * Math.PI); ctx.fill();
   });
@@ -1258,6 +1279,268 @@ function horodatage() {
 }
 
 /* ── Exemple : la fiche « surfaces équivalentes » ───────────────────────── */
+/* ── Générateur aléatoire ─────────────────────────────────────────────────
+   Une figure générée = { cells: [[i,j]...] } ou { pieces: [...] } en
+   coordonnées locales (coin haut-gauche en 0,0), puis placée sans
+   chevauchement sur le quadrillage, agrandi si nécessaire.
+   Pièces : { pts: [...], op } ou { c, r, a0, a1, op } (secteur).            */
+function R(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+function choix(t) { return t[Math.floor(Math.random() * t.length)]; }
+
+function etendue(f) {               // boîte englobante d'une pièce [x0,y0,x1,y1]
+  var b = [1e9, 1e9, -1e9, -1e9];
+  function ajoute(q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); }
+  if (!f.c) { f.pts.forEach(ajoute); return b; }
+  var t = balayage(f), arc = { c: f.c, r: f.r, a0: f.a0, t: t };
+  if (t < 360) { ajoute(f.c); ajoute(ptArc(arc, 0)); ajoute(ptArc(arc, t)); }
+  [0, 90, 180, 270].forEach(function (a) {
+    if (((a - f.a0) % 360 + 360) % 360 <= t) { ajoute(ptArc(arc, ((a - f.a0) % 360 + 360) % 360)); }
+  });
+  return b.map(function (v) { return Math.round(v * 1e6) / 1e6; });
+}
+function normaliserFigure(fig) {
+  var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  if (fig.cells) {
+    fig.cells.forEach(function (q) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0] + 1); y1 = Math.max(y1, q[1] + 1); });
+    fig.cells = fig.cells.map(function (q) { return [q[0] - x0, q[1] - y0]; });
+  } else {
+    fig.pieces.forEach(function (f) { var b = etendue(f); x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); });
+    x0 = Math.floor(x0); y0 = Math.floor(y0); x1 = Math.ceil(x1); y1 = Math.ceil(y1);
+    fig.pieces.forEach(function (f) {
+      if (f.c) { f.c = [f.c[0] - x0, f.c[1] - y0]; }
+      else { f.pts = f.pts.map(function (q) { return [q[0] - x0, q[1] - y0]; }); }
+    });
+  }
+  fig.w = x1 - x0; fig.h = y1 - y0;
+  return fig;
+}
+/* Rotation d'un quart de tour et symétrie, pour varier les polygones */
+function tournerPts(pts) {
+  var k = R(0, 3), miroir = Math.random() < 0.5;
+  return pts.map(function (q) {
+    var x = miroir ? -q[0] : q[0], y = q[1], i;
+    for (i = 0; i < k; i++) { var t = x; x = -y; y = t; }
+    return [x, y];
+  });
+}
+
+/* Niveau 1 : rectangles et carrés */
+function genN1() {
+  var w = R(1, 6), h = Math.random() < 0.3 ? w : R(1, 5), c = [], i, j;
+  if (w * h === 1) { w = 2; }
+  for (i = 0; i < w; i++) { for (j = 0; j < h; j++) { c.push([i, j]); } }
+  return { cells: c };
+}
+/* Niveau 2 : assemblages de carreaux d'un seul tenant, sans trou */
+function genN2() {
+  for (var essai = 0; essai < 50; essai++) {
+    var k = R(4, 11), S = {}, l = [[0, 0]], n = 1;
+    S['0,0'] = true;
+    while (n < k) {
+      var q = choix(l), d = choix([[1, 0], [-1, 0], [0, 1], [0, -1]]), x = q[0] + d[0], y = q[1] + d[1];
+      if (S[x + ',' + y] || Math.abs(x) > 3 || Math.abs(y) > 2) { continue; }
+      S[x + ',' + y] = true; l.push([x, y]); n++;
+    }
+    var xs = l.map(function (q) { return q[0]; }), ys = l.map(function (q) { return q[1]; });
+    var rect = (Math.max.apply(null, xs) - Math.min.apply(null, xs) + 1) * (Math.max.apply(null, ys) - Math.min.apply(null, ys) + 1) === k;
+    if (!rect && contourCases(l)) { return { cells: l }; }
+  }
+  return genN1();
+}
+/* Niveau 3 : un polygone à sommets sur les nœuds, avec des obliques */
+function genN3() {
+  var t = choix(['rect', 'tri', 'tri', 'para', 'trap', 'trap']), a, b, h, d, pts;
+  if (t === 'rect') {                      // triangle rectangle (demi-rectangle)
+    a = R(2, 6); b = R(2, 5); pts = [[0, 0], [a, 0], [0, b]];
+  } else if (t === 'tri') {                // triangle quelconque, base + hauteur
+    b = R(2, 6); h = R(2, 5); pts = [[0, h], [b, h], [R(-1, b + 1), 0]];
+  } else if (t === 'para') {               // parallélogramme
+    b = R(2, 5); h = R(2, 4); d = R(1, 3); pts = [[d, 0], [d + b, 0], [b, h], [0, h]];
+  } else {                                 // trapèze
+    b = R(3, 7); h = R(2, 4); a = R(0, 2); d = R(0, 2);
+    if (a + d === 0) { a = 1; }
+    if (b - a - d < 1) { d = 0; a = 1; }
+    pts = [[a, 0], [b - d, 0], [b, h], [0, h]];
+  }
+  return { pieces: [{ pts: tournerPts(pts), op: '+' }] };
+}
+/* Niveau 4 : un rectangle + une ou deux pièces collées sur ses côtés */
+function cadreCote(cote, w, h) {           // (u le long du côté, v vers l'extérieur) -> (x, y)
+  return {
+    L: cote === 'haut' || cote === 'bas' ? w : h,
+    P: cote === 'haut' ? function (u, v) { return [u, -v]; } :
+       cote === 'bas' ? function (u, v) { return [w - u, h + v]; } :
+       cote === 'gauche' ? function (u, v) { return [-v, h - u]; } :
+       function (u, v) { return [w + v, u]; }
+  };
+}
+function angleVecteur(a, b) { return ((Math.round(Math.atan2(a[1] - b[1], b[0] - a[0]) * 180 / Math.PI)) % 360 + 360) % 360; }
+function piecePlus(cote, w, h, secteurs) {
+  var F = cadreCote(cote, w, h), P = F.P, p = piecePlus0(F, secteurs);
+  p.lien = [];                             // points juste à l'intérieur du côté commun
+  for (var k = 0; k < 12; k++) { var u = p.u1 + (p.u2 - p.u1) * (k + 0.5) / 12; p.lien.push(P(u, -0.05)); }
+  return p;
+}
+function piecePlus0(F, secteurs) {
+  var L = F.L, P = F.P, o;
+  var t = choix(secteurs ? ['tri', 'tri', 'rect', 'demi', 'quart'] : ['tri', 'tri', 'rect', 'trap']);
+  var u1 = R(0, L - 1), u2 = R(u1 + 1, L), d = R(1, 3), r;
+  if (t === 'demi' && L >= 2) {
+    r = R(1, Math.floor(L / 2)); u1 = R(0, L - 2 * r);
+    var C = P(u1 + r, 0), o = angleVecteur(C, P(u1 + r, 1));
+    return { c: C, r: r, a0: (o + 270) % 360, a1: (o + 90) % 360, op: '+', u1: u1, u2: u1 + 2 * r };
+  }
+  if (t === 'quart') {
+    r = R(1, Math.min(L, 3));
+    var bout = Math.random() < 0.5, O = bout ? P(L, 0) : P(0, 0);
+    var le = angleVecteur(O, bout ? P(L - 1, 0) : P(1, 0)), ex = angleVecteur(O, bout ? P(L, 1) : P(0, 1));
+    o = ((ex - le) + 360) % 360 === 90 ? { c: O, r: r, a0: le, a1: ex, op: '+' } : { c: O, r: r, a0: ex, a1: le, op: '+' };
+    o.u1 = bout ? L - r : 0; o.u2 = bout ? L : r;
+    return o;
+  }
+  if (t === 'rect') { o = { pts: [P(u1, 0), P(u2, 0), P(u2, d), P(u1, d)], op: '+' }; }
+  else if (t === 'trap' && u2 - u1 >= 3) { o = { pts: [P(u1, 0), P(u2, 0), P(u2 - 1, d), P(u1 + 1, d)], op: '+' }; }
+  else { o = { pts: [P(u1, 0), P(u2, 0), P(R(u1, u2), d)], op: '+' }; }
+  o.u1 = u1; o.u2 = u2;
+  return o;
+}
+function genN4(secteurs) {
+  var w = R(2, 6), h = R(2, 4), ps = [{ pts: [[0, 0], [w, 0], [w, h], [0, h]], op: '+' }];
+  var cotes = ['haut', 'bas', 'gauche', 'droite'].sort(function () { return Math.random() - 0.5; });
+  var n = R(1, 2);
+  for (var i = 0; i < n; i++) { ps.push(piecePlus(cotes[i], w, h, secteurs)); }
+  return { pieces: ps, base: [w, h] };
+}
+/* Niveau 5 : une base (rectangle ou figure du niveau 4) évidée */
+function pieceMoins(w, h, secteurs) {
+  var t = choix(secteurs ? ['coinTri', 'rectInt', 'triInt', 'quart', 'quart', 'demi'] : ['coinTri', 'coinRect', 'rectInt', 'triInt', 'triInt']);
+  var coin = R(0, 3), X = coin === 1 || coin === 2 ? w : 0, Y = coin >= 2 ? h : 0, sx = X ? -1 : 1, sy = Y ? -1 : 1, a, b, r;
+  if (t === 'coinTri') { a = R(1, w - 2); b = R(1, h - 2); return { pts: [[X, Y], [X + sx * a, Y], [X, Y + sy * b]], op: '-' }; }
+  if (t === 'coinRect') { a = R(1, w - 2); b = R(1, h - 2); return { pts: [[X, Y], [X + sx * a, Y], [X + sx * a, Y + sy * b], [X, Y + sy * b]], op: '-' }; }
+  if (t === 'quart') {
+    r = R(1, Math.min(w, h) - 1);
+    return { c: [X, Y], r: r, a0: [270, 180, 90, 0][coin], a1: [0, 270, 180, 90][coin], op: '-' };
+  }
+  if (t === 'demi') {
+    var cote = R(0, 3), L = cote % 2 ? h : w, P = cote % 2 ? h : w, prof = cote % 2 ? w : h;
+    r = R(1, Math.max(1, Math.min(Math.floor(L / 2), prof - 1)));
+    var u = R(r, L - r);
+    return [{ c: [u, 0], r: r, a0: 180, a1: 0, op: '-' }, { c: [w, u], r: r, a0: 90, a1: 270, op: '-' },
+            { c: [u, h], r: r, a0: 0, a1: 180, op: '-' }, { c: [0, u], r: r, a0: 270, a1: 90, op: '-' }][cote];
+  }
+  if (t === 'rectInt') {
+    var x1 = R(1, w - 2), x2 = R(x1 + 1, w - 1), y1 = R(1, h - 2), y2 = R(y1 + 1, h - 1);
+    return { pts: [[x1, y1], [x2, y1], [x2, y2], [x1, y2]], op: '-' };
+  }
+  for (var k = 0; k < 30; k++) {
+    var q = [[R(1, w - 1), R(1, h - 1)], [R(1, w - 1), R(1, h - 1)], [R(1, w - 1), R(1, h - 1)]];
+    if (aire2(q) >= 2) { return { pts: q, op: '-' }; }
+  }
+  return { pts: [[1, 1], [w - 1, 1], [1, h - 1]], op: '-' };
+}
+function seChevauchent(f, g, w, h) {
+  for (var x = 0.1; x < w; x += 0.2) {
+    for (var y = 0.1; y < h; y += 0.2) { if (dansPiece(x, y, f) && dansPiece(x, y, g)) { return true; } }
+  }
+  return false;
+}
+/* Une figure évidée doit rester d'un seul tenant, sans recouvrement caché */
+function figureSaine(ps) {
+  var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, st = 0.1, i, j, k;
+  ps.forEach(function (f) { var b = etendue(f); x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); });
+  if (Math.abs(aireContour(contourFigure(ps)) - aireFigure(ps).approx) > 1e-3) { return false; }
+  var W = Math.ceil((x1 - x0) / st), H = Math.ceil((y1 - y0) / st), g = [], vu = [], n = 0;
+  for (k = 0; k < W * H; k++) { i = k % W; j = (k - i) / W; g[k] = dansRegion(x0 + (i + 0.5) * st, y0 + (j + 0.5) * st, ps); }
+  for (k = 0; k < W * H; k++) {
+    if (!g[k] || vu[k]) { continue; }
+    if (++n > 1) { return false; }
+    var pile = [k]; vu[k] = true;
+    while (pile.length) {
+      var c = pile.pop(), ci = c % W, cj = (c - ci) / W;
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+        var a = ci + d[0], b = cj + d[1], q = b * W + a;
+        if (a >= 0 && b >= 0 && a < W && b < H && g[q] && !vu[q]) { vu[q] = true; pile.push(q); }
+      });
+    }
+  }
+  return n === 1;
+}
+function genN5(secteurs) {
+  for (var essai = 0; essai < 30; essai++) {
+    var f = genN5brut(secteurs);
+    if (figureSaine(f.pieces)) { return f; }
+  }
+  return { pieces: [{ pts: [[0, 0], [5, 0], [5, 4], [0, 4]], op: '+' }, { pts: [[1, 1], [3, 1], [3, 3], [1, 3]], op: '-' }] };
+}
+function genN5brut(secteurs) {
+  var w = R(4, 7), h = R(3, 5), ps, n = R(1, 2), trous = [];
+  if (Math.random() < 0.5) { ps = [{ pts: [[0, 0], [w, 0], [w, h], [0, h]], op: '+' }]; }
+  else {
+    var b;
+    do { b = genN4(secteurs); } while (b.base[0] < 4 || b.base[1] < 3);
+    ps = b.pieces; w = b.base[0]; h = b.base[1];
+  }
+  for (var e = 0; e < 40 && trous.length < n; e++) {
+    var t = pieceMoins(w, h, secteurs);
+    if (trous.every(function (u) { return !seChevauchent(t, u, w, h); })) { trous.push(t); }
+  }
+  // une pièce collée dont le côté commun donne sur un creux resterait en l'air : on la retire
+  ps = ps.filter(function (p, i) {
+    return i === 0 || p.lien.every(function (q) { return trous.every(function (u) { return !dansPiece(q[0], q[1], u); }); });
+  });
+  return { pieces: ps.concat(trous) };
+}
+
+/* Placement sans chevauchement (un carreau d'écart), quadrillage agrandi si besoin */
+function placer(figs, cols, rows) {
+  var occ = [], pos = [];
+  for (var i = 0; i < figs.length; i++) {
+    var f = figs[i], ok = false;
+    for (var e = 0; e < 400 && !ok; e++) {
+      var x = R(1, cols - f.w - 1), y = R(1, rows - f.h - 1);
+      if (cols - f.w - 1 < 1 || rows - f.h - 1 < 1) { return null; }
+      ok = occ.every(function (o) { return x + f.w + 1 <= o[0] || o[2] + 1 <= x || y + f.h + 1 <= o[1] || o[3] + 1 <= y; });
+      if (ok) { occ.push([x, y, x + f.w, y + f.h]); pos[i] = [x, y]; }
+    }
+    if (!ok) { return null; }
+  }
+  return pos;
+}
+function generer() {
+  var niv = parseInt($('sel-niv').value, 10), sect = $('ck-sect').checked && niv >= 4;
+  var nb = Math.max(1, Math.min(16, parseInt($('in-nb').value, 10) || 6)), figs = [], i;
+  $('in-nb').value = nb;
+  var palette = ['hach', 'hach2', 'croix', 'gris'];
+  for (i = 0; i < nb; i++) {
+    var f = niv === 1 ? genN1() : niv === 2 ? genN2() : niv === 3 ? genN3() : niv === 4 ? genN4(sect) : genN5(sect);
+    f.style = $('ck-varie').checked ? palette[i % palette.length] : (styleCourant === 'noir' ? 'hach' : styleCourant);
+    figs.push(normaliserFigure(f));
+  }
+  if ($('ck-unite').checked) { figs.push({ cells: [[0, 0]], w: 1, h: 1, style: 'noir' }); }
+  figs.sort(function (a, b) { return b.w * b.h - a.w * a.h; });
+  var cols = D.cols, rows = D.rows, pos = null, agrandi = false;
+  while (!pos && cols <= 60) {
+    for (var e = 0; e < 4 && !pos; e++) { pos = placer(figs, cols, rows); }
+    if (!pos) { cols += 2; rows = Math.min(60, rows + 1); agrandi = true; }
+  }
+  if (!pos) { toast('Trop de figures pour le quadrillage : réduisez le nombre.'); return; }
+  memoriser();
+  D = { cols: cols, rows: rows, cells: {}, polys: [], arcs: [] };
+  figs.forEach(function (f, k) {
+    var ox = pos[k][0], oy = pos[k][1];
+    if (f.cells) { f.cells.forEach(function (q) { D.cells[cle(q[0] + ox, q[1] + oy)] = f.style; }); return; }
+    var g = f.pieces.length > 1 ? nouveauNumero() : 0;
+    f.pieces.forEach(function (p) {
+      var o = { style: f.style };
+      if (g) { o.g = g; o.op = p.op; }
+      if (p.c) { o.c = [p.c[0] + ox, p.c[1] + oy]; o.r = p.r; o.a0 = p.a0; o.a1 = p.a1; D.arcs.push(o); }
+      else { o.pts = p.pts.map(function (q) { return [q[0] + ox, q[1] + oy]; }); o.ferme = true; D.polys.push(o); }
+    });
+  });
+  apresChargement();
+  toast((agrandi ? 'Quadrillage agrandi à ' + cols + ' × ' + rows + '. ' : '') + 'Ctrl+Z pour revenir au dessin précédent.');
+}
+
 function exemple() {
   memoriser();
   D = { cols: 5, rows: 13, cells: {}, polys: [], arcs: [] };
@@ -1346,6 +1629,12 @@ function init() {
   $('b-retablir').onclick = retablir;
   $('b-fermer').onclick = fermerPoly;
   $('b-exemple').onclick = exemple;
+  $('b-generer').onclick = generer;
+  $('sel-niv').addEventListener('change', function () {
+    var ok = parseInt(this.value, 10) >= 4;
+    $('ck-sect').disabled = !ok; $('lab-sect').style.opacity = ok ? '1' : '.5';
+  });
+  $('ck-sect').disabled = true; $('lab-sect').style.opacity = '.5';
   $('b-vider').onclick = function () {
     if (!Object.keys(D.cells).length && !D.polys.length && !D.arcs.length) { return; }
     memoriser(); D.cells = {}; D.polys = []; D.arcs = []; raz(); sauverLocal(); maj();
