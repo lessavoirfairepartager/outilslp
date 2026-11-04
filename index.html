@@ -505,6 +505,13 @@ elec:`<line x1="5.5" y1="17.6" x2="12.5" y2="17.6" stroke="currentColor" stroke-
 <line x1="27.7" y1="16.7" x2="34.3" y2="23.3" stroke="currentColor" stroke-width="2"/>
 <line x1="34.3" y1="16.7" x2="27.7" y2="23.3" stroke="currentColor" stroke-width="2"/></g>`,
 
+/* Quadrillage : une figure rectangle + quart de disque qui se trace */
+quadri:`<path d="M14 6V34M20 6V34M26 6V34M6 14H34M6 20H34M6 26H34" stroke="currentColor" stroke-width="1.2" opacity=".4"/>
+<rect x="6" y="6" width="28" height="28" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/>
+<path d="M9 28V16H18A12 12 0 0 1 30 28Z" fill="currentColor" opacity=".22"/>
+<path d="M9 28V16H18A12 12 0 0 1 30 28Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" class="lp-draw" style="--dash:62"/>
+<circle cx="18" cy="28" r="1.8" fill="currentColor"/>`,
+
 /* Vecteur force qui se trace depuis son point d'application */
 force:`<circle cx="8" cy="20" r="3.2" fill="currentColor"/>
 <line x1="8" y1="20" x2="27" y2="20" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" class="lp-draw" style="--dash:20"/>
@@ -557,8 +564,11 @@ const SECTIONS = [
   note: 'Calculatrices et logiciels utilisables directement dans le navigateur.',
   items: [
     { url:'https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006', nom:'Casio fx-92 Collège', desc:'Émulateur officiel de la calculatrice collège', ico:'calc', cats:['math','outil'], ext:true },
+	{ url:'https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=FY506', nom:'Casio fx-92+ Collège', desc:'Émulateur officiel de la calculatrice collège', ico:'calc', cats:['math','outil'], ext:true },
     { url:'https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY090', nom:'Casio Graph Light', desc:'Émulateur de la calculatrice graphique lycée', ico:'calc', cats:['math','outil'], ext:true },
-    { url:'https://maclasseti.fr/calculatrice', nom:'Calculatrice TI', desc:'Calculatrice scientifique Texas Instruments', ico:'calc', cats:['math','outil'], ext:true },
+	{ url:'https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY091', nom:'Casio Graph Light +', desc:'Émulateur de la calculatrice graphique lycée', ico:'calc', cats:['math','outil'], ext:true },
+	{ url:'https://classwiz-emulator.casio.com/WebApp/gc/graph35/index.html', nom:'Casio Graph 35+ E', desc:'Émulateur de la calculatrice graphique lycée', ico:'calc', cats:['math','outil'], ext:true },
+    { url:'https://maclasseti.fr/calculatrice', nom:'Calculatrice TI 83 Premium CE', desc:'Calculatrice scientifique Texas Instruments', ico:'calc', cats:['math','outil'], ext:true },
     { url:'https://www.numworks.com/fr/simulateur/', nom:'NumWorks', desc:'Simulateur de la calculatrice NumWorks', ico:'calc', cats:['math','outil'], ext:true },
     { url:'https://www.geogebra.org/classic?lang=fr', nom:'GeoGebra', desc:'Géométrie dynamique, algèbre et tableur', ico:'geom', cats:['math','outil'], ext:true },
     { url:'https://www.desmos.com/calculator?lang=fr', nom:'Desmos', desc:'Traceur de courbes en ligne', ico:'curve', cats:['math','outil'], ext:true },
@@ -570,10 +580,12 @@ const SECTIONS = [
   titre: '🥷🏽 Le coin des profs',
   note: 'Simulations, banques de ressources et utilitaires de préparation.',
   items: [
-    { url:'https://phet.colorado.edu/fr/simulations/filter?type=html', nom:'Simulations PhET', desc:'Physique et chimie en HTML5, en français', ico:'play', cats:['prof','science'], ext:true },
+    { url:'profs/grille_surfaces.html', nom:'Grille de surfaces', desc:'Figures quadrillées pour fiches : carreaux, obliques, export PNG', ico:'quadri', cats:['prof','outil'] },
+	{ url:'https://phet.colorado.edu/fr/simulations/filter?type=html', nom:'Simulations PhET', desc:'Physique et chimie en HTML5, en français', ico:'play', cats:['prof','science'], ext:true },
     { url:'https://javalab.org/en/', nom:'Simulations Javalab', desc:'Grande collection de simulations interactives', ico:'play', cats:['prof','science'], ext:true },
     { url:'https://chemix.org/', nom:'Chemix', desc:'Dessine des montages de laboratoire', ico:'flask', cats:['prof','science'], ext:true },
     { url:'https://console.basthon.fr/', nom:'Console Python', desc:'Python dans le navigateur, sans installation', ico:'python', cats:['prof','math'], ext:true },
+	{ url:'https://maclasseti.fr/python', nom:'Console Python + bloc !', desc:'Python dans le navigateur, sans installation avec un mode apprentissage par les blocs', ico:'python', cats:['prof','math'], ext:true },
     { url:'profs/liensGMPCIE.html', nom:'Liens officiels GMPCIE', desc:'Ressources académiques — Yonne Sud', ico:'link', cats:['prof'] },
     { url:'https://ladigitale.dev/', nom:'La Digitale', desc:'Boîte à outils numériques libres pour la classe', ico:'sparkle', cats:['prof'], ext:true },
     { url:'https://portail.apps.education.fr/signin', nom:'Apps Education', desc:"Portail des services de l'Éducation nationale", ico:'rocket', cats:['prof'], ext:true },
