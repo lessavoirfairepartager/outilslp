@@ -226,7 +226,7 @@ var D = { cols: 12, rows: 8, cells: {}, polys: [], arcs: [] };
 var outil = 'case';
 var styleCourant = 'hach';
 var enCours = [];          // sommets du polygone en cours
-var sec = null;            // secteur en cours : {c} puis {c, r, a0}
+var sec = null;            // secteur en cours : {c} puis {c, r, a0, last, acc}
 var curseur = null;        // position du pointeur, en carreaux
 var survol = null;         // nœud survolé [x, y] ou null
 var pile = [], refaire = [];
@@ -350,6 +350,24 @@ function accrocherAngle(a) {
   }
   return best % 360;
 }
+/* Le sens du secteur suit le mouvement du pointeur autour du centre :
+   acc cumule l'angle parcouru (positif = sens inverse des aiguilles). */
+function suivreAngle(g) {
+  if (!sec || !sec.r) { return; }
+  var a = angleDe(sec.c, g), d = ((a - sec.last) % 360 + 540) % 360 - 180;
+  sec.acc += d; sec.last = a;
+}
+function secteurFinal(g) {
+  var aE = accrocherAngle(angleDe(sec.c, g)), sens = sec.acc >= 0 ? 1 : -1;
+  var t = sens > 0 ? ((aE - sec.a0) % 360 + 360) % 360 : ((sec.a0 - aE) % 360 + 360) % 360;
+  var o = { c: sec.c, r: sec.r, sens: sens };
+  if (t === 0) {
+    if (Math.abs(sec.acc) < 180) { return null; }
+    o.a0 = sec.a0; o.a1 = sec.a0; return o;           // tour complet : disque
+  }
+  if (sens > 0) { o.a0 = sec.a0; o.a1 = aE; } else { o.a0 = aE; o.a1 = sec.a0; }
+  return o;
+}
 function balayage(s) {
   var t = ((s.a1 - s.a0) % 360 + 360) % 360;
   return t === 0 ? 360 : t;
@@ -406,6 +424,45 @@ function nouveauNumero() {
   var n = 0;
   toutesPieces().forEach(function (f) { if (f.g > n) { n = f.g; } });
   return n + 1;
+}
+/* Un groupe de carreaux devient une pièce polygonale (son contour) pour
+   entrer dans une figure ; s'il est troué, il devient des carrés unités. */
+function contourCases(cases) {
+  var S = {}, nxt = {}, n = 0, mauvais = false;
+  cases.forEach(function (ij) { S[cle(ij[0], ij[1])] = true; });
+  function bord(a, b) { var k = a.join(); if (nxt[k]) { mauvais = true; } nxt[k] = b.join(); n++; }
+  cases.forEach(function (ij) {
+    var i = ij[0], j = ij[1];
+    if (!S[cle(i, j - 1)]) { bord([i, j], [i + 1, j]); }
+    if (!S[cle(i + 1, j)]) { bord([i + 1, j], [i + 1, j + 1]); }
+    if (!S[cle(i, j + 1)]) { bord([i + 1, j + 1], [i, j + 1]); }
+    if (!S[cle(i - 1, j)]) { bord([i, j + 1], [i, j]); }
+  });
+  if (mauvais) { return null; }
+  var k0 = Object.keys(nxt)[0], cur = k0, pts = [], c = 0;
+  do { pts.push(cur.split(',').map(Number)); cur = nxt[cur]; c++; } while (cur !== k0 && c <= n);
+  if (c !== n) { return null; }                    // plusieurs contours : trou
+  return pts.filter(function (q, i) {              // retire les sommets alignés
+    var a = pts[(i + pts.length - 1) % pts.length], b = pts[(i + 1) % pts.length];
+    return (q[0] - a[0]) * (b[1] - q[1]) - (q[1] - a[1]) * (b[0] - q[0]) !== 0;
+  });
+}
+function convertirCases(c) {
+  var st = D.cells[cle(c[0], c[1])], comp = null;
+  composantes().forEach(function (k) {
+    if (k.style === st && k.cases.some(function (ij) { return ij[0] === c[0] && ij[1] === c[1]; })) { comp = k; }
+  });
+  var pts = contourCases(comp.cases), lot;
+  if (pts) { lot = [{ pts: pts, ferme: true, style: st }]; }
+  else {
+    lot = comp.cases.map(function (ij) {
+      var i = ij[0], j = ij[1];
+      return { pts: [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]], ferme: true, style: st };
+    });
+  }
+  comp.cases.forEach(function (ij) { delete D.cells[cle(ij[0], ij[1])]; });
+  lot.forEach(function (f) { D.polys.push(f); });
+  return lot;
 }
 function pieceSous(g) {            // pièce visible sous le pointeur (la plus haute)
   var l = toutesPieces().reverse();
@@ -531,7 +588,9 @@ function contourFigure(ms) {
       if (d1 === d2) { continue; }
       var cleM = Math.round(mn.p[0] * 1e4) + ',' + Math.round(mn.p[1] * 1e4);
       if (vus[cleM]) { continue; }
-      vus[cleM] = true; garde.push(sb);
+      vus[cleM] = true;
+      sb.int = d1 ? mn.n : [-mn.n[0], -mn.n[1]];
+      garde.push(sb);
     }
   });
   return garde;
@@ -553,6 +612,23 @@ function exprExacte(o) {
     return (t.sg < 0 ? ' − ' : ' + ') + t.txt;
   }).join('');
   return irr ? txt + ' ≈ ' + approx : txt;
+}
+/* Aire réelle de la figure par la formule de Green sur son contour :
+   juste même si des pièces réunies se chevauchent. */
+function aireContour(bs) {
+  var tot = 0;
+  bs.forEach(function (e) {
+    var c, tx, ty;
+    if (e.k === 's') {
+      c = (e.a[0] * e.b[1] - e.b[0] * e.a[1]) / 2; tx = e.b[0] - e.a[0]; ty = e.b[1] - e.a[1];
+    } else {
+      var A0 = e.a0 * Math.PI / 180, A1 = (e.a0 + e.t) * Math.PI / 180, am = (A0 + A1) / 2;
+      c = (-e.r * e.r * (A1 - A0) - e.c[0] * e.r * (Math.sin(A1) - Math.sin(A0)) - e.c[1] * e.r * (Math.cos(A1) - Math.cos(A0))) / 2;
+      tx = -Math.sin(am); ty = -Math.cos(am);
+    }
+    tot += (e.int[0] * -ty + e.int[1] * tx > 0 ? 1 : -1) * c;
+  });
+  return Math.abs(tot);
 }
 function aireFigure(ms) {
   var a2 = 0, piN = 0;               // aire = a2/2 + piN*pi/360
@@ -588,13 +664,27 @@ function posFigure(ms) {
     var p = estSecteur(f) ? posSecteur(f) : posEtiquette(f.pts);
     sx += p[0]; sy += p[1]; n++;
   });
-  var cx = sx / n, cy = sy / n, best = null, bd = 1e9;
-  if (dansRegion(cx, cy, ms)) { return [cx, cy]; }
+  var cx = sx / n, cy = sy / n, best = null, bd = 1e9, marge = 0.4;
+  function large(x, y) {             // point intérieur avec de la place autour
+    return dansRegion(x, y, ms) && dansRegion(x + marge, y, ms) && dansRegion(x - marge, y, ms) &&
+           dansRegion(x, y + marge, ms) && dansRegion(x, y - marge, ms);
+  }
+  if (large(cx, cy)) { return [cx, cy]; }
   for (x = 0.25; x < D.cols; x += 0.25) {
     for (y = 0.25; y < D.rows; y += 0.25) {
-      if (dansRegion(x, y, ms)) {
+      if (large(x, y)) {
         var d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
         if (d < bd) { bd = d; best = [x, y]; }
+      }
+    }
+  }
+  if (best) { return best; }
+  marge = 0;                         // figure très fine : on se contente de l'intérieur
+  for (x = 0.25; x < D.cols; x += 0.25) {
+    for (y = 0.25; y < D.rows; y += 0.25) {
+      if (large(x, y)) {
+        var d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+        if (d2 < bd) { bd = d2; best = [x, y]; }
       }
     }
   }
@@ -703,8 +793,10 @@ function formes() {
       if (estSecteur(f)) { mx = Math.min(mx, f.c[0] - f.r); my = Math.min(my, f.c[1] - f.r); }
       else { f.pts.forEach(function (q) { mx = Math.min(mx, q[0]); my = Math.min(my, q[1]); }); }
     });
-    liste.push({ type: 'compo', style: styleFigure(ms), x0: mx, y0: my, lab: posFigure(ms), g: g,
-                 aire: exprExacte(aireFigure(ms)), per: exprExacte(longueurBords(contourFigure(ms))) });
+    var bords = contourFigure(ms), af = aireFigure(ms), ar = aireContour(bords);
+    var chev = Math.abs(ar - af.approx) > 1e-3;
+    liste.push({ type: 'compo', style: styleFigure(ms), x0: mx, y0: my, lab: posFigure(ms), g: g, chev: chev,
+                 aire: chev ? '\u2248 ' + fr(ar.toFixed(2)) : exprExacte(af), per: exprExacte(longueurBords(bords)) });
   });
   liste.sort(function (a, b) { return (a.y0 - b.y0) || (a.x0 - b.x0); });
   var n = 0;
@@ -912,10 +1004,16 @@ function dessiner() {
     cx2.setLineDash([]); cx2.lineWidth = 3;
     var etiq = 'r = ' + rr;
     if (sec.r) {
-      var ap = { c: sec.c, r: rr, a0: a0, a1: accrocherAngle(angleDe(sec.c, curseur)) };
-      cx2.beginPath(); tracerSecteur(cx2, ap, X, X);
-      cx2.globalAlpha = 0.18; cx2.fillStyle = VIF; cx2.fill(); cx2.globalAlpha = 1; cx2.stroke();
-      etiq = balayage(ap) + '\u00B0';
+      var ap = secteurFinal(curseur);
+      if (ap) {
+        cx2.beginPath(); tracerSecteur(cx2, ap, X, X);
+        cx2.globalAlpha = 0.18; cx2.fillStyle = VIF; cx2.fill(); cx2.globalAlpha = 1; cx2.stroke();
+        etiq = balayage(ap) + '\u00B0 ' + (ap.sens > 0 ? '\u21BA' : '\u21BB');
+      } else {
+        var r0 = a0 * Math.PI / 180;
+        cx2.beginPath(); cx2.moveTo(cxs, cys); cx2.lineTo(cxs + rr * px * Math.cos(r0), cys - rr * px * Math.sin(r0)); cx2.stroke();
+        etiq = 'tournez autour du centre';
+      }
     } else {
       var ra = a0 * Math.PI / 180;
       cx2.beginPath(); cx2.moveTo(cxs, cys); cx2.lineTo(cxs + rr * px * Math.cos(ra), cys - rr * px * Math.sin(ra)); cx2.stroke();
@@ -999,16 +1097,19 @@ function surAppui(e) {
     if (!gommer(g)) { pile.pop(); }
     peinture = 'gomme'; cv.setPointerCapture(e.pointerId); maj();
   } else if (outil === 'compo') {
-    var f = pieceSous(g);
+    var f = pieceSous(g), lot = null, cc = carreau(g);
+    if (!f && cc && D.cells[cle(cc[0], cc[1])]) { memoriser(); lot = convertirCases(cc); f = lot[0]; }
     if (!f) { compo = null; normaliser(); sauverLocal(); maj(); return; }
-    memoriser();
+    if (!lot) { memoriser(); lot = [f]; }
     if (compo === null) {
-      if (f.g) { compo = f.g; } else { compo = nouveauNumero(); f.g = compo; f.op = '+'; }
+      if (f.g) { compo = f.g; }
+      else { compo = nouveauNumero(); lot.forEach(function (x) { x.g = compo; x.op = '+'; }); }
     } else if (f.g === compo) {
       delete f.g; delete f.op;
       if (!membres(compo).length) { compo = null; }
     } else {
-      f.g = compo; f.op = $('sel-op').value;
+      var op = $('sel-op').value;
+      lot.forEach(function (x) { x.g = compo; x.op = op; });
     }
     normaliser(); sauverLocal(); maj();
   } else if (outil === 'secteur') {
@@ -1017,10 +1118,10 @@ function surAppui(e) {
       sec = { c: n0 };
     } else if (!sec.r) {
       sec.r = rayonDe(sec.c, g); sec.a0 = accrocherAngle(angleDe(sec.c, g));
+      sec.last = angleDe(sec.c, g); sec.acc = 0;
     } else {
-      memoriser();
-      D.arcs.push({ c: sec.c, r: sec.r, a0: sec.a0, a1: accrocherAngle(angleDe(sec.c, g)), style: styleCourant });
-      sec = null; sauverLocal();
+      suivreAngle(g); sec.appui = true;               // validé au relâcher
+      cv.setPointerCapture(e.pointerId);
     }
     curseur = g; maj();
   } else {
@@ -1045,12 +1146,26 @@ function surDeplacement(e) {
   var n = noeud(g);
   var change = (n ? n.join() : '') !== (survol ? survol.join() : '');
   survol = n; curseur = g;
-  if (sec) { dessiner(); return; }
+  if (sec) { suivreAngle(g); dessiner(); return; }
   if (peinture === 'poser' || peinture === 'oter') { poserCase(g); dessiner(); return; }
   if (peinture === 'gomme') { if (gommer(g)) { maj(); } return; }
   if (change) { dessiner(); }
 }
-function surRelache() {
+function surRelache(e) {
+  if (sec && sec.appui) {
+    sec.appui = false;
+    if (e.type === 'pointerup') {
+      var g = versGrille(e), f;
+      suivreAngle(g); curseur = g; f = secteurFinal(g);
+      if (f) {
+        memoriser();
+        D.arcs.push({ c: f.c, r: f.r, a0: f.a0, a1: f.a1, style: styleCourant });
+        sec = null; sauverLocal();
+      }
+      maj();
+    }
+    return;
+  }
   if (peinture) { peinture = null; sauverLocal(); maj(); }
 }
 
@@ -1067,7 +1182,7 @@ function mesures() {
       var per = f.lng.irrationnel ? f.lng.exact + ' \u2248 ' + fr(f.lng.approx.toFixed(2)) : f.lng.exact;
       h += '<tr><td>' + nom + '</td><td>' + fr(f.a2 / 2) + ' u²</td><td>' + per + ' u</td></tr>';
     } else if (f.type === 'compo') {
-      h += '<tr><td>' + nom + ' <span style="font-weight:400">(composée)</span></td><td>' +
+      h += '<tr><td>' + nom + ' <span style="font-weight:400">(composée' + (f.chev ? ', pièces qui se chevauchent' : '') + ')</span></td><td>' +
            f.aire + ' u²</td><td>' + f.per + ' u</td></tr>';
     } else if (f.type === 'secteur') {
       h += '<tr><td>' + nom + ' <span style="font-weight:400">(' + f.mes.t + '\u00B0, r = ' + f.r + ')</span></td><td>' +
@@ -1077,7 +1192,7 @@ function mesures() {
       h += '<tr><td>' + nom + '</td><td>—</td><td>longueur ' + l + ' u</td></tr>';
     }
   });
-  h += '</table><div style="margin-top:6px">u = côté d\u2019un carreau. Les formes séparées sont mesurées chacune pour elle-même, même si elles se chevauchent. Dans une figure composée, les pièces réunies doivent se toucher sans se chevaucher.</div>';
+  h += '</table><div style="margin-top:6px">u = côté d\u2019un carreau. Les formes séparées sont mesurées chacune pour elle-même, même si elles se chevauchent. Dans une figure composée, l\u2019aire reste exacte tant que les pièces réunies se touchent sans se chevaucher ; sinon elle est donnée en valeur approchée.</div>';
   $('gs-mes').innerHTML = h;
 }
 
@@ -1085,8 +1200,8 @@ var AIDES = {
   case: 'Cliquez ou glissez sur les carreaux pour les remplir avec le style choisi. Re-cliquer un carreau du même style l\u2019efface.',
   poly: 'Cliquez des nœuds pour placer les sommets, puis recliquez le premier sommet (ou « Fermer le polygone »). Idéal pour les demi-rectangles et les triangles.',
   trait: 'Cliquez deux nœuds : un segment épais les relie (oblique ou non). Sa longueur exacte s\u2019affiche dans les mesures.',
-  secteur: 'Cliquez un nœud (le centre), puis un point qui fixe le rayon (nombre entier de carreaux) et le premier côté, puis un point qui fixe le second côté. Le secteur tourne dans le sens inverse des aiguilles d\u2019une montre ; recliquer sur le premier côté donne un disque. Échap annule.',
-  compo: 'Cliquez un polygone ou un secteur pour démarrer une figure, puis cliquez les pièces à lui ajouter : réunies (+, bord à bord) ou évidées (\u2212, elles creusent la figure). Recliquer une pièce la retire. Clic dans le vide ou Échap pour terminer.',
+  secteur: 'Cliquez un nœud (le centre), puis un point qui fixe le rayon (nombre entier de carreaux) et le premier côté. Tournez ensuite autour du centre dans le sens voulu, vers le haut ou vers le bas, et cliquez pour fixer le second côté ; un tour complet donne un disque. Sur tablette, faites glisser le doigt autour du centre avant de le lever. Échap annule.',
+  compo: 'Cliquez une forme (groupe de carreaux, polygone ou secteur) pour démarrer une figure, puis cliquez autant de formes que vous voulez à lui ajouter : réunies (+, bord à bord) ou évidées (\u2212, elles creusent la figure). Recliquer une pièce la retire. Clic dans le vide ou Échap pour terminer.',
   gomme: 'Cliquez ou glissez sur un polygone, un trait ou un carreau pour l\u2019effacer.'
 };
 function maj() {
