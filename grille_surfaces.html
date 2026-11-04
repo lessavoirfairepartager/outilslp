@@ -1,0 +1,1693 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grille de surfaces — figures quadrillées pour fiches (PNG)</title>
+<!--
+  Grille de surfaces · outilslp.netlify.app
+  Outil prof : dessiner des surfaces sur quadrillage (carreaux, polygones à
+  sommets sur les nœuds, obliques) et exporter une image PNG pour les fiches.
+  Licence MIT — Copyright (c) 2026 Moïse Muller · lessavoirfairepartager@gmail.com
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, subject to the following conditions: the above
+  copyright notice and this permission notice shall be included in all copies.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+-->
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--teal); --accent-bg: var(--teal-bg); }
+
+  .gs-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 330px;
+    gap: var(--gap);
+    align-items: start;
+  }
+  @media (max-width: 900px) { .gs-layout { grid-template-columns: 1fr; } }
+
+  .gs-scene { align-items: stretch; }
+  .gs-wrap { width: 100%; overflow: auto; background: var(--sketch-bg); border-radius: var(--radius); }
+  #gs-canvas { display: block; margin: 0 auto; touch-action: none; cursor: crosshair; }
+
+  .gs-tools { display: flex; flex-wrap: wrap; gap: 7px; }
+  .gs-tools .shape-tab.active { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
+
+  .gs-styles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+  .gs-style {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 7px 4px; border: 1.5px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); color: var(--text2); cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.15;
+  }
+  .gs-style canvas { width: 34px; height: 34px; border-radius: 3px; }
+  .gs-style.active { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+
+  .gs-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .gs-num {
+    width: 74px; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: var(--fs-sm); font-weight: 600;
+    background: var(--surface2); color: var(--text);
+  }
+  .gs-sel {
+    padding: 8px 10px; border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: var(--fs-xs); background: var(--surface2); color: var(--text);
+  }
+  .gs-check { display: flex; align-items: center; gap: 8px; font-size: var(--fs-xs); color: var(--text2); cursor: pointer; }
+  .gs-check input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+
+  .gs-hint { font-size: var(--fs-xs); color: var(--text2); line-height: 1.45; min-height: 1.45em; }
+  .gs-btn-main {
+    padding: 11px 16px; border-radius: var(--radius); border: none; cursor: pointer;
+    background: var(--accent); color: #fff; font-family: inherit; font-size: var(--fs-sm); font-weight: 700;
+  }
+  .gs-btn-main:hover { filter: brightness(1.08); }
+
+  .gs-mes { font-size: var(--fs-xs); color: var(--text2); line-height: 1.55; }
+  .gs-mes table { width: 100%; border-collapse: collapse; }
+  .gs-mes th, .gs-mes td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .gs-mes th { color: var(--text3); font-weight: 700; }
+  .gs-mes td:first-child { font-weight: 700; color: var(--text); }
+  .gs-toast { font-size: var(--fs-xs); color: var(--accent); font-weight: 600; min-height: 1.4em; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <path d="M8 8v24M16 8v24M24 8v24M32 8v24M8 8h24M8 16h24M8 24h24M8 32h24" stroke="var(--teal)" stroke-width="1.4" opacity=".55"/>
+      <path d="M8 24L16 16H24V32H8Z" stroke="var(--teal)" stroke-width="2.8" stroke-linejoin="round" class="lp-draw" style="--dash:80"/>
+    </svg></div>
+  <div>
+    <h1>Grille de surfaces</h1>
+    <p>Outil prof · carreaux, polygones et obliques sur quadrillage · export PNG</p>
+  </div>
+</header>
+
+<div class="main" style="max-width:1300px">
+  <div class="gs-layout">
+
+    <!-- ═══ DESSIN ═══════════════════════════════════════════════════════ -->
+    <div class="sketch-card gs-scene">
+      <div class="gs-tools no-print" role="toolbar" aria-label="Outils de dessin">
+        <button class="shape-tab active" type="button" data-outil="case">▦ Carreaux</button>
+        <button class="shape-tab" type="button" data-outil="poly">⬠ Polygone</button>
+        <button class="shape-tab" type="button" data-outil="trait">╱ Trait</button>
+        <button class="shape-tab" type="button" data-outil="secteur"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" style="vertical-align:-2px"><path d="M2.5 13.5V2.5A11 11 0 0 1 13.5 13.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg> Secteur</button>
+        <button class="shape-tab" type="button" data-outil="compo"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" style="vertical-align:-2px"><path d="M1.5 14.5V5.5H8.5V14.5Z M8.5 5.5A6 6 0 0 1 14.5 11.5H8.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg> Composer</button>
+        <button class="shape-tab" type="button" data-outil="gomme">⌫ Gomme</button>
+      </div>
+      <div class="gs-hint" id="gs-hint"></div>
+      <label class="gs-check no-print" id="row-op" style="gap:6px;display:none">Pièce suivante
+        <select class="gs-sel" id="sel-op">
+          <option value="+" selected>à réunir (+)</option>
+          <option value="-">à évider (−)</option>
+        </select>
+      </label>
+      <label class="gs-check no-print" id="row-pas" style="gap:6px;display:none">Angles accrochés
+        <select class="gs-sel" id="sel-pas">
+          <option value="30,45" selected>multiples de 30° et de 45°</option>
+          <option value="30">multiples de 30°</option>
+          <option value="45">multiples de 45°</option>
+          <option value="90">multiples de 90°</option>
+        </select>
+      </label>
+      <div class="gs-wrap" id="gs-wrap"><canvas id="gs-canvas" aria-label="Quadrillage de dessin"></canvas></div>
+      <div class="gs-row no-print">
+        <button class="btn-rnd" type="button" id="b-annuler" title="Ctrl+Z">↶ Annuler</button>
+        <button class="btn-rnd" type="button" id="b-retablir" title="Ctrl+Y">↷ Rétablir</button>
+        <button class="btn-rnd" type="button" id="b-fermer">Fermer le polygone</button>
+        <button class="btn-rnd" type="button" id="b-vider">Tout effacer</button>
+        <button class="btn-rnd" type="button" id="b-exemple">Exemple</button>
+      </div>
+    </div>
+
+    <!-- ═══ COMMANDES ═════════════════════════════════════════════════════ -->
+    <div class="controls-card">
+      <div class="section-label">Remplissage</div>
+      <div class="gs-styles" id="gs-styles"></div>
+
+      <div class="section-label">Quadrillage</div>
+      <div class="gs-row">
+        <label class="gs-check" style="gap:6px">Colonnes <input class="gs-num" id="in-cols" type="text" inputmode="numeric"></label>
+        <label class="gs-check" style="gap:6px">Lignes <input class="gs-num" id="in-rows" type="text" inputmode="numeric"></label>
+      </div>
+      <div class="gs-row">
+        <label class="gs-check"><input type="checkbox" id="ck-lettres" checked> Lettres sur les formes</label>
+      </div>
+      <div class="gs-row">
+        <label class="gs-check" style="gap:6px">Traits de grille
+          <select class="gs-sel" id="sel-grille">
+            <option value="fin">fins</option>
+            <option value="moyen" selected>moyens</option>
+            <option value="epais">épais</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="section-label">Générateur aléatoire</div>
+      <label class="gs-check" style="gap:6px">Niveau
+        <select class="gs-sel" id="sel-niv">
+          <option value="1">1 · Rectangles et carrés</option>
+          <option value="2">2 · Assemblages de carreaux</option>
+          <option value="3" selected>3 · Polygones à côtés obliques</option>
+          <option value="4">4 · Polygones composés</option>
+          <option value="5">5 · Polygones composés évidés</option>
+        </select>
+      </label>
+      <div class="gs-row">
+        <label class="gs-check" style="gap:6px">Nombre de figures <input class="gs-num" id="in-nb" type="text" inputmode="numeric" value="6"></label>
+      </div>
+      <div class="gs-row">
+        <label class="gs-check"><input type="checkbox" id="ck-varie" checked> Remplissages variés</label>
+        <label class="gs-check"><input type="checkbox" id="ck-unite" checked> Carreau unité</label>
+        <label class="gs-check" id="lab-sect"><input type="checkbox" id="ck-sect"> Avec secteurs (niv. 4-5)</label>
+      </div>
+      <button class="gs-btn-main" type="button" id="b-generer">Générer</button>
+
+      <div class="section-label">Image PNG</div>
+      <div class="gs-row">
+        <label class="gs-check" style="gap:6px">Résolution
+          <select class="gs-sel" id="sel-px">
+            <option value="40">40 px / carreau</option>
+            <option value="80" selected>80 px / carreau</option>
+            <option value="120">120 px / carreau</option>
+          </select>
+        </label>
+      </div>
+      <div class="gs-row">
+        <label class="gs-check"><input type="checkbox" id="ck-grille" checked> Quadrillage visible</label>
+        <label class="gs-check"><input type="checkbox" id="ck-recadrer"> Recadrer sur le dessin</label>
+      </div>
+      <button class="gs-btn-main" type="button" id="b-png">Télécharger le PNG</button>
+      <button class="btn-rnd" type="button" id="b-copier">Copier l'image</button>
+      <div class="gs-toast" id="gs-toast" aria-live="polite"></div>
+
+      <div class="section-label">Mesures (pour le prof)</div>
+      <div class="gs-mes" id="gs-mes"></div>
+
+      <div class="section-label">Fichier</div>
+      <div class="gs-row">
+        <button class="btn-rnd" type="button" id="b-sauver">Enregistrer (.json)</button>
+        <button class="btn-rnd" type="button" id="b-ouvrir">Ouvrir…</button>
+        <input type="file" id="in-fichier" accept=".json,application/json" hidden>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer class="lp-footer">
+  <a href="/">&larr; Tous les outils</a> &nbsp;&middot;&nbsp; Licence MIT &nbsp;&middot;&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">Calculatrice Casio fx-92</a>
+  &nbsp;&middot;&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée · M : animations">Raccourcis : T &middot; P &middot; D &middot; M</span>
+  <br>
+  <span style="font-size:var(--fs-xs)">Dessin : Ctrl+Z annule &middot; Ctrl+Y rétablit &middot;
+    Échap abandonne le polygone en cours &middot; Retour arrière retire son dernier sommet</span>
+</footer>
+
+<script>
+'use strict';
+/* ==========================================================================
+   Modèle (unité = côté d'un carreau ; les nœuds ont des coordonnées entières)
+     D.cols, D.rows        taille du quadrillage, en carreaux
+     D.cells["i,j"]        style du carreau de coin haut-gauche (i, j)
+     D.polys[k]            { pts: [[x,y],...], ferme: true|false, style }
+                           ferme=false et 2 points : un trait (oblique ou non)
+     D.arcs[k]             { c: [x,y], r, a0, a1, style } secteur de centre c
+                           (nœud), rayon r entier, de a0 à a1 en degrés,
+                           sens trigonométrique (y vers le haut) ; a1 = a0 :
+                           disque complet
+   Figures composées : un polygone fermé ou un secteur peut porter g (numéro
+   de figure) et op ('+' à réunir, '-' à évider). Figure = réunion des
+   pièces + privée des pièces -, avec un seul contour et une seule lettre.
+   Un seul moteur de rendu (rendre) sert à l'écran ET à l'export PNG.
+   ES5 uniquement, apostrophes droites uniquement.
+   ========================================================================== */
+
+var CLE = 'lp-grille-surfaces';
+var STYLES = [
+  { id: 'hach',  nom: 'Hachures \u2572' },
+  { id: 'hach2', nom: 'Hachures \u2571' },
+  { id: 'croix', nom: 'Croisées' },
+  { id: 'noir',  nom: 'Noir (unité)' },
+  { id: 'gris',  nom: 'Gris' },
+  { id: 'vide',  nom: 'Contour seul' }
+];
+var ENCRE = '#111111';
+var VIF = '#0F6E56';
+
+var D = { cols: 12, rows: 8, cells: {}, polys: [], arcs: [] };
+var outil = 'case';
+var styleCourant = 'hach';
+var enCours = [];          // sommets du polygone en cours
+var sec = null;            // secteur en cours : {c} puis {c, r, a0, last, acc}
+var curseur = null;        // position du pointeur, en carreaux
+var survol = null;         // nœud survolé [x, y] ou null
+var pile = [], refaire = [];
+var scr = { px: 40, m: 20 };
+var peinture = null;       // glisser en mode carreaux / gomme : 'poser' | 'oter'
+
+/* ── Utilitaires ─────────────────────────────────────────────────────────── */
+function $(id) { return document.getElementById(id); }
+function fr(x) { return String(x).replace('.', ','); }
+function cloner(o) { return JSON.parse(JSON.stringify(o)); }
+function cle(i, j) { return i + ',' + j; }
+
+function sauverLocal() { try { localStorage.setItem(CLE, JSON.stringify(D)); } catch (e) {} }
+function lireLocal() {
+  try {
+    var s = localStorage.getItem(CLE);
+    if (s) { var o = JSON.parse(s); if (valide(o)) { D = o; } }
+  } catch (e) {}
+}
+function valide(o) {
+  if (o && typeof o === 'object' && !o.arcs) { o.arcs = []; }
+  return o && Object.prototype.toString.call(o.arcs) === '[object Array]' && typeof o.cols === 'number' && typeof o.rows === 'number' &&
+         o.cells && typeof o.cells === 'object' && Object.prototype.toString.call(o.polys) === '[object Array]';
+}
+
+function raz() { enCours = []; sec = null; compo = null; normaliser(); }
+
+function memoriser() {
+  pile.push(JSON.stringify(D));
+  if (pile.length > 80) { pile.shift(); }
+  refaire = [];
+}
+function annuler() {
+  if (enCours.length || sec || compo !== null) { raz(); maj(); return; }
+  if (!pile.length) { return; }
+  refaire.push(JSON.stringify(D));
+  D = JSON.parse(pile.pop());
+  apresChargement();
+}
+function retablir() {
+  if (!refaire.length) { return; }
+  pile.push(JSON.stringify(D));
+  D = JSON.parse(refaire.pop());
+  apresChargement();
+}
+function apresChargement() {
+  $('in-cols').value = D.cols; $('in-rows').value = D.rows;
+  raz();
+  dimensionner(); maj(); sauverLocal();
+}
+
+/* ── Géométrie ───────────────────────────────────────────────────────────── */
+function dansPoly(x, y, pts) {
+  var dedans = false;
+  for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    var xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) { dedans = !dedans; }
+  }
+  return dedans;
+}
+function distSeg(px, py, a, b) {
+  var dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+  var t = l2 ? ((px - a[0]) * dx + (py - a[1]) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  var qx = a[0] + t * dx - px, qy = a[1] + t * dy - py;
+  return Math.sqrt(qx * qx + qy * qy);
+}
+function aire2(pts) {               // double de l'aire (entier, nœuds entiers)
+  var s = 0;
+  for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    s += pts[j][0] * pts[i][1] - pts[i][0] * pts[j][1];
+  }
+  return Math.abs(s);
+}
+function radical(n) {               // sqrt(n) = a * sqrt(b)
+  for (var k = Math.floor(Math.sqrt(n)); k > 1; k--) {
+    if (n % (k * k) === 0) { return [k, n / (k * k)]; }
+  }
+  return [1, n];
+}
+/* Longueur exacte d'une liste de segments : "6 + 2\u221A2" et valeur approchée */
+function longueurExacte(segs) {
+  var entier = 0, rad = {}, approx = 0;
+  for (var i = 0; i < segs.length; i++) {
+    var dx = segs[i][1][0] - segs[i][0][0], dy = segs[i][1][1] - segs[i][0][1];
+    var n = dx * dx + dy * dy;
+    if (!n) { continue; }
+    approx += Math.sqrt(n);
+    var r = radical(n);
+    if (r[1] === 1) { entier += r[0]; } else { rad[r[1]] = (rad[r[1]] || 0) + r[0]; }
+  }
+  var termes = [];
+  if (entier) { termes.push(String(entier)); }
+  var bs = Object.keys(rad).map(Number).sort(function (a, b) { return a - b; });
+  for (var k = 0; k < bs.length; k++) {
+    termes.push((rad[bs[k]] === 1 ? '' : rad[bs[k]]) + '\u221A' + bs[k]);
+  }
+  var exact = termes.length ? termes.join(' + ') : '0';
+  return { exact: exact, approx: approx, irrationnel: bs.length > 0 };
+}
+function segmentsPoly(p) {
+  var s = [];
+  for (var i = 0; i < p.pts.length - 1; i++) { s.push([p.pts[i], p.pts[i + 1]]); }
+  if (p.ferme) { s.push([p.pts[p.pts.length - 1], p.pts[0]]); }
+  return s;
+}
+
+/* Secteurs de cercle */
+function angleDe(c, g) {            // angle de c vers g, en degrés, sens trigo
+  var a = Math.atan2(c[1] - g[1], g[0] - c[0]) * 180 / Math.PI;
+  return (a + 360) % 360;
+}
+function rayonDe(c, g) {
+  return Math.max(1, Math.round(Math.sqrt(Math.pow(g[0] - c[0], 2) + Math.pow(g[1] - c[1], 2))));
+}
+function accrocherAngle(a) {
+  var pas = $('sel-pas').value.split(',').map(Number), best = 0, bd = 1e9;
+  for (var c = 0; c <= 360; c++) {
+    var ok = pas.some(function (p) { return c % p === 0; });
+    if (ok && Math.abs(a - c) < bd) { bd = Math.abs(a - c); best = c; }
+  }
+  return best % 360;
+}
+/* Le sens du secteur suit le mouvement du pointeur autour du centre :
+   acc cumule l'angle parcouru (positif = sens inverse des aiguilles). */
+function suivreAngle(g) {
+  if (!sec || !sec.r) { return; }
+  var a = angleDe(sec.c, g), d = ((a - sec.last) % 360 + 540) % 360 - 180;
+  sec.acc += d; sec.last = a;
+}
+function secteurFinal(g) {
+  var aE = accrocherAngle(angleDe(sec.c, g)), sens = sec.acc >= 0 ? 1 : -1;
+  var t = sens > 0 ? ((aE - sec.a0) % 360 + 360) % 360 : ((sec.a0 - aE) % 360 + 360) % 360;
+  var o = { c: sec.c, r: sec.r, sens: sens };
+  if (t === 0) {
+    if (Math.abs(sec.acc) < 180) { return null; }
+    o.a0 = sec.a0; o.a1 = sec.a0; return o;           // tour complet : disque
+  }
+  if (sens > 0) { o.a0 = sec.a0; o.a1 = aE; } else { o.a0 = aE; o.a1 = sec.a0; }
+  return o;
+}
+function balayage(s) {
+  var t = ((s.a1 - s.a0) % 360 + 360) % 360;
+  return t === 0 ? 360 : t;
+}
+function dansSecteur(x, y, s) {
+  var dx = x - s.c[0], dy = y - s.c[1];
+  if (dx * dx + dy * dy > s.r * s.r) { return false; }
+  var t = balayage(s);
+  if (t === 360) { return true; }
+  return ((angleDe(s.c, [x, y]) - s.a0) % 360 + 360) % 360 <= t;
+}
+function tracerSecteur(ctx, s, X, Y) {
+  var t = balayage(s), cx = X(s.c[0]), cy = Y(s.c[1]), R = X(s.c[0] + s.r) - cx;
+  if (t === 360) { ctx.moveTo(cx + R, cy); ctx.arc(cx, cy, R, 0, 2 * Math.PI); return; }
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, R, -s.a0 * Math.PI / 180, -(s.a0 + t) * Math.PI / 180, true);
+  ctx.closePath();
+}
+function pgcd(a, b) { return b ? pgcd(b, a % b) : a; }
+function fracPi(n, d) {             // n*pi/d simplifié : "9π/4", "π/2", "3π"
+  var g = pgcd(n, d); n /= g; d /= g;
+  return (n === 1 ? '' : n) + '\u03C0' + (d === 1 ? '' : '/' + d);
+}
+function mesuresSecteur(s) {
+  var t = balayage(s), r = s.r;
+  var aV = Math.PI * r * r * t / 360, lV = Math.PI * r * t / 180;
+  var arc = fracPi(t * r, 180);
+  return {
+    t: t,
+    aire: fracPi(t * r * r, 360) + ' \u2248 ' + fr(aV.toFixed(2)),
+    per: (t === 360 ? arc : 2 * r + ' + ' + arc) + ' \u2248 ' + fr((t === 360 ? lV : 2 * r + lV).toFixed(2))
+  };
+}
+function posSecteur(s) {            // centre de gravité du secteur
+  var t = balayage(s);
+  if (t === 360) { return [s.c[0], s.c[1] - s.r / 2]; }   // disque : centre laissé visible
+  var th = t * Math.PI / 180, d = 4 * s.r * Math.sin(th / 2) / (3 * th), m = (s.a0 + t / 2) * Math.PI / 180;
+  return [s.c[0] + d * Math.cos(m), s.c[1] - d * Math.sin(m)];
+}
+
+/* ── Figures composées ──────────────────────────────────────────────────── */
+var compo = null;          // numéro de la figure en cours d'assemblage
+
+function estSecteur(f) { return !!f.c; }
+function dansPiece(x, y, f) { return estSecteur(f) ? dansSecteur(x, y, f) : dansPoly(x, y, f.pts); }
+function toutesPieces() { return D.polys.filter(function (p) { return p.ferme; }).concat(D.arcs); }
+function membres(g) { return toutesPieces().filter(function (f) { return f.g === g; }); }
+function numerosFigures() {
+  var vus = {}, l = [];
+  toutesPieces().forEach(function (f) { if (f.g && !vus[f.g]) { vus[f.g] = true; l.push(f.g); } });
+  return l;
+}
+function nouveauNumero() {
+  var n = 0;
+  toutesPieces().forEach(function (f) { if (f.g > n) { n = f.g; } });
+  return n + 1;
+}
+/* Un groupe de carreaux devient une pièce polygonale (son contour) pour
+   entrer dans une figure ; s'il est troué, il devient des carrés unités. */
+function contourCases(cases) {
+  var S = {}, nxt = {}, n = 0, mauvais = false;
+  cases.forEach(function (ij) { S[cle(ij[0], ij[1])] = true; });
+  function bord(a, b) { var k = a.join(); if (nxt[k]) { mauvais = true; } nxt[k] = b.join(); n++; }
+  cases.forEach(function (ij) {
+    var i = ij[0], j = ij[1];
+    if (!S[cle(i, j - 1)]) { bord([i, j], [i + 1, j]); }
+    if (!S[cle(i + 1, j)]) { bord([i + 1, j], [i + 1, j + 1]); }
+    if (!S[cle(i, j + 1)]) { bord([i + 1, j + 1], [i, j + 1]); }
+    if (!S[cle(i - 1, j)]) { bord([i, j + 1], [i, j]); }
+  });
+  if (mauvais) { return null; }
+  var k0 = Object.keys(nxt)[0], cur = k0, pts = [], c = 0;
+  do { pts.push(cur.split(',').map(Number)); cur = nxt[cur]; c++; } while (cur !== k0 && c <= n);
+  if (c !== n) { return null; }                    // plusieurs contours : trou
+  return pts.filter(function (q, i) {              // retire les sommets alignés
+    var a = pts[(i + pts.length - 1) % pts.length], b = pts[(i + 1) % pts.length];
+    return (q[0] - a[0]) * (b[1] - q[1]) - (q[1] - a[1]) * (b[0] - q[0]) !== 0;
+  });
+}
+function convertirCases(c) {
+  var st = D.cells[cle(c[0], c[1])], comp = null;
+  composantes().forEach(function (k) {
+    if (k.style === st && k.cases.some(function (ij) { return ij[0] === c[0] && ij[1] === c[1]; })) { comp = k; }
+  });
+  var pts = contourCases(comp.cases), lot;
+  if (pts) { lot = [{ pts: pts, ferme: true, style: st }]; }
+  else {
+    lot = comp.cases.map(function (ij) {
+      var i = ij[0], j = ij[1];
+      return { pts: [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]], ferme: true, style: st };
+    });
+  }
+  comp.cases.forEach(function (ij) { delete D.cells[cle(ij[0], ij[1])]; });
+  lot.forEach(function (f) { D.polys.push(f); });
+  return lot;
+}
+function pieceSous(g) {            // pièce visible sous le pointeur (la plus haute)
+  var l = toutesPieces().reverse();
+  for (var i = 0; i < l.length; i++) { if (dansPiece(g[0], g[1], l[i])) { return l[i]; } }
+  return null;
+}
+function dansRegion(x, y, ms) {
+  var dedans = false, i;
+  for (i = 0; i < ms.length; i++) { if (ms[i].op !== '-' && dansPiece(x, y, ms[i])) { dedans = true; break; } }
+  if (!dedans) { return false; }
+  for (i = 0; i < ms.length; i++) { if (ms[i].op === '-' && dansPiece(x, y, ms[i])) { return false; } }
+  return true;
+}
+function normaliser() {            // dissout les figures sans objet
+  numerosFigures().forEach(function (g) {
+    var ms = membres(g), plus = ms.filter(function (f) { return f.op !== '-'; }).length;
+    if (g === compo && plus >= 1) { return; }
+    if (ms.length < 2 || plus < 1) { ms.forEach(function (f) { delete f.g; delete f.op; }); }
+  });
+}
+function styleFigure(ms) {
+  for (var i = 0; i < ms.length; i++) { if (ms[i].op !== '-') { return ms[i].style; } }
+  return 'vide';
+}
+function tracerPiece(ctx, f, X, Y) {
+  if (estSecteur(f)) { tracerSecteur(ctx, f, X, Y); return; }
+  f.pts.forEach(function (q, i) { if (i) { ctx.lineTo(X(q[0]), Y(q[1])); } else { ctx.moveTo(X(q[0]), Y(q[1])); } });
+  ctx.closePath();
+}
+
+/* Bords : segments {k:'s', a, b} et arcs {k:'a', c, r, a0, t} (t en degrés) */
+function ptArc(e, u) {
+  var a = (e.a0 + u) * Math.PI / 180;
+  return [e.c[0] + e.r * Math.cos(a), e.c[1] - e.r * Math.sin(a)];
+}
+function bordsPiece(f) {
+  if (!estSecteur(f)) { return segmentsPoly(f).map(function (q) { return { k: 's', a: q[0], b: q[1] }; }); }
+  var arc = { k: 'a', c: f.c, r: f.r, a0: f.a0, t: balayage(f) };
+  if (arc.t === 360) { return [arc]; }
+  return [arc, { k: 's', a: f.c, b: ptArc(arc, 0) }, { k: 's', a: ptArc(arc, arc.t), b: f.c }];
+}
+function extremites(e) {
+  if (e.k === 's') { return [e.a, e.b]; }
+  return e.t === 360 ? [] : [ptArc(e, 0), ptArc(e, e.t)];
+}
+function paramSur(e, P) {          // position de P sur le bord e, ou null
+  if (e.k === 's') {
+    var dx = e.b[0] - e.a[0], dy = e.b[1] - e.a[1], l2 = dx * dx + dy * dy;
+    var t = ((P[0] - e.a[0]) * dx + (P[1] - e.a[1]) * dy) / l2;
+    if (t < -1e-7 || t > 1 + 1e-7) { return null; }
+    var qx = e.a[0] + t * dx - P[0], qy = e.a[1] + t * dy - P[1];
+    return qx * qx + qy * qy < 1e-10 ? Math.max(0, Math.min(1, t)) : null;
+  }
+  var d = Math.sqrt(Math.pow(P[0] - e.c[0], 2) + Math.pow(P[1] - e.c[1], 2));
+  if (Math.abs(d - e.r) > 1e-6) { return null; }
+  var u = ((angleDe(e.c, P) - e.a0) % 360 + 360) % 360;
+  if (e.t === 360) { return u; }
+  if (u > e.t + 1e-5) { return u > 360 - 1e-5 ? 0 : null; }
+  return Math.min(u, e.t);
+}
+function intersections(e, f) {
+  var pts = [];
+  if (e.k === 's' && f.k === 's') {
+    var r = [e.b[0] - e.a[0], e.b[1] - e.a[1]], q = [f.b[0] - f.a[0], f.b[1] - f.a[1]];
+    var den = r[0] * q[1] - r[1] * q[0];
+    if (Math.abs(den) > 1e-12) {
+      var t = ((f.a[0] - e.a[0]) * q[1] - (f.a[1] - e.a[1]) * q[0]) / den;
+      pts.push([e.a[0] + t * r[0], e.a[1] + t * r[1]]);
+    }
+  } else if (e.k === 'a' && f.k === 'a') {
+    var dx = f.c[0] - e.c[0], dy = f.c[1] - e.c[1], d = Math.sqrt(dx * dx + dy * dy);
+    if (d > 1e-9 && d <= e.r + f.r + 1e-9 && d >= Math.abs(e.r - f.r) - 1e-9) {
+      var a = (e.r * e.r - f.r * f.r + d * d) / (2 * d), h2 = e.r * e.r - a * a, h = h2 > 0 ? Math.sqrt(h2) : 0;
+      var mx = e.c[0] + a * dx / d, my = e.c[1] + a * dy / d;
+      pts.push([mx + h * dy / d, my - h * dx / d], [mx - h * dy / d, my + h * dx / d]);
+    }
+  } else {
+    var sg = e.k === 's' ? e : f, ar = e.k === 's' ? f : e;
+    var ux = sg.b[0] - sg.a[0], uy = sg.b[1] - sg.a[1], fx = sg.a[0] - ar.c[0], fy = sg.a[1] - ar.c[1];
+    var A = ux * ux + uy * uy, B = 2 * (fx * ux + fy * uy), C = fx * fx + fy * fy - ar.r * ar.r, disc = B * B - 4 * A * C;
+    if (disc > -1e-9) {
+      var sq = Math.sqrt(Math.max(0, disc));
+      [(-B - sq) / (2 * A), (-B + sq) / (2 * A)].forEach(function (t2) { pts.push([sg.a[0] + t2 * ux, sg.a[1] + t2 * uy]); });
+    }
+  }
+  return pts.filter(function (P) { return paramSur(e, P) !== null && paramSur(f, P) !== null; });
+}
+function sousBord(e, u0, u1) {
+  if (e.k === 's') {
+    var dx = e.b[0] - e.a[0], dy = e.b[1] - e.a[1];
+    return { k: 's', a: [e.a[0] + u0 * dx, e.a[1] + u0 * dy], b: [e.a[0] + u1 * dx, e.a[1] + u1 * dy] };
+  }
+  return { k: 'a', c: e.c, r: e.r, a0: e.a0 + u0, t: u1 - u0 };
+}
+function milieuNormale(e) {
+  if (e.k === 's') {
+    var dx = e.b[0] - e.a[0], dy = e.b[1] - e.a[1], l = Math.sqrt(dx * dx + dy * dy);
+    return { p: [(e.a[0] + e.b[0]) / 2, (e.a[1] + e.b[1]) / 2], n: [-dy / l, dx / l] };
+  }
+  var p = ptArc(e, e.t / 2);
+  return { p: p, n: [(p[0] - e.c[0]) / e.r, (p[1] - e.c[1]) / e.r] };
+}
+/* Contour réel de la figure : on découpe chaque bord aux points de contact,
+   et on garde un morceau seulement s'il sépare l'intérieur de l'extérieur
+   (un côté commun à deux pièces réunies disparaît, une partie évidée aussi). */
+function contourFigure(ms) {
+  var bords = [], garde = [], vus = {};
+  ms.forEach(function (f) { bordsPiece(f).forEach(function (b) { bords.push(b); }); });
+  bords.forEach(function (e, i) {
+    var ps = [0, e.k === 's' ? 1 : e.t];
+    bords.forEach(function (f, j) {
+      if (i === j) { return; }
+      intersections(e, f).concat(extremites(f)).forEach(function (P) {
+        var u = paramSur(e, P); if (u !== null) { ps.push(u); }
+      });
+    });
+    ps.sort(function (a, b) { return a - b; });
+    for (var k = 0; k < ps.length - 1; k++) {
+      if (ps[k + 1] - ps[k] < 1e-6) { continue; }
+      var sb = sousBord(e, ps[k], ps[k + 1]), mn = milieuNormale(sb), eps = 1e-4;
+      var d1 = dansRegion(mn.p[0] + mn.n[0] * eps, mn.p[1] + mn.n[1] * eps, ms);
+      var d2 = dansRegion(mn.p[0] - mn.n[0] * eps, mn.p[1] - mn.n[1] * eps, ms);
+      if (d1 === d2) { continue; }
+      var cleM = Math.round(mn.p[0] * 1e4) + ',' + Math.round(mn.p[1] * 1e4);
+      if (vus[cleM]) { continue; }
+      vus[cleM] = true;
+      sb.int = d1 ? mn.n : [-mn.n[0], -mn.n[1]];
+      garde.push(sb);
+    }
+  });
+  return garde;
+}
+/* Valeurs exactes : q (rationnel) + somme de c*racine(b) + (piN/piD)*pi */
+function exprExacte(o) {
+  var termes = [];
+  if (Math.abs(o.q) > 1e-9) { termes.push({ sg: o.q < 0 ? -1 : 1, txt: fr(Math.round(Math.abs(o.q) * 1000) / 1000) }); }
+  Object.keys(o.rad).map(Number).sort(function (a, b) { return a - b; }).forEach(function (b) {
+    termes.push({ sg: 1, txt: (o.rad[b] === 1 ? '' : o.rad[b]) + '√' + b });
+  });
+  if (o.piN) { termes.push({ sg: o.piN < 0 ? -1 : 1, txt: fracPi(Math.abs(o.piN), o.piD) }); }
+  var irr = Object.keys(o.rad).length > 0 || !!o.piN;
+  var approx = fr((Math.round(o.approx * 100) / 100).toFixed(2));
+  if (o.inexact) { return '≈ ' + approx; }
+  if (!termes.length) { return '0'; }
+  var txt = termes.map(function (t, i) {
+    if (i === 0) { return (t.sg < 0 ? '−' : '') + t.txt; }
+    return (t.sg < 0 ? ' − ' : ' + ') + t.txt;
+  }).join('');
+  return irr ? txt + ' ≈ ' + approx : txt;
+}
+/* Aire réelle de la figure par la formule de Green sur son contour :
+   juste même si des pièces réunies se chevauchent. */
+function aireContour(bs) {
+  var tot = 0;
+  bs.forEach(function (e) {
+    var c, tx, ty;
+    if (e.k === 's') {
+      c = (e.a[0] * e.b[1] - e.b[0] * e.a[1]) / 2; tx = e.b[0] - e.a[0]; ty = e.b[1] - e.a[1];
+    } else {
+      var A0 = e.a0 * Math.PI / 180, A1 = (e.a0 + e.t) * Math.PI / 180, am = (A0 + A1) / 2;
+      c = (-e.r * e.r * (A1 - A0) - e.c[0] * e.r * (Math.sin(A1) - Math.sin(A0)) - e.c[1] * e.r * (Math.cos(A1) - Math.cos(A0))) / 2;
+      tx = -Math.sin(am); ty = -Math.cos(am);
+    }
+    tot += (e.int[0] * -ty + e.int[1] * tx > 0 ? 1 : -1) * c;
+  });
+  return Math.abs(tot);
+}
+function aireFigure(ms) {
+  var a2 = 0, piN = 0;               // aire = a2/2 + piN*pi/360
+  ms.forEach(function (f) {
+    var sg = f.op === '-' ? -1 : 1;
+    if (estSecteur(f)) { piN += sg * balayage(f) * f.r * f.r; } else { a2 += sg * aire2(f.pts); }
+  });
+  return { q: a2 / 2, rad: {}, piN: piN, piD: 360, approx: a2 / 2 + Math.PI * piN / 360, inexact: false };
+}
+function longueurBords(bs) {
+  var o = { q: 0, rad: {}, piN: 0, piD: 180, approx: 0, inexact: false };
+  bs.forEach(function (e) {
+    if (e.k === 's') {
+      var dx = e.b[0] - e.a[0], dy = e.b[1] - e.a[1], n = dx * dx + dy * dy, ni = Math.round(n);
+      o.approx += Math.sqrt(n);
+      if (Math.abs(n - ni) > 1e-6) { o.inexact = true; return; }
+      if (!ni) { return; }
+      var r = radical(ni);
+      if (r[1] === 1) { o.q += r[0]; } else { o.rad[r[1]] = (o.rad[r[1]] || 0) + r[0]; }
+    } else {
+      var num = e.t * e.r;              // longueur = num*pi/180
+      o.approx += Math.PI * num / 180;
+      if (Math.abs(num - Math.round(num)) > 1e-6) { o.inexact = true; return; }
+      o.piN += Math.round(num);
+    }
+  });
+  return o;
+}
+function posFigure(ms) {
+  var sx = 0, sy = 0, n = 0, x, y;
+  ms.forEach(function (f) {
+    if (f.op === '-') { return; }
+    var p = estSecteur(f) ? posSecteur(f) : posEtiquette(f.pts);
+    sx += p[0]; sy += p[1]; n++;
+  });
+  var cx = sx / n, cy = sy / n, best = null, bd = 1e9, marge = 0.4;
+  function large(x, y) {             // point intérieur avec de la place autour
+    return dansRegion(x, y, ms) && dansRegion(x + marge, y, ms) && dansRegion(x - marge, y, ms) &&
+           dansRegion(x, y + marge, ms) && dansRegion(x, y - marge, ms);
+  }
+  if (large(cx, cy)) { return [cx, cy]; }
+  for (x = 0.25; x < D.cols; x += 0.25) {
+    for (y = 0.25; y < D.rows; y += 0.25) {
+      if (large(x, y)) {
+        var d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+        if (d < bd) { bd = d; best = [x, y]; }
+      }
+    }
+  }
+  if (best) { return best; }
+  marge = 0;                         // figure très fine : on se contente de l'intérieur
+  for (x = 0.25; x < D.cols; x += 0.25) {
+    for (y = 0.25; y < D.rows; y += 0.25) {
+      if (large(x, y)) {
+        var d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+        if (d2 < bd) { bd = d2; best = [x, y]; }
+      }
+    }
+  }
+  return best || [cx, cy];
+}
+/* Dessin : masque de la figure, puis bande de contour obtenue par
+   dilatation du masque et de son complémentaire (contour centré). */
+function calque(ctx) {
+  var c = document.createElement('canvas');
+  c.width = ctx.canvas.width; c.height = ctx.canvas.height;
+  return c;
+}
+function masqueFigure(ctx, ms, X, Y) {
+  var c = calque(ctx), x = c.getContext('2d');
+  x.setTransform(ctx.getTransform());
+  x.fillStyle = '#000';
+  ms.forEach(function (f) { if (f.op !== '-') { x.beginPath(); tracerPiece(x, f, X, Y); x.fill(); } });
+  x.globalCompositeOperation = 'destination-out';
+  ms.forEach(function (f) { if (f.op === '-') { x.beginPath(); tracerPiece(x, f, X, Y); x.fill(); } });
+  return c;
+}
+function dilater(src, r) {
+  var c = document.createElement('canvas'), x;
+  c.width = src.width; c.height = src.height; x = c.getContext('2d');
+  x.drawImage(src, 0, 0);
+  [r, r * 0.5].forEach(function (rr) {
+    for (var k = 0; k < 24; k++) { x.drawImage(src, rr * Math.cos(k * Math.PI / 12), rr * Math.sin(k * Math.PI / 12)); }
+  });
+  return c;
+}
+function bordureFigure(masque, w) {
+  var comp = document.createElement('canvas'), cx;
+  comp.width = masque.width; comp.height = masque.height; cx = comp.getContext('2d');
+  cx.fillStyle = '#000'; cx.fillRect(0, 0, comp.width, comp.height);
+  cx.globalCompositeOperation = 'destination-out'; cx.drawImage(masque, 0, 0);
+  var bande = dilater(masque, w / 2), bx = bande.getContext('2d');
+  bx.globalCompositeOperation = 'destination-in'; bx.drawImage(dilater(comp, w / 2), 0, 0);
+  bx.globalCompositeOperation = 'source-in'; bx.fillStyle = ENCRE; bx.fillRect(0, 0, bande.width, bande.height);
+  return bande;
+}
+function poserCalque(ctx, c) {
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(c, 0, 0); ctx.restore();
+}
+
+/* Composantes de carreaux : même style, adjacence par un côté */
+function composantes() {
+  var vus = {}, res = [];
+  Object.keys(D.cells).forEach(function (k) {
+    if (vus[k]) { return; }
+    var st = D.cells[k], file = [k], comp = [];
+    vus[k] = true;
+    while (file.length) {
+      var c = file.pop(), ij = c.split(',').map(Number);
+      comp.push(ij);
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+        var v = cle(ij[0] + d[0], ij[1] + d[1]);
+        if (!vus[v] && D.cells[v] === st) { vus[v] = true; file.push(v); }
+      });
+    }
+    res.push({ style: st, cases: comp });
+  });
+  return res;
+}
+function perimetreCases(cases, st) {
+  var n = 0;
+  cases.forEach(function (ij) {
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+      if (D.cells[cle(ij[0] + d[0], ij[1] + d[1])] !== st) { n++; }
+    });
+  });
+  return n;
+}
+
+/* Liste ordonnée des formes lettrées (le noir sert d'unité : pas de lettre) */
+function formes() {
+  var liste = [];
+  composantes().forEach(function (c) {
+    var sx = 0, sy = 0, mx = 1e9, my = 1e9;
+    c.cases.forEach(function (ij) { sx += ij[0] + 0.5; sy += ij[1] + 0.5; mx = Math.min(mx, ij[0]); my = Math.min(my, ij[1]); });
+    var gx = sx / c.cases.length, gy = sy / c.cases.length, best = null, bd = 1e9;
+    c.cases.forEach(function (ij) {
+      var d = Math.pow(ij[0] + 0.5 - gx, 2) + Math.pow(ij[1] + 0.5 - gy, 2);
+      if (d < bd) { bd = d; best = [ij[0] + 0.5, ij[1] + 0.5]; }
+    });
+    liste.push({ type: 'cases', style: c.style, x0: mx, y0: my, lab: best,
+                 aire: c.cases.length, per: perimetreCases(c.cases, c.style) });
+  });
+  D.polys.forEach(function (p, idx) {
+    if (p.g) { return; }
+    var mx = 1e9, my = 1e9;
+    p.pts.forEach(function (q) { mx = Math.min(mx, q[0]); my = Math.min(my, q[1]); });
+    var f = { type: p.ferme ? 'poly' : 'trait', style: p.style, x0: mx, y0: my, idx: idx,
+              lng: longueurExacte(segmentsPoly(p)) };
+    if (p.ferme) { f.a2 = aire2(p.pts); f.lab = posEtiquette(p.pts); }
+    liste.push(f);
+  });
+  D.arcs.forEach(function (sc) {
+    if (sc.g) { return; }
+    liste.push({ type: 'secteur', style: sc.style, x0: sc.c[0] - sc.r, y0: sc.c[1] - sc.r,
+                 lab: posSecteur(sc), mes: mesuresSecteur(sc), r: sc.r });
+  });
+  numerosFigures().forEach(function (g) {
+    var ms = membres(g), mx = 1e9, my = 1e9;
+    ms.forEach(function (f) {
+      if (f.op === '-') { return; }
+      if (estSecteur(f)) { mx = Math.min(mx, f.c[0] - f.r); my = Math.min(my, f.c[1] - f.r); }
+      else { f.pts.forEach(function (q) { mx = Math.min(mx, q[0]); my = Math.min(my, q[1]); }); }
+    });
+    var bords = contourFigure(ms), af = aireFigure(ms), ar = aireContour(bords);
+    var chev = Math.abs(ar - af.approx) > 1e-3;
+    liste.push({ type: 'compo', style: styleFigure(ms), x0: mx, y0: my, lab: posFigure(ms), g: g, chev: chev,
+                 aire: chev ? '\u2248 ' + fr(ar.toFixed(2)) : exprExacte(af), per: exprExacte(longueurBords(bords)) });
+  });
+  liste.sort(function (a, b) { return (a.y0 - b.y0) || (a.x0 - b.x0); });
+  var n = 0;
+  liste.forEach(function (f) {
+    if (f.type !== 'trait' && f.style !== 'noir') { f.lettre = String.fromCharCode(65 + (n % 26)) + (n >= 26 ? Math.floor(n / 26) : ''); n++; }
+  });
+  return liste;
+}
+function posEtiquette(pts) {
+  var a = 0, cx = 0, cy = 0;
+  for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    var f = pts[j][0] * pts[i][1] - pts[i][0] * pts[j][1];
+    a += f; cx += (pts[j][0] + pts[i][0]) * f; cy += (pts[j][1] + pts[i][1]) * f;
+  }
+  if (a) { cx /= 3 * a; cy /= 3 * a; }
+  if (a && dansPoly(cx, cy, pts)) { return [cx, cy]; }
+  var best = null, bd = 1e9;            // forme concave : point intérieur le plus proche
+  for (var x = 0.25; x < D.cols; x += 0.25) {
+    for (var y = 0.25; y < D.rows; y += 0.25) {
+      if (dansPoly(x, y, pts)) {
+        var d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+        if (d < bd) { bd = d; best = [x, y]; }
+      }
+    }
+  }
+  return best || pts[0];
+}
+
+/* ── Rendu ───────────────────────────────────────────────────────────────── */
+/* vue = {x0,y0,x1,y1} en carreaux ; px = pixels par carreau ; m = marge */
+function remplir(ctx, tracer, style, px, bb) {
+  if (style === 'vide') { return; }
+  ctx.save();
+  ctx.beginPath(); tracer(); ctx.clip();
+  if (style === 'noir' || style === 'gris') {
+    ctx.fillStyle = style === 'noir' ? ENCRE : '#bdbdbd';
+    ctx.fillRect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]);
+  } else {
+    var s = px / 5, x0 = bb[0], y0 = bb[1], x1 = bb[2], y1 = bb[3], c;
+    ctx.strokeStyle = ENCRE; ctx.lineWidth = Math.max(1, px * 0.032); ctx.lineCap = 'butt';
+    ctx.beginPath();
+    if (style === 'hach' || style === 'croix') {          // x - y = c
+      for (c = Math.floor((x0 - y1) / s) * s; c <= x1 - y0; c += s) {
+        ctx.moveTo(y0 + c, y0); ctx.lineTo(y1 + c, y1);
+      }
+    }
+    if (style === 'hach2' || style === 'croix') {         // x + y = c
+      for (c = Math.floor((x0 + y0) / s) * s; c <= x1 + y1; c += s) {
+        ctx.moveTo(c - y0, y0); ctx.lineTo(c - y1, y1);
+      }
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function rendre(ctx, px, vue, o) {
+  var m = Math.round(px * 0.5);
+  var W = (vue.x1 - vue.x0) * px + 2 * m, H = (vue.y1 - vue.y0) * px + 2 * m;
+  function X(g) { return (g - vue.x0) * px + m; }
+  function Y(g) { return (g - vue.y0) * px + m; }
+  var bb = [0, 0, W, H];
+
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+
+  // 1. remplissage des carreaux, un chemin par style (hachures continues)
+  STYLES.forEach(function (st) {
+    var ks = Object.keys(D.cells).filter(function (k) { return D.cells[k] === st.id; });
+    if (!ks.length) { return; }
+    remplir(ctx, function () {
+      ks.forEach(function (k) {
+        var ij = k.split(',').map(Number);
+        ctx.rect(X(ij[0]), Y(ij[1]), px, px);
+      });
+    }, st.id, px, bb);
+  });
+  // 2. remplissage des polygones fermés
+  D.polys.forEach(function (p) {
+    if (!p.ferme || p.g) { return; }
+    remplir(ctx, function () {
+      p.pts.forEach(function (q, i) { if (i) { ctx.lineTo(X(q[0]), Y(q[1])); } else { ctx.moveTo(X(q[0]), Y(q[1])); } });
+      ctx.closePath();
+    }, p.style, px, bb);
+  });
+
+  D.arcs.forEach(function (sc) {
+    if (sc.g) { return; }
+    remplir(ctx, function () { tracerSecteur(ctx, sc, X, Y); }, sc.style, px, bb);
+  });
+  // figures composées : remplissage découpé par le masque de la figure
+  var masques = {};
+  numerosFigures().forEach(function (g) {
+    var ms = membres(g), mq = masqueFigure(ctx, ms, X, Y), cal = calque(ctx), lx = cal.getContext('2d');
+    masques[g] = mq;
+    lx.setTransform(ctx.getTransform());
+    remplir(lx, function () { lx.rect(0, 0, W, H); }, styleFigure(ms), px, bb);
+    lx.setTransform(1, 0, 0, 1, 0, 0);
+    lx.globalCompositeOperation = 'destination-in'; lx.drawImage(mq, 0, 0);
+    poserCalque(ctx, cal);
+  });
+
+  // 3. quadrillage (traits qui débordent un peu, comme sur papier)
+  if (o.grille) {
+    var lw = { fin: 0.02, moyen: 0.035, epais: 0.055 }[o.trait] || 0.035;
+    var deb = 0.3, i;
+    ctx.strokeStyle = ENCRE; ctx.lineWidth = Math.max(1, px * lw); ctx.lineCap = 'butt';
+    ctx.beginPath();
+    for (i = vue.x0; i <= vue.x1; i++) { ctx.moveTo(X(i), Y(vue.y0 - deb)); ctx.lineTo(X(i), Y(vue.y1 + deb)); }
+    for (i = vue.y0; i <= vue.y1; i++) { ctx.moveTo(X(vue.x0 - deb), Y(i)); ctx.lineTo(X(vue.x1 + deb), Y(i)); }
+    ctx.stroke();
+  }
+
+  // 4. contours épais des groupes de carreaux (côtés qui séparent deux styles)
+  var lc = Math.max(2, px * 0.09);
+  ctx.strokeStyle = ENCRE; ctx.lineWidth = lc; ctx.lineCap = 'square';
+  ctx.beginPath();
+  Object.keys(D.cells).forEach(function (k) {
+    var ij = k.split(',').map(Number), st = D.cells[k], x = ij[0], y = ij[1];
+    if (D.cells[cle(x, y - 1)] !== st) { ctx.moveTo(X(x), Y(y)); ctx.lineTo(X(x + 1), Y(y)); }
+    if (D.cells[cle(x, y + 1)] !== st) { ctx.moveTo(X(x), Y(y + 1)); ctx.lineTo(X(x + 1), Y(y + 1)); }
+    if (D.cells[cle(x - 1, y)] !== st) { ctx.moveTo(X(x), Y(y)); ctx.lineTo(X(x), Y(y + 1)); }
+    if (D.cells[cle(x + 1, y)] !== st) { ctx.moveTo(X(x + 1), Y(y)); ctx.lineTo(X(x + 1), Y(y + 1)); }
+  });
+  ctx.stroke();
+
+  // 5. contours des polygones et traits
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';   // sommets pile sur les nœuds
+  D.polys.forEach(function (p) {
+    if (p.g) { return; }
+    ctx.beginPath();
+    p.pts.forEach(function (q, i) { if (i) { ctx.lineTo(X(q[0]), Y(q[1])); } else { ctx.moveTo(X(q[0]), Y(q[1])); } });
+    if (p.ferme) { ctx.closePath(); }
+    ctx.stroke();
+  });
+  numerosFigures().forEach(function (g) {
+    poserCalque(ctx, bordureFigure(masques[g], lc * ctx.getTransform().a));
+  });
+  D.arcs.forEach(function (sc) {
+    if (sc.g) { return; }               // dans une figure composée : pas de centre marqué
+    ctx.beginPath(); tracerSecteur(ctx, sc, X, Y); ctx.stroke();
+    ctx.fillStyle = ENCRE;              // centre marqué
+    ctx.beginPath(); ctx.arc(X(sc.c[0]), Y(sc.c[1]), lc * 0.75, 0, 2 * Math.PI); ctx.fill();
+  });
+
+  // 6. lettres
+  if (o.lettres) {
+    var fs = Math.round(px * 0.42);
+    ctx.font = '700 ' + fs + 'px Arial, Helvetica, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    formes().forEach(function (f) {
+      if (!f.lettre || !f.lab) { return; }
+      var cx = X(f.lab[0]), cy = Y(f.lab[1]);
+      var w = ctx.measureText(f.lettre).width + fs * 0.55, h = fs * 1.25;
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = ENCRE; ctx.lineWidth = Math.max(1, px * 0.03);
+      ctx.beginPath(); ctx.rect(cx - w / 2, cy - h / 2, w, h); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = ENCRE; ctx.fillText(f.lettre, cx, cy + fs * 0.04);
+    });
+  }
+  return { W: W, H: H, m: m };
+}
+
+/* ── Écran ───────────────────────────────────────────────────────────────── */
+var cv, cx2;
+function vuePleine() { return { x0: 0, y0: 0, x1: D.cols, y1: D.rows }; }
+function options(ecran) {
+  return { grille: ecran ? true : $('ck-grille').checked, lettres: $('ck-lettres').checked, trait: $('sel-grille').value };
+}
+function dimensionner() {
+  var dispo = $('gs-wrap').clientWidth || 600;
+  var px = Math.floor(dispo / (D.cols + 1));
+  scr.px = Math.max(16, Math.min(56, px));
+  scr.m = Math.round(scr.px * 0.5);
+  var W = D.cols * scr.px + 2 * scr.m, H = D.rows * scr.px + 2 * scr.m;
+  var r = window.devicePixelRatio || 1;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  cv.width = Math.round(W * r); cv.height = Math.round(H * r);
+  cx2.setTransform(r, 0, 0, r, 0, 0);
+}
+function dessiner() {
+  rendre(cx2, scr.px, vuePleine(), options(true));
+  var px = scr.px, m = scr.m;
+  function X(g) { return g * px + m; }
+  // polygone en cours
+  if (enCours.length) {
+    cx2.save();
+    cx2.strokeStyle = VIF; cx2.lineWidth = 3; cx2.setLineDash([7, 5]);
+    cx2.beginPath();
+    enCours.forEach(function (q, i) { if (i) { cx2.lineTo(X(q[0]), X(q[1])); } else { cx2.moveTo(X(q[0]), X(q[1])); } });
+    if (survol) { cx2.lineTo(X(survol[0]), X(survol[1])); }
+    cx2.stroke();
+    cx2.setLineDash([]);
+    enCours.forEach(function (q, i) {
+      cx2.fillStyle = i === 0 ? VIF : '#ffffff'; cx2.strokeStyle = VIF; cx2.lineWidth = 2.5;
+      cx2.beginPath(); cx2.arc(X(q[0]), X(q[1]), i === 0 ? 7 : 5, 0, 2 * Math.PI); cx2.fill(); cx2.stroke();
+    });
+    cx2.restore();
+  }
+  // secteur en cours
+  if (sec && curseur) {
+    var rr = sec.r || rayonDe(sec.c, curseur);
+    var a0 = sec.r ? sec.a0 : accrocherAngle(angleDe(sec.c, curseur));
+    var cxs = X(sec.c[0]), cys = X(sec.c[1]);
+    cx2.save();
+    cx2.strokeStyle = VIF; cx2.lineWidth = 2; cx2.setLineDash([6, 5]);
+    cx2.beginPath(); cx2.arc(cxs, cys, rr * px, 0, 2 * Math.PI); cx2.stroke();
+    cx2.setLineDash([]); cx2.lineWidth = 3;
+    var etiq = 'r = ' + rr;
+    if (sec.r) {
+      var ap = secteurFinal(curseur);
+      if (ap) {
+        cx2.beginPath(); tracerSecteur(cx2, ap, X, X);
+        cx2.globalAlpha = 0.18; cx2.fillStyle = VIF; cx2.fill(); cx2.globalAlpha = 1; cx2.stroke();
+        etiq = balayage(ap) + '\u00B0 ' + (ap.sens > 0 ? '\u21BA' : '\u21BB');
+      } else {
+        var r0 = a0 * Math.PI / 180;
+        cx2.beginPath(); cx2.moveTo(cxs, cys); cx2.lineTo(cxs + rr * px * Math.cos(r0), cys - rr * px * Math.sin(r0)); cx2.stroke();
+        etiq = 'tournez autour du centre';
+      }
+    } else {
+      var ra = a0 * Math.PI / 180;
+      cx2.beginPath(); cx2.moveTo(cxs, cys); cx2.lineTo(cxs + rr * px * Math.cos(ra), cys - rr * px * Math.sin(ra)); cx2.stroke();
+    }
+    cx2.fillStyle = VIF; cx2.beginPath(); cx2.arc(cxs, cys, 6, 0, 2 * Math.PI); cx2.fill();
+    cx2.font = '700 16px Arial, sans-serif'; cx2.textAlign = 'left'; cx2.textBaseline = 'bottom';
+    cx2.lineWidth = 4; cx2.strokeStyle = '#ffffff';
+    cx2.strokeText(etiq, X(curseur[0]) + 12, X(curseur[1]) - 6);
+    cx2.fillText(etiq, X(curseur[0]) + 12, X(curseur[1]) - 6);
+    cx2.restore();
+  }
+  // figure en cours d'assemblage : pièces + en vert, pièces - en rouge
+  if (compo !== null) {
+    membres(compo).forEach(function (f) {
+      cx2.save();
+      cx2.setLineDash([7, 5]); cx2.lineWidth = 3; cx2.strokeStyle = f.op === '-' ? '#A32D2D' : VIF;
+      cx2.beginPath(); tracerPiece(cx2, f, X, X); cx2.stroke();
+      cx2.restore();
+    });
+  }
+  // nœud survolé
+  if (survol && (outil === 'poly' || outil === 'trait' || (outil === 'secteur' && !sec))) {
+    cx2.fillStyle = VIF;
+    cx2.beginPath(); cx2.arc(X(survol[0]), X(survol[1]), 6, 0, 2 * Math.PI); cx2.fill();
+  }
+}
+
+function versGrille(e) {
+  var r = cv.getBoundingClientRect();
+  return [(e.clientX - r.left - scr.m) / scr.px, (e.clientY - r.top - scr.m) / scr.px];
+}
+function noeud(g) {
+  var x = Math.round(g[0]), y = Math.round(g[1]);
+  if (x < 0 || y < 0 || x > D.cols || y > D.rows) { return null; }
+  if (Math.abs(g[0] - x) > 0.4 || Math.abs(g[1] - y) > 0.4) { return null; }
+  return [x, y];
+}
+function carreau(g) {
+  var i = Math.floor(g[0]), j = Math.floor(g[1]);
+  if (i < 0 || j < 0 || i >= D.cols || j >= D.rows) { return null; }
+  return [i, j];
+}
+
+function poserCase(g) {
+  var c = carreau(g); if (!c) { return; }
+  var k = cle(c[0], c[1]);
+  if (peinture === 'poser') { D.cells[k] = styleCourant; } else { delete D.cells[k]; }
+}
+function gommer(g) {
+  for (var k = D.arcs.length - 1; k >= 0; k--) {
+    if (dansSecteur(g[0], g[1], D.arcs[k])) { D.arcs.splice(k, 1); normaliser(); return true; }
+  }
+  for (var i = D.polys.length - 1; i >= 0; i--) {
+    var p = D.polys[i], touche = false;
+    if (p.ferme && dansPoly(g[0], g[1], p.pts)) { touche = true; }
+    segmentsPoly(p).forEach(function (s) { if (distSeg(g[0], g[1], s[0], s[1]) < 0.22) { touche = true; } });
+    if (touche) { D.polys.splice(i, 1); normaliser(); return true; }
+  }
+  var c = carreau(g);
+  if (c && D.cells[cle(c[0], c[1])]) { delete D.cells[cle(c[0], c[1])]; return true; }
+  return false;
+}
+function fermerPoly() {
+  if (enCours.length < 3) { return; }
+  if (aire2(enCours) === 0) { toast('Polygone d\u2019aire nulle : non enregistré.'); enCours = []; maj(); return; }
+  memoriser();
+  D.polys.push({ pts: enCours, ferme: true, style: styleCourant });
+  enCours = []; sauverLocal(); maj();
+}
+
+function surAppui(e) {
+  e.preventDefault();
+  var g = versGrille(e);
+  if (outil === 'case') {
+    var c = carreau(g); if (!c) { return; }
+    memoriser();
+    peinture = D.cells[cle(c[0], c[1])] === styleCourant ? 'oter' : 'poser';
+    poserCase(g); cv.setPointerCapture(e.pointerId); maj();
+  } else if (outil === 'gomme') {
+    memoriser();
+    if (!gommer(g)) { pile.pop(); }
+    peinture = 'gomme'; cv.setPointerCapture(e.pointerId); maj();
+  } else if (outil === 'compo') {
+    var f = pieceSous(g), lot = null, cc = carreau(g);
+    if (!f && cc && D.cells[cle(cc[0], cc[1])]) { memoriser(); lot = convertirCases(cc); f = lot[0]; }
+    if (!f) { compo = null; normaliser(); sauverLocal(); maj(); return; }
+    if (!lot) { memoriser(); lot = [f]; }
+    if (compo === null) {
+      if (f.g) { compo = f.g; }
+      else { compo = nouveauNumero(); lot.forEach(function (x) { x.g = compo; x.op = '+'; }); }
+    } else if (f.g === compo) {
+      delete f.g; delete f.op;
+      if (!membres(compo).length) { compo = null; }
+    } else {
+      var op = $('sel-op').value;
+      lot.forEach(function (x) { x.g = compo; x.op = op; });
+    }
+    normaliser(); sauverLocal(); maj();
+  } else if (outil === 'secteur') {
+    if (!sec) {
+      var n0 = noeud(g); if (!n0) { return; }
+      sec = { c: n0 };
+    } else if (!sec.r) {
+      sec.r = rayonDe(sec.c, g); sec.a0 = accrocherAngle(angleDe(sec.c, g));
+      sec.last = angleDe(sec.c, g); sec.acc = 0;
+    } else {
+      suivreAngle(g); sec.appui = true;               // validé au relâcher
+      cv.setPointerCapture(e.pointerId);
+    }
+    curseur = g; maj();
+  } else {
+    var n = noeud(g); if (!n) { return; }
+    if (outil === 'trait') {
+      if (!enCours.length) { enCours = [n]; }
+      else if (n[0] !== enCours[0][0] || n[1] !== enCours[0][1]) {
+        memoriser();
+        D.polys.push({ pts: [enCours[0], n], ferme: false, style: 'vide' });
+        enCours = []; sauverLocal();
+      }
+    } else {
+      if (enCours.length >= 3 && n[0] === enCours[0][0] && n[1] === enCours[0][1]) { fermerPoly(); return; }
+      var der = enCours[enCours.length - 1];
+      if (!der || der[0] !== n[0] || der[1] !== n[1]) { enCours.push(n); }
+    }
+    maj();
+  }
+}
+function surDeplacement(e) {
+  var g = versGrille(e);
+  var n = noeud(g);
+  var change = (n ? n.join() : '') !== (survol ? survol.join() : '');
+  survol = n; curseur = g;
+  if (sec) { suivreAngle(g); dessiner(); return; }
+  if (peinture === 'poser' || peinture === 'oter') { poserCase(g); dessiner(); return; }
+  if (peinture === 'gomme') { if (gommer(g)) { maj(); } return; }
+  if (change) { dessiner(); }
+}
+function surRelache(e) {
+  if (sec && sec.appui) {
+    sec.appui = false;
+    if (e.type === 'pointerup') {
+      var g = versGrille(e), f;
+      suivreAngle(g); curseur = g; f = secteurFinal(g);
+      if (f) {
+        memoriser();
+        D.arcs.push({ c: f.c, r: f.r, a0: f.a0, a1: f.a1, style: styleCourant });
+        sec = null; sauverLocal();
+      }
+      maj();
+    }
+    return;
+  }
+  if (peinture) { peinture = null; sauverLocal(); maj(); }
+}
+
+/* ── Panneau de mesures ──────────────────────────────────────────────────── */
+function mesures() {
+  var fs = formes(), h = '';
+  if (!fs.length) { $('gs-mes').innerHTML = 'Rien à mesurer pour l\u2019instant.'; return; }
+  h += '<table><tr><th></th><th>Aire</th><th>Périmètre</th></tr>';
+  fs.forEach(function (f) {
+    var nom = f.lettre || (f.type === 'trait' ? 'Trait' : (f.type === 'cases' && f.aire === 1 ? 'Unité' : '(noir)'));
+    if (f.type === 'cases') {
+      h += '<tr><td>' + nom + '</td><td>' + f.aire + ' u²</td><td>' + f.per + ' u</td></tr>';
+    } else if (f.type === 'poly') {
+      var per = f.lng.irrationnel ? f.lng.exact + ' \u2248 ' + fr(f.lng.approx.toFixed(2)) : f.lng.exact;
+      h += '<tr><td>' + nom + '</td><td>' + fr(f.a2 / 2) + ' u²</td><td>' + per + ' u</td></tr>';
+    } else if (f.type === 'compo') {
+      h += '<tr><td>' + nom + ' <span style="font-weight:400">(composée' + (f.chev ? ', pièces qui se chevauchent' : '') + ')</span></td><td>' +
+           f.aire + ' u²</td><td>' + f.per + ' u</td></tr>';
+    } else if (f.type === 'secteur') {
+      h += '<tr><td>' + nom + ' <span style="font-weight:400">(' + f.mes.t + '\u00B0, r = ' + f.r + ')</span></td><td>' +
+           f.mes.aire + ' u²</td><td>' + f.mes.per + ' u</td></tr>';
+    } else {
+      var l = f.lng.irrationnel ? f.lng.exact + ' \u2248 ' + fr(f.lng.approx.toFixed(2)) : f.lng.exact;
+      h += '<tr><td>' + nom + '</td><td>—</td><td>longueur ' + l + ' u</td></tr>';
+    }
+  });
+  h += '</table><div style="margin-top:6px">u = côté d\u2019un carreau. Les formes séparées sont mesurées chacune pour elle-même, même si elles se chevauchent. Dans une figure composée, l\u2019aire reste exacte tant que les pièces réunies se touchent sans se chevaucher ; sinon elle est donnée en valeur approchée.</div>';
+  $('gs-mes').innerHTML = h;
+}
+
+var AIDES = {
+  case: 'Cliquez ou glissez sur les carreaux pour les remplir avec le style choisi. Re-cliquer un carreau du même style l\u2019efface.',
+  poly: 'Cliquez des nœuds pour placer les sommets, puis recliquez le premier sommet (ou « Fermer le polygone »). Idéal pour les demi-rectangles et les triangles.',
+  trait: 'Cliquez deux nœuds : un segment épais les relie (oblique ou non). Sa longueur exacte s\u2019affiche dans les mesures.',
+  secteur: 'Cliquez un nœud (le centre), puis un point qui fixe le rayon (nombre entier de carreaux) et le premier côté. Tournez ensuite autour du centre dans le sens voulu, vers le haut ou vers le bas, et cliquez pour fixer le second côté ; un tour complet donne un disque. Sur tablette, faites glisser le doigt autour du centre avant de le lever. Échap annule.',
+  compo: 'Cliquez une forme (groupe de carreaux, polygone ou secteur) pour démarrer une figure, puis cliquez autant de formes que vous voulez à lui ajouter : réunies (+, bord à bord) ou évidées (\u2212, elles creusent la figure). Recliquer une pièce la retire. Clic dans le vide ou Échap pour terminer.',
+  gomme: 'Cliquez ou glissez sur un polygone, un trait ou un carreau pour l\u2019effacer.'
+};
+function maj() {
+  $('gs-hint').textContent = AIDES[outil];
+  $('b-fermer').style.display = outil === 'poly' ? '' : 'none';
+  $('b-fermer').disabled = enCours.length < 3;
+  $('row-pas').style.display = outil === 'secteur' ? 'flex' : 'none';
+  $('row-op').style.display = outil === 'compo' ? 'flex' : 'none';
+  dessiner(); mesures();
+}
+
+/* ── Export ──────────────────────────────────────────────────────────────── */
+function vueExport() {
+  var v = vuePleine();
+  if (!$('ck-recadrer').checked) { return v; }
+  var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, vide = true;
+  Object.keys(D.cells).forEach(function (k) {
+    var ij = k.split(',').map(Number); vide = false;
+    x0 = Math.min(x0, ij[0]); y0 = Math.min(y0, ij[1]); x1 = Math.max(x1, ij[0] + 1); y1 = Math.max(y1, ij[1] + 1);
+  });
+  D.polys.forEach(function (p) {
+    p.pts.forEach(function (q) { vide = false; x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); });
+  });
+  D.arcs.forEach(function (sc) {
+    vide = false;
+    x0 = Math.min(x0, sc.c[0] - sc.r); y0 = Math.min(y0, sc.c[1] - sc.r);
+    x1 = Math.max(x1, sc.c[0] + sc.r); y1 = Math.max(y1, sc.c[1] + sc.r);
+  });
+  if (vide) { return v; }
+  return { x0: Math.max(0, x0 - 1), y0: Math.max(0, y0 - 1), x1: Math.min(D.cols, x1 + 1), y1: Math.min(D.rows, y1 + 1) };
+}
+function canvasExport() {
+  var px = parseInt($('sel-px').value, 10), v = vueExport();
+  var c = document.createElement('canvas');
+  var m = Math.round(px * 0.5);
+  c.width = (v.x1 - v.x0) * px + 2 * m; c.height = (v.y1 - v.y0) * px + 2 * m;
+  rendre(c.getContext('2d'), px, v, options(false));
+  return c;
+}
+function toast(t) {
+  $('gs-toast').textContent = t;
+  clearTimeout(toast.t); toast.t = setTimeout(function () { $('gs-toast').textContent = ''; }, 3500);
+}
+function telecharger(blob, nom) {
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = nom;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+}
+function horodatage() {
+  var d = new Date();
+  function z(n) { return (n < 10 ? '0' : '') + n; }
+  return d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes());
+}
+
+/* ── Exemple : la fiche « surfaces équivalentes » ───────────────────────── */
+/* ── Générateur aléatoire ─────────────────────────────────────────────────
+   Une figure générée = { cells: [[i,j]...] } ou { pieces: [...] } en
+   coordonnées locales (coin haut-gauche en 0,0), puis placée sans
+   chevauchement sur le quadrillage, agrandi si nécessaire.
+   Pièces : { pts: [...], op } ou { c, r, a0, a1, op } (secteur).            */
+function R(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+function choix(t) { return t[Math.floor(Math.random() * t.length)]; }
+
+function etendue(f) {               // boîte englobante d'une pièce [x0,y0,x1,y1]
+  var b = [1e9, 1e9, -1e9, -1e9];
+  function ajoute(q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); }
+  if (!f.c) { f.pts.forEach(ajoute); return b; }
+  var t = balayage(f), arc = { c: f.c, r: f.r, a0: f.a0, t: t };
+  if (t < 360) { ajoute(f.c); ajoute(ptArc(arc, 0)); ajoute(ptArc(arc, t)); }
+  [0, 90, 180, 270].forEach(function (a) {
+    if (((a - f.a0) % 360 + 360) % 360 <= t) { ajoute(ptArc(arc, ((a - f.a0) % 360 + 360) % 360)); }
+  });
+  return b.map(function (v) { return Math.round(v * 1e6) / 1e6; });
+}
+function normaliserFigure(fig) {
+  var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  if (fig.cells) {
+    fig.cells.forEach(function (q) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0] + 1); y1 = Math.max(y1, q[1] + 1); });
+    fig.cells = fig.cells.map(function (q) { return [q[0] - x0, q[1] - y0]; });
+  } else {
+    fig.pieces.forEach(function (f) { var b = etendue(f); x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); });
+    x0 = Math.floor(x0); y0 = Math.floor(y0); x1 = Math.ceil(x1); y1 = Math.ceil(y1);
+    fig.pieces.forEach(function (f) {
+      if (f.c) { f.c = [f.c[0] - x0, f.c[1] - y0]; }
+      else { f.pts = f.pts.map(function (q) { return [q[0] - x0, q[1] - y0]; }); }
+    });
+  }
+  fig.w = x1 - x0; fig.h = y1 - y0;
+  return fig;
+}
+/* Rotation d'un quart de tour et symétrie, pour varier les polygones */
+function tournerPts(pts) {
+  var k = R(0, 3), miroir = Math.random() < 0.5;
+  return pts.map(function (q) {
+    var x = miroir ? -q[0] : q[0], y = q[1], i;
+    for (i = 0; i < k; i++) { var t = x; x = -y; y = t; }
+    return [x, y];
+  });
+}
+
+/* Niveau 1 : rectangles et carrés */
+function genN1() {
+  var w = R(1, 6), h = Math.random() < 0.3 ? w : R(1, 5), c = [], i, j;
+  if (w * h === 1) { w = 2; }
+  for (i = 0; i < w; i++) { for (j = 0; j < h; j++) { c.push([i, j]); } }
+  return { cells: c };
+}
+/* Niveau 2 : assemblages de carreaux d'un seul tenant, sans trou */
+function genN2() {
+  for (var essai = 0; essai < 50; essai++) {
+    var k = R(4, 11), S = {}, l = [[0, 0]], n = 1;
+    S['0,0'] = true;
+    while (n < k) {
+      var q = choix(l), d = choix([[1, 0], [-1, 0], [0, 1], [0, -1]]), x = q[0] + d[0], y = q[1] + d[1];
+      if (S[x + ',' + y] || Math.abs(x) > 3 || Math.abs(y) > 2) { continue; }
+      S[x + ',' + y] = true; l.push([x, y]); n++;
+    }
+    var xs = l.map(function (q) { return q[0]; }), ys = l.map(function (q) { return q[1]; });
+    var rect = (Math.max.apply(null, xs) - Math.min.apply(null, xs) + 1) * (Math.max.apply(null, ys) - Math.min.apply(null, ys) + 1) === k;
+    if (!rect && contourCases(l)) { return { cells: l }; }
+  }
+  return genN1();
+}
+/* Niveau 3 : un polygone à sommets sur les nœuds, avec des obliques */
+function genN3() {
+  var t = choix(['rect', 'tri', 'tri', 'para', 'trap', 'trap']), a, b, h, d, pts;
+  if (t === 'rect') {                      // triangle rectangle (demi-rectangle)
+    a = R(2, 6); b = R(2, 5); pts = [[0, 0], [a, 0], [0, b]];
+  } else if (t === 'tri') {                // triangle quelconque, base + hauteur
+    b = R(2, 6); h = R(2, 5); pts = [[0, h], [b, h], [R(-1, b + 1), 0]];
+  } else if (t === 'para') {               // parallélogramme
+    b = R(2, 5); h = R(2, 4); d = R(1, 3); pts = [[d, 0], [d + b, 0], [b, h], [0, h]];
+  } else {                                 // trapèze
+    b = R(3, 7); h = R(2, 4); a = R(0, 2); d = R(0, 2);
+    if (a + d === 0) { a = 1; }
+    if (b - a - d < 1) { d = 0; a = 1; }
+    pts = [[a, 0], [b - d, 0], [b, h], [0, h]];
+  }
+  return { pieces: [{ pts: tournerPts(pts), op: '+' }] };
+}
+/* Niveau 4 : un rectangle + une ou deux pièces collées sur ses côtés */
+function cadreCote(cote, w, h) {           // (u le long du côté, v vers l'extérieur) -> (x, y)
+  return {
+    L: cote === 'haut' || cote === 'bas' ? w : h,
+    P: cote === 'haut' ? function (u, v) { return [u, -v]; } :
+       cote === 'bas' ? function (u, v) { return [w - u, h + v]; } :
+       cote === 'gauche' ? function (u, v) { return [-v, h - u]; } :
+       function (u, v) { return [w + v, u]; }
+  };
+}
+function angleVecteur(a, b) { return ((Math.round(Math.atan2(a[1] - b[1], b[0] - a[0]) * 180 / Math.PI)) % 360 + 360) % 360; }
+function piecePlus(cote, w, h, secteurs) {
+  var F = cadreCote(cote, w, h), P = F.P, p = piecePlus0(F, secteurs);
+  p.lien = [];                             // points juste à l'intérieur du côté commun
+  for (var k = 0; k < 12; k++) { var u = p.u1 + (p.u2 - p.u1) * (k + 0.5) / 12; p.lien.push(P(u, -0.05)); }
+  return p;
+}
+function piecePlus0(F, secteurs) {
+  var L = F.L, P = F.P, o;
+  var t = choix(secteurs ? ['tri', 'tri', 'rect', 'demi', 'quart'] : ['tri', 'tri', 'rect', 'trap']);
+  var u1 = R(0, L - 1), u2 = R(u1 + 1, L), d = R(1, 3), r;
+  if (t === 'demi' && L >= 2) {
+    r = R(1, Math.floor(L / 2)); u1 = R(0, L - 2 * r);
+    var C = P(u1 + r, 0), o = angleVecteur(C, P(u1 + r, 1));
+    return { c: C, r: r, a0: (o + 270) % 360, a1: (o + 90) % 360, op: '+', u1: u1, u2: u1 + 2 * r };
+  }
+  if (t === 'quart') {
+    r = R(1, Math.min(L, 3));
+    var bout = Math.random() < 0.5, O = bout ? P(L, 0) : P(0, 0);
+    var le = angleVecteur(O, bout ? P(L - 1, 0) : P(1, 0)), ex = angleVecteur(O, bout ? P(L, 1) : P(0, 1));
+    o = ((ex - le) + 360) % 360 === 90 ? { c: O, r: r, a0: le, a1: ex, op: '+' } : { c: O, r: r, a0: ex, a1: le, op: '+' };
+    o.u1 = bout ? L - r : 0; o.u2 = bout ? L : r;
+    return o;
+  }
+  if (t === 'rect') { o = { pts: [P(u1, 0), P(u2, 0), P(u2, d), P(u1, d)], op: '+' }; }
+  else if (t === 'trap' && u2 - u1 >= 3) { o = { pts: [P(u1, 0), P(u2, 0), P(u2 - 1, d), P(u1 + 1, d)], op: '+' }; }
+  else { o = { pts: [P(u1, 0), P(u2, 0), P(R(u1, u2), d)], op: '+' }; }
+  o.u1 = u1; o.u2 = u2;
+  return o;
+}
+function genN4(secteurs) {
+  var w = R(2, 6), h = R(2, 4), ps = [{ pts: [[0, 0], [w, 0], [w, h], [0, h]], op: '+' }];
+  var cotes = ['haut', 'bas', 'gauche', 'droite'].sort(function () { return Math.random() - 0.5; });
+  var n = R(1, 2);
+  for (var i = 0; i < n; i++) { ps.push(piecePlus(cotes[i], w, h, secteurs)); }
+  return { pieces: ps, base: [w, h] };
+}
+/* Niveau 5 : une base (rectangle ou figure du niveau 4) évidée */
+function pieceMoins(w, h, secteurs) {
+  var t = choix(secteurs ? ['coinTri', 'rectInt', 'triInt', 'quart', 'quart', 'demi'] : ['coinTri', 'coinRect', 'rectInt', 'triInt', 'triInt']);
+  var coin = R(0, 3), X = coin === 1 || coin === 2 ? w : 0, Y = coin >= 2 ? h : 0, sx = X ? -1 : 1, sy = Y ? -1 : 1, a, b, r;
+  if (t === 'coinTri') { a = R(1, w - 2); b = R(1, h - 2); return { pts: [[X, Y], [X + sx * a, Y], [X, Y + sy * b]], op: '-' }; }
+  if (t === 'coinRect') { a = R(1, w - 2); b = R(1, h - 2); return { pts: [[X, Y], [X + sx * a, Y], [X + sx * a, Y + sy * b], [X, Y + sy * b]], op: '-' }; }
+  if (t === 'quart') {
+    r = R(1, Math.min(w, h) - 1);
+    return { c: [X, Y], r: r, a0: [270, 180, 90, 0][coin], a1: [0, 270, 180, 90][coin], op: '-' };
+  }
+  if (t === 'demi') {
+    var cote = R(0, 3), L = cote % 2 ? h : w, P = cote % 2 ? h : w, prof = cote % 2 ? w : h;
+    r = R(1, Math.max(1, Math.min(Math.floor(L / 2), prof - 1)));
+    var u = R(r, L - r);
+    return [{ c: [u, 0], r: r, a0: 180, a1: 0, op: '-' }, { c: [w, u], r: r, a0: 90, a1: 270, op: '-' },
+            { c: [u, h], r: r, a0: 0, a1: 180, op: '-' }, { c: [0, u], r: r, a0: 270, a1: 90, op: '-' }][cote];
+  }
+  if (t === 'rectInt') {
+    var x1 = R(1, w - 2), x2 = R(x1 + 1, w - 1), y1 = R(1, h - 2), y2 = R(y1 + 1, h - 1);
+    return { pts: [[x1, y1], [x2, y1], [x2, y2], [x1, y2]], op: '-' };
+  }
+  for (var k = 0; k < 30; k++) {
+    var q = [[R(1, w - 1), R(1, h - 1)], [R(1, w - 1), R(1, h - 1)], [R(1, w - 1), R(1, h - 1)]];
+    if (aire2(q) >= 2) { return { pts: q, op: '-' }; }
+  }
+  return { pts: [[1, 1], [w - 1, 1], [1, h - 1]], op: '-' };
+}
+function seChevauchent(f, g, w, h) {
+  for (var x = 0.1; x < w; x += 0.2) {
+    for (var y = 0.1; y < h; y += 0.2) { if (dansPiece(x, y, f) && dansPiece(x, y, g)) { return true; } }
+  }
+  return false;
+}
+/* Une figure évidée doit rester d'un seul tenant, sans recouvrement caché */
+function figureSaine(ps) {
+  var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, st = 0.1, i, j, k;
+  ps.forEach(function (f) { var b = etendue(f); x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); });
+  if (Math.abs(aireContour(contourFigure(ps)) - aireFigure(ps).approx) > 1e-3) { return false; }
+  var W = Math.ceil((x1 - x0) / st), H = Math.ceil((y1 - y0) / st), g = [], vu = [], n = 0;
+  for (k = 0; k < W * H; k++) { i = k % W; j = (k - i) / W; g[k] = dansRegion(x0 + (i + 0.5) * st, y0 + (j + 0.5) * st, ps); }
+  for (k = 0; k < W * H; k++) {
+    if (!g[k] || vu[k]) { continue; }
+    if (++n > 1) { return false; }
+    var pile = [k]; vu[k] = true;
+    while (pile.length) {
+      var c = pile.pop(), ci = c % W, cj = (c - ci) / W;
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+        var a = ci + d[0], b = cj + d[1], q = b * W + a;
+        if (a >= 0 && b >= 0 && a < W && b < H && g[q] && !vu[q]) { vu[q] = true; pile.push(q); }
+      });
+    }
+  }
+  return n === 1;
+}
+function genN5(secteurs) {
+  for (var essai = 0; essai < 30; essai++) {
+    var f = genN5brut(secteurs);
+    if (figureSaine(f.pieces)) { return f; }
+  }
+  return { pieces: [{ pts: [[0, 0], [5, 0], [5, 4], [0, 4]], op: '+' }, { pts: [[1, 1], [3, 1], [3, 3], [1, 3]], op: '-' }] };
+}
+function genN5brut(secteurs) {
+  var w = R(4, 7), h = R(3, 5), ps, n = R(1, 2), trous = [];
+  if (Math.random() < 0.5) { ps = [{ pts: [[0, 0], [w, 0], [w, h], [0, h]], op: '+' }]; }
+  else {
+    var b;
+    do { b = genN4(secteurs); } while (b.base[0] < 4 || b.base[1] < 3);
+    ps = b.pieces; w = b.base[0]; h = b.base[1];
+  }
+  for (var e = 0; e < 40 && trous.length < n; e++) {
+    var t = pieceMoins(w, h, secteurs);
+    if (trous.every(function (u) { return !seChevauchent(t, u, w, h); })) { trous.push(t); }
+  }
+  // une pièce collée dont le côté commun donne sur un creux resterait en l'air : on la retire
+  ps = ps.filter(function (p, i) {
+    return i === 0 || p.lien.every(function (q) { return trous.every(function (u) { return !dansPiece(q[0], q[1], u); }); });
+  });
+  return { pieces: ps.concat(trous) };
+}
+
+/* Placement sans chevauchement (un carreau d'écart), quadrillage agrandi si besoin */
+function placer(figs, cols, rows) {
+  var occ = [], pos = [];
+  for (var i = 0; i < figs.length; i++) {
+    var f = figs[i], ok = false;
+    for (var e = 0; e < 400 && !ok; e++) {
+      var x = R(1, cols - f.w - 1), y = R(1, rows - f.h - 1);
+      if (cols - f.w - 1 < 1 || rows - f.h - 1 < 1) { return null; }
+      ok = occ.every(function (o) { return x + f.w + 1 <= o[0] || o[2] + 1 <= x || y + f.h + 1 <= o[1] || o[3] + 1 <= y; });
+      if (ok) { occ.push([x, y, x + f.w, y + f.h]); pos[i] = [x, y]; }
+    }
+    if (!ok) { return null; }
+  }
+  return pos;
+}
+function generer() {
+  var niv = parseInt($('sel-niv').value, 10), sect = $('ck-sect').checked && niv >= 4;
+  var nb = Math.max(1, Math.min(16, parseInt($('in-nb').value, 10) || 6)), figs = [], i;
+  $('in-nb').value = nb;
+  var palette = ['hach', 'hach2', 'croix', 'gris'];
+  for (i = 0; i < nb; i++) {
+    var f = niv === 1 ? genN1() : niv === 2 ? genN2() : niv === 3 ? genN3() : niv === 4 ? genN4(sect) : genN5(sect);
+    f.style = $('ck-varie').checked ? palette[i % palette.length] : (styleCourant === 'noir' ? 'hach' : styleCourant);
+    figs.push(normaliserFigure(f));
+  }
+  if ($('ck-unite').checked) { figs.push({ cells: [[0, 0]], w: 1, h: 1, style: 'noir' }); }
+  figs.sort(function (a, b) { return b.w * b.h - a.w * a.h; });
+  var cols = D.cols, rows = D.rows, pos = null, agrandi = false;
+  while (!pos && cols <= 60) {
+    for (var e = 0; e < 4 && !pos; e++) { pos = placer(figs, cols, rows); }
+    if (!pos) { cols += 2; rows = Math.min(60, rows + 1); agrandi = true; }
+  }
+  if (!pos) { toast('Trop de figures pour le quadrillage : réduisez le nombre.'); return; }
+  memoriser();
+  D = { cols: cols, rows: rows, cells: {}, polys: [], arcs: [] };
+  figs.forEach(function (f, k) {
+    var ox = pos[k][0], oy = pos[k][1];
+    if (f.cells) { f.cells.forEach(function (q) { D.cells[cle(q[0] + ox, q[1] + oy)] = f.style; }); return; }
+    var g = f.pieces.length > 1 ? nouveauNumero() : 0;
+    f.pieces.forEach(function (p) {
+      var o = { style: f.style };
+      if (g) { o.g = g; o.op = p.op; }
+      if (p.c) { o.c = [p.c[0] + ox, p.c[1] + oy]; o.r = p.r; o.a0 = p.a0; o.a1 = p.a1; D.arcs.push(o); }
+      else { o.pts = p.pts.map(function (q) { return [q[0] + ox, q[1] + oy]; }); o.ferme = true; D.polys.push(o); }
+    });
+  });
+  apresChargement();
+  toast((agrandi ? 'Quadrillage agrandi à ' + cols + ' × ' + rows + '. ' : '') + 'Ctrl+Z pour revenir au dessin précédent.');
+}
+
+function exemple() {
+  memoriser();
+  D = { cols: 5, rows: 13, cells: {}, polys: [], arcs: [] };
+  function c(i, j, s) { D.cells[cle(i, j)] = s || 'hach'; }
+  c(4, 0, 'noir');
+  c(0, 1); c(1, 1); c(0, 2); c(1, 2);
+  c(3, 2); c(3, 3); c(3, 4); c(4, 3);
+  c(0, 5); c(1, 5); c(0, 6); c(0, 7);
+  c(3, 7); c(3, 8); c(2, 8); c(2, 9);
+  c(1, 11); c(2, 11); c(3, 11); c(4, 11);
+  apresChargement();
+}
+
+/* ── Démarrage ───────────────────────────────────────────────────────────── */
+function lireTaille(id, def) {
+  var n = parseInt(String($(id).value).replace(/\s/g, ''), 10);
+  if (isNaN(n)) { return def; }
+  return Math.max(1, Math.min(60, n));
+}
+function changerTaille() {
+  var c = lireTaille('in-cols', D.cols), r = lireTaille('in-rows', D.rows);
+  $('in-cols').value = c; $('in-rows').value = r;
+  if (c === D.cols && r === D.rows) { return; }
+  memoriser();
+  D.cols = c; D.rows = r;
+  Object.keys(D.cells).forEach(function (k) {
+    var ij = k.split(',').map(Number);
+    if (ij[0] >= c || ij[1] >= r) { delete D.cells[k]; }
+  });
+  D.polys = D.polys.filter(function (p) {
+    return p.pts.every(function (q) { return q[0] <= c && q[1] <= r; });
+  });
+  D.arcs = D.arcs.filter(function (sc) { return sc.c[0] <= c && sc.c[1] <= r; });
+  raz();   // raz() appelle normaliser()
+  dimensionner(); sauverLocal(); maj();
+}
+
+function stylesUI() {
+  var box = $('gs-styles');
+  STYLES.forEach(function (st) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'gs-style' + (st.id === styleCourant ? ' active' : '');
+    b.setAttribute('data-style', st.id);
+    var c = document.createElement('canvas'); c.width = 68; c.height = 68;
+    var x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, 68, 68);
+    remplir(x, function () { x.rect(0, 0, 68, 68); }, st.id, 68, [0, 0, 68, 68]);
+    x.strokeStyle = ENCRE; x.lineWidth = 6; x.strokeRect(3, 3, 62, 62);
+    b.appendChild(c);
+    b.appendChild(document.createTextNode(st.nom));
+    b.onclick = function () {
+      styleCourant = st.id;
+      Array.prototype.forEach.call(box.children, function (e) { e.classList.toggle('active', e === b); });
+    };
+    box.appendChild(b);
+  });
+}
+
+function init() {
+  cv = $('gs-canvas'); cx2 = cv.getContext('2d');
+  lireLocal();
+  $('in-cols').value = D.cols; $('in-rows').value = D.rows;
+  stylesUI();
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-outil]'), function (b) {
+    b.onclick = function () {
+      outil = b.getAttribute('data-outil'); raz();
+      Array.prototype.forEach.call(document.querySelectorAll('[data-outil]'), function (e) { e.classList.toggle('active', e === b); });
+      maj();
+    };
+  });
+
+  cv.addEventListener('pointerdown', surAppui);
+  cv.addEventListener('pointermove', surDeplacement);
+  cv.addEventListener('pointerup', surRelache);
+  cv.addEventListener('pointercancel', surRelache);
+  cv.addEventListener('pointerleave', function () { if (!peinture) { survol = null; dessiner(); } });
+
+  $('in-cols').addEventListener('change', changerTaille);
+  $('in-rows').addEventListener('change', changerTaille);
+  $('ck-lettres').addEventListener('change', maj);
+  $('sel-grille').addEventListener('change', maj);
+  $('sel-pas').addEventListener('change', dessiner);
+
+  $('b-annuler').onclick = annuler;
+  $('b-retablir').onclick = retablir;
+  $('b-fermer').onclick = fermerPoly;
+  $('b-exemple').onclick = exemple;
+  $('b-generer').onclick = generer;
+  $('sel-niv').addEventListener('change', function () {
+    var ok = parseInt(this.value, 10) >= 4;
+    $('ck-sect').disabled = !ok; $('lab-sect').style.opacity = ok ? '1' : '.5';
+  });
+  $('ck-sect').disabled = true; $('lab-sect').style.opacity = '.5';
+  $('b-vider').onclick = function () {
+    if (!Object.keys(D.cells).length && !D.polys.length && !D.arcs.length) { return; }
+    memoriser(); D.cells = {}; D.polys = []; D.arcs = []; raz(); sauverLocal(); maj();
+    toast('Dessin effacé (Ctrl+Z pour revenir).');
+  };
+
+  $('b-png').onclick = function () {
+    canvasExport().toBlob(function (b) { telecharger(b, 'grille-' + horodatage() + '.png'); toast('PNG téléchargé.'); }, 'image/png');
+  };
+  $('b-copier').onclick = function () {
+    if (!navigator.clipboard || typeof ClipboardItem === 'undefined') { toast('Copie non disponible ici : utilisez le téléchargement.'); return; }
+    canvasExport().toBlob(function (b) {
+      navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]).then(
+        function () { toast('Image copiée : collez-la dans votre document.'); },
+        function () { toast('Copie refusée par le navigateur : utilisez le téléchargement.'); });
+    }, 'image/png');
+  };
+
+  $('b-sauver').onclick = function () {
+    telecharger(new Blob([JSON.stringify(D, null, 1)], { type: 'application/json' }), 'grille-' + horodatage() + '.json');
+  };
+  $('b-ouvrir').onclick = function () { $('in-fichier').click(); };
+  $('in-fichier').onchange = function () {
+    var f = this.files[0]; if (!f) { return; }
+    var lr = new FileReader();
+    lr.onload = function () {
+      try {
+        var o = JSON.parse(lr.result);
+        if (!valide(o)) { throw new Error('format'); }
+        memoriser(); D = o; apresChargement(); toast('Dessin chargé.');
+      } catch (err) { toast('Fichier non reconnu.'); }
+    };
+    lr.readAsText(f);
+    this.value = '';
+  };
+
+  document.addEventListener('keydown', function (e) {
+    var t = document.activeElement && document.activeElement.tagName;
+    if (t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') { return; }
+    var k = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey) { e.preventDefault(); annuler(); }
+    else if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); retablir(); }
+    else if (e.key === 'Escape' && (enCours.length || sec || compo !== null)) { raz(); maj(); }
+    else if (e.key === 'Backspace' && enCours.length) { e.preventDefault(); enCours.pop(); maj(); }
+    else if (e.key === 'Enter' && outil === 'poly') { fermerPoly(); }
+  });
+
+  var attente;
+  window.addEventListener('resize', function () { clearTimeout(attente); attente = setTimeout(function () { dimensionner(); dessiner(); }, 120); });
+
+  dimensionner(); maj();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
