@@ -1,0 +1,1335 @@
+<!--
+Pythagore 2 — puzzle de Perigal, calcul d'un côté et réciproque
+Copyright (c) 2025-2026 Moise Muller <lessavoirfairepartager@gmail.com>
+Version du 10 novembre 2026 pour outilslp.netlify.app
+Successeur de jeux/pythagore_trainer.html : l'explorateur s'ouvre sur
+l'animation du puzzle de Perigal (démonstration par découpage, à suivre au
+tableau), les calculateurs, le défi, le Défi ⁺ et la fiche sont repris tels quels.
+Fiche élève PDF de l'activité : /jeux/fiches/3PM-M-Pythagore-Puzzle.pdf
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pythagore 2 — puzzle de Perigal, calcul et réciproque</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--pink); --accent-bg: var(--pink-bg); }
+
+  .math { font-family: "Cambria Math", "Latin Modern Math", "Times New Roman", serif; }
+
+  .field select {
+    width: 100%; padding: 9px 12px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: var(--fs-sm); font-weight: 600;
+    background: var(--surface2); color: var(--text);
+  }
+
+  .result-value.expr { font-size: var(--fs-xl); line-height: 1.25; }
+
+  /* Verdict de la réciproque */
+  .verdict {
+    border-radius: var(--radius); padding: 12px 14px;
+    font-size: var(--fs-md); font-weight: 700; text-align: center;
+  }
+  .verdict.oui { background: var(--teal-bg); color: var(--teal); border: 2px solid var(--teal); }
+  .verdict.non { background: var(--red-bg);  color: var(--red);  border: 2px solid var(--red); }
+  .verdict.pas { background: var(--surface2); color: var(--text2); border: 2px dashed var(--border2); }
+
+  .compare {
+    display: flex; flex-direction: column; gap: 6px;
+    font-size: var(--fs-sm); color: var(--text2);
+  }
+  .compare .l { display: flex; justify-content: space-between; gap: 10px; }
+  .compare .l b { color: var(--text); }
+
+  /* ── Puzzle de Perigal ── */
+  #panel-perigal.active { display: flex; flex-direction: column; gap: var(--gap); }
+  .pg-stage { align-items: stretch; }
+  .sketch-card svg#pg-svg { background: #fff; max-width: none; width: 100%; max-height: 68vh; display: block; }
+  html[data-size="projection"] .sketch-card svg#pg-svg { max-width: none; max-height: 72vh; }
+  .pg-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .pg-controls .btn-rnd.pg-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  html[data-theme="dark"] .pg-controls .btn-rnd.pg-primary { color: #14130f; }
+  .pg-controls input[type=range], .pg-shape input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
+  .pg-dots { display: flex; gap: 5px; flex-wrap: wrap; }
+  .pg-dot {
+    width: 30px; height: 30px; border-radius: 50%; padding: 0;
+    border: 1px solid var(--border); background: var(--surface);
+    font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text3);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .pg-dot.done { background: var(--surface2); color: var(--text2); }
+  .pg-dot.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  html[data-theme="dark"] .pg-dot.on { color: #14130f; }
+  .pg-legende { border-left: 5px solid var(--accent); padding-left: 14px; min-height: 6.5em; }
+  #pg-phase { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--text3); font-weight: 700; margin-bottom: 6px; }
+  #pg-caption { font-size: var(--fs-md); line-height: 1.45; color: var(--text); }
+  #pg-tip { font-size: var(--fs-sm); color: var(--text2); margin-top: 8px; line-height: 1.45; }
+  .pg-shape { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .pg-shape label { font-size: var(--fs-xs); color: var(--text2); font-weight: 600; white-space: nowrap; }
+  #pg-vals { font-size: var(--fs-xs); color: var(--text3); }
+  .pg-r { color: #c23a1f; font-weight: 700; }
+  .pg-g { color: #2f6b14; font-weight: 700; }
+  .pg-b { color: #2448b8; font-weight: 700; }
+  html[data-theme="dark"] .pg-r { color: #F2807C; }
+  html[data-theme="dark"] .pg-g { color: #9DD25E; }
+  html[data-theme="dark"] .pg-b { color: #6FB2F2; }
+
+  /* ── Fiche PDF à télécharger (bas de page) ── */
+  .pdf-card {
+    margin-top: var(--gap);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: var(--pad-card);
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .pdf-card .pdf-ico { font-size: 34px; line-height: 1; }
+  .pdf-card .pdf-txt { flex: 1; min-width: 220px; }
+  .pdf-card .pdf-titre { font-size: var(--fs-sm); font-weight: 700; color: var(--text); }
+  .pdf-card .pdf-desc { font-size: var(--fs-xs); color: var(--text2); margin-top: 3px; line-height: 1.45; }
+  .pdf-card .btn-pdf {
+    padding: 10px 18px; border-radius: var(--radius);
+    background: var(--accent); color: #fff; text-decoration: none;
+    font-size: var(--fs-xs); font-weight: 700; white-space: nowrap;
+  }
+  html[data-theme="dark"] .pdf-card .btn-pdf { color: #14130f; }
+  .pdf-card .btn-pdf:hover { filter: brightness(1.08); }
+
+  /* Boutons du défi, rappel, confettis et masquage à l'impression :
+     tout cela vit désormais dans lp-ui.css, section 12 bis. */
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <rect x="6" y="25" width="9" height="9" fill="var(--pink-bg)" stroke="var(--pink)" stroke-width="1.6"/>
+      <rect x="15" y="22" width="12" height="12" fill="var(--pink-bg)" stroke="var(--pink)" stroke-width="1.6" class="lp-blink"/>
+      <path d="M15 25 L15 34 L27 34 Z" stroke="var(--pink)" stroke-width="2.4"
+            stroke-linejoin="round" class="lp-draw" style="--dash:60"/>
+      <path d="M15 25 L27 34 L36 22 L24 13 Z" stroke="var(--pink)" stroke-width="1.6" stroke-linejoin="round"/>
+    </svg></div>
+  <div>
+    <h1>Théorème de Pythagore</h1>
+    <p>Puzzle de Perigal · calcul d'un côté · réciproque — 3<sup>e</sup> prépa-métiers · CAP · 2<sup>de</sup> Bac Pro</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('explo',this)">Explorateur</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi ⁺</button>
+  </div>
+
+  <!-- ═══════════════ EXPLORATEUR ═══════════════ -->
+  <div id="mode-explo">
+
+    <div class="shape-tabs-row">
+      <div class="shape-tabs">
+        <button class="shape-tab active" data-color="purple" onclick="setShape('perigal',this)"><span class="dot" style="background:var(--purple)"></span>Puzzle de Perigal</button>
+        <button class="shape-tab"        data-color="pink"  onclick="setShape('hyp',this)"><span class="dot" style="background:var(--pink)"></span>Hypoténuse</button>
+        <button class="shape-tab"        data-color="blue"  onclick="setShape('cot',this)"><span class="dot" style="background:var(--blue)"></span>Côté de l'angle droit</button>
+        <button class="shape-tab"        data-color="green" onclick="setShape('rec',this)"><span class="dot" style="background:var(--green)"></span>Réciproque</button>
+      </div>
+      <button class="btn-rnd" id="btn-rnd" onclick="randomizeCurrent()" style="display:none">🎲 Nouvelles valeurs</button>
+    </div>
+
+    <!-- PUZZLE DE PERIGAL -->
+    <div id="panel-perigal" class="panel active">
+      <div class="sketch-card pg-stage">
+        <div class="context-label">Suis l'animation étape par étape et fais la même chose sur ta feuille.</div>
+        <svg id="pg-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Animation du puzzle de Perigal"></svg>
+        <div class="pg-controls">
+          <button type="button" class="btn-rnd" id="pg-prev" title="Étape précédente (←)">◀ Étape</button>
+          <button type="button" class="btn-rnd pg-primary" id="pg-play" title="Lecture / pause (espace)">▶ Lecture</button>
+          <button type="button" class="btn-rnd" id="pg-next" title="Étape suivante (→)">Étape ▶</button>
+          <button type="button" class="btn-rnd" id="pg-reset" title="Recommencer">↺</button>
+          <input id="pg-t" type="range" min="0" max="1000" value="0" aria-label="Avancement de l'animation">
+        </div>
+        <div class="pg-dots" id="pg-dots"></div>
+      </div>
+      <div class="controls-card">
+        <div class="pg-legende">
+          <div id="pg-phase"></div>
+          <div id="pg-caption"></div>
+          <div id="pg-tip"></div>
+        </div>
+        <div class="pg-shape">
+          <label for="pg-shape">Forme du triangle</label>
+          <input id="pg-shape" type="range" min="46" max="74" value="58" step="0.5">
+          <span id="pg-vals"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HYPOTÉNUSE -->
+    <div id="panel-hyp" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--pink-bg);color:var(--pink)">Triangle ABC rectangle en A</span>
+        <svg id="hy-svg" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">L'hypoténuse est le côté opposé à l'angle droit. C'est toujours le plus long des trois.</div>
+      </div>
+      <div class="controls-card">
+        <div class="section-label">Les deux côtés de l'angle droit</div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="hy-a">AB</label>
+            <div class="field-row"><input type="text" inputmode="decimal" autocomplete="off" id="hy-a" value="8" min="1" max="40" step="0.5" oninput="calcHyp()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="hy-b">AC</label>
+            <div class="field-row"><input type="text" inputmode="decimal" autocomplete="off" id="hy-b" value="6" min="1" max="40" step="0.5" oninput="calcHyp()"><span class="unit">cm</span></div>
+          </div>
+        </div>
+        <div class="formula-box">
+          <code>BC² = AB² + AC²</code>
+          <div class="formula-detail" id="hy-detail"></div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Hypoténuse BC</div>
+          <div class="result-value" id="hy-result">—<span class="result-unit">cm</span></div>
+          <div class="result-sub" id="hy-sub"></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> oublier la racine carrée et donner BC² à la place de BC. Vérification rapide : l'hypoténuse doit être plus longue que chacun des deux autres côtés, et plus courte que leur somme.</div>
+      </div>
+    </div>
+
+    <!-- CÔTÉ DE L'ANGLE DROIT -->
+    <div id="panel-cot" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--blue-bg);color:var(--blue)">Triangle ABC rectangle en A</span>
+        <svg id="co-svg" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">Quand l'hypoténuse est connue, on soustrait : le côté cherché est forcément plus court qu'elle.</div>
+      </div>
+      <div class="controls-card">
+        <div class="section-label">L'hypoténuse et un côté de l'angle droit</div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="co-h">BC (hypoténuse)</label>
+            <div class="field-row"><input type="text" inputmode="decimal" autocomplete="off" id="co-h" value="13" min="2" max="50" step="0.5" oninput="calcCot()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="co-a">AB</label>
+            <div class="field-row"><input type="text" inputmode="decimal" autocomplete="off" id="co-a" value="5" min="1" max="49" step="0.5" oninput="calcCot()"><span class="unit">cm</span></div>
+          </div>
+        </div>
+        <div class="formula-box">
+          <code>AC² = BC² − AB²</code>
+          <div class="formula-detail" id="co-detail"></div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Côté AC</div>
+          <div class="result-value" id="co-result">—<span class="result-unit">cm</span></div>
+          <div class="result-sub" id="co-sub"></div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> additionner au lieu de soustraire. Le repère : si le résultat trouvé dépasse l'hypoténuse, c'est le signe qu'on s'est trompé d'opération.</div>
+      </div>
+    </div>
+
+    <!-- RÉCIPROQUE -->
+    <div id="panel-rec" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--green-bg);color:var(--green)">Triangle quelconque</span>
+        <svg id="re-svg" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="context-label">La figure est tracée à l'échelle : à l'œil, un triangle presque rectangle est indiscernable d'un triangle rectangle. Seul le calcul tranche.</div>
+      </div>
+      <div class="controls-card">
+        <div class="section-label">Les trois longueurs</div>
+        <div class="fields-grid">
+          <div class="field">
+            <label for="re-1">Premier côté</label>
+            <div class="field-row"><input type="text" inputmode="decimal" autocomplete="off" id="re-1" value="6" min="1" max="60" step="0.5" oninput="calcRec()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="re-2">Deuxième côté</label>
+            <div class="field-row"><input type="text" inputmode="decimal" autocomplete="off" id="re-2" value="8" min="1" max="60" step="0.5" oninput="calcRec()"><span class="unit">cm</span></div>
+          </div>
+          <div class="field">
+            <label for="re-3">Troisième côté</label>
+            <div class="field-row"><input type="text" inputmode="decimal" autocomplete="off" id="re-3" value="10" min="1" max="60" step="0.5" oninput="calcRec()"><span class="unit">cm</span></div>
+          </div>
+        </div>
+        <div class="formula-box">
+          <code id="re-code">—</code>
+          <div class="formula-detail" id="re-detail"></div>
+        </div>
+        <div class="compare" id="re-compare"></div>
+        <div class="verdict pas" id="re-verdict">—</div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> comparer n'importe quel côté au lieu du plus long. C'est toujours le carré du plus grand côté qu'on compare à la somme des carrés des deux autres.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ DÉFI ═══════════════ -->
+  <!-- Balisage standard du moteur. Les onglets de familles et la zone de
+       réponse sont construits par lp-defi.js : rien à écrire ici. -->
+  <div id="mode-defi">
+    <div class="defi-card">
+      <div id="defi-plus-badge" class="defi-mode-badge">🔒 DÉFI ⁺ — propriété masquée</div>
+      <div class="defi-header">
+        <div class="defi-title" id="defi-mode-title">Mode défi — avec aide</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
+
+      <div id="defi-familles" style="margin-bottom:1.25rem"></div>
+
+      <div class="defi-aide" id="defi-aide"></div>
+
+      <div class="defi-shape-display" id="defi-figure">
+        <svg id="defi-svg" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg" style="max-width:300px;width:100%;"></svg>
+        <div class="defi-enonce" id="defi-enonce"></div>
+        <div class="defi-cotes" id="defi-cotes"></div>
+      </div>
+
+      <div id="defi-reponse"></div>
+
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol"></div>
+
+      <button class="btn-check" id="btn-check">Vérifier ma réponse</button>
+      <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
+      <button class="btn-next" id="btn-next" style="display:none">Question suivante →</button>
+
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="LP.ficheModal.open()">📄 Générer une fiche d'exercices (10 questions)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ FICHE ÉLÈVE PDF ═══════════════ -->
+  <div class="pdf-card no-print">
+    <div class="pdf-ico" aria-hidden="true">📄</div>
+    <div class="pdf-txt">
+      <div class="pdf-titre">Fiche élève — Le puzzle de Pythagore</div>
+      <div class="pdf-desc">Activité 3PM (M-DEG-GeomPlane · Ca1, Ca6) à faire en suivant l'animation du puzzle de Perigal : construction, découpage, puzzle, addition d'aires. PDF, 2 pages A4.</div>
+    </div>
+    <a class="btn-pdf" href="/jeux/fiches/3PM-M-Pythagore-Puzzle.pdf" download="3PM-M-Pythagore-Puzzle.pdf">⬇ Télécharger la fiche (PDF)</a>
+  </div>
+
+</div>
+
+<!-- La modale de choix des familles est construite par LP.ficheModal -->
+
+<script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
+<script>
+/* ═══ UTILITAIRES ═══════════════════════════════════════════════════════ */
+var M = '\u2212';                       /* vrai signe moins */
+var LETTRES = 'ABCDEFGHJKLMNPQRSTUVWXYZ'.split('');   /* ni I ni O */
+
+function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function shuffle(a){
+  var r = a.slice(), i, j, t;
+  for (i = r.length-1; i > 0; i--) { j = Math.floor(Math.random()*(i+1)); t = r[i]; r[i] = r[j]; r[j] = t; }
+  return r;
+}
+function val(id){ var n = parseFloat(document.getElementById(id).value.replace(',','.')); return isNaN(n) ? 0 : n; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* Écriture française : virgule décimale, d décimales AU PLUS, sans zéro inutile.
+   nb(6) : "6"   nb(5.5) : "5,5"   nb(4.666) : "4,67"   nb(0.5, 1) : "0,5" */
+function nb(x, d){
+  var p = (d === undefined) ? 2 : d;
+  var f = Math.pow(10, p);
+  var s = (Math.round(x * f) / f).toFixed(p);
+  s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  return s.replace('.', ',');
+}
+function nb2(x){ return nb(x, 2); }
+
+/* ═══ GÉOMÉTRIE ═════════════════════════════════════════════════════════ */
+function tourner(pts, k){
+  return pts.map(function(p){
+    var x = p.x, y = p.y, i, nx;
+    for (i = 0; i < k; i++) { nx = -y; y = x; x = nx; }
+    return { x:x, y:y };
+  });
+}
+
+/* Met les points à l'échelle du cadre, avec une marge propre à chaque côté.
+   L'axe vertical du SVG est inversé : dy se mesure depuis le bas. */
+function ajuster(pts, W, H, m){
+  var xs = pts.map(function(p){ return p.x; });
+  var ys = pts.map(function(p){ return p.y; });
+  var minx = Math.min.apply(null, xs), miny = Math.min.apply(null, ys);
+  var bw = (Math.max.apply(null, xs) - minx) || 1;
+  var bh = (Math.max.apply(null, ys) - miny) || 1;
+  var utileW = Math.max(W - m.l - m.r, 20);
+  var utileH = Math.max(H - m.t - m.b, 20);
+  var s = Math.min(utileW/bw, utileH/bh);
+  var dx = m.l + (utileW - bw*s)/2;
+  var dy = m.b + (utileH - bh*s)/2;
+  return pts.map(function(p){
+    return { x:(p.x - minx)*s + dx, y:H - ((p.y - miny)*s + dy) };
+  });
+}
+function centre(pts){
+  var sx = 0, sy = 0, i;
+  for (i = 0; i < pts.length; i++) { sx += pts[i].x; sy += pts[i].y; }
+  return { x:sx/pts.length, y:sy/pts.length };
+}
+function unitaire(d){
+  var n = Math.sqrt(d.x*d.x + d.y*d.y) || 1;
+  return { x:d.x/n, y:d.y/n };
+}
+
+/* Étiquette placée vers l'extérieur, ancrage choisi selon la direction */
+function etiquette(p, d, texte, fs, couleur){
+  var anc = d.x > 0.3 ? 'start' : (d.x < -0.3 ? 'end' : 'middle');
+  var dy  = d.y > 0.3 ? fs*0.85 : (d.y < -0.3 ? -fs*0.22 : fs*0.34);
+  var dx  = d.x > 0.3 ? 2 : (d.x < -0.3 ? -2 : 0);
+  return { x:p.x + dx, y:p.y + dy, anc:anc, fs:fs, texte:String(texte), couleur:couleur };
+}
+function rendreEtiquette(e){
+  return '<text x="'+e.x.toFixed(1)+'" y="'+e.y.toFixed(1)+'" text-anchor="'+e.anc+'"'
+       + ' font-size="'+e.fs+'" font-weight="700" fill="'+e.couleur+'">'+esc(e.texte)+'</text>';
+}
+/* Encombrement estimé d'une étiquette (Arial : un chiffre ≈ 0,56 em) */
+function boiteEtiquette(e){
+  var larg = e.texte.length * e.fs * 0.62;
+  var x0 = e.anc === 'start' ? e.x : (e.anc === 'end' ? e.x - larg : e.x - larg/2);
+  return { x0:x0, x1:x0 + larg, y0:e.y - e.fs*0.95, y1:e.y + e.fs*0.32 };
+}
+
+var TRAIT = '#993556', REMPLI = '#FBEAF0', NOIR = '#1a1917', INCONNU = '#A32D2D', GRIS = '#55534e';
+
+/* Liste des étiquettes (côtés puis sommets) pour un placement donné */
+function etiquettesDe(P, ex, fs, offCote, offSom){
+  var c = centre(P), L = [];
+  ex.cotes.forEach(function(co){
+    var m = { x:(P[co.de].x + P[co.a].x)/2, y:(P[co.de].y + P[co.a].y)/2 };
+    var d = unitaire({ x:m.x - c.x, y:m.y - c.y });
+    L.push(etiquette({ x:m.x + d.x*offCote, y:m.y + d.y*offCote }, d,
+                     co.texte, fs, co.inconnu ? INCONNU : GRIS));
+  });
+  ex.noms.forEach(function(n,i){
+    var d = unitaire({ x:P[i].x - c.x, y:P[i].y - c.y });
+    L.push(etiquette({ x:P[i].x + d.x*offSom, y:P[i].y + d.y*offSom }, d, n, fs+3, NOIR));
+  });
+  return L;
+}
+
+/* Dessine un exercice. W/H = cadre, o = réglages de taille.
+   Le cadrage est repris jusqu'à ce que les étiquettes tiennent dans le cadre. */
+function dessin(ex, W, H, o){
+  o = o || {};
+  var fs      = o.fs      || 14;
+  var offCote = o.offCote || 15;
+  var offSom  = o.offSom  || 16;
+  var tAngle  = o.tAngle  || 15;
+
+  var m = { l:14, r:14, t:14, b:14 };
+  var P, L, i, b, deb, it;
+
+  for (it = 0; it < 5; it++) {
+    P = ajuster(ex.pts, W, H, m);
+    L = etiquettesDe(P, ex, fs, offCote, offSom);
+    deb = { l:0, r:0, t:0, b:0 };
+    for (i = 0; i < L.length; i++) {
+      b = boiteEtiquette(L[i]);
+      deb.l = Math.max(deb.l, 4 - b.x0);
+      deb.r = Math.max(deb.r, b.x1 - (W - 4));
+      deb.t = Math.max(deb.t, 4 - b.y0);
+      deb.b = Math.max(deb.b, b.y1 - (H - 4));
+    }
+    if (deb.l + deb.r + deb.t + deb.b < 0.5) break;
+    if (m.l + m.r > W*0.72 || m.t + m.b > H*0.72) break;
+    m = { l:m.l + deb.l, r:m.r + deb.r, t:m.t + deb.t, b:m.b + deb.b };
+  }
+
+  var s = '<polygon points="' + P.map(function(p){ return p.x.toFixed(1)+','+p.y.toFixed(1); }).join(' ')
+        + '" fill="'+REMPLI+'" stroke="'+TRAIT+'" stroke-width="2.5" stroke-linejoin="round"/>';
+
+  if (ex.droitEn !== null && ex.droitEn !== undefined) {
+    var k = ex.droitEn, j = (k+1)%3, l = (k+2)%3;
+    var u1 = unitaire({ x:P[j].x - P[k].x, y:P[j].y - P[k].y });
+    var u2 = unitaire({ x:P[l].x - P[k].x, y:P[l].y - P[k].y });
+    s += '<path d="M'+(P[k].x + u1.x*tAngle).toFixed(1)+' '+(P[k].y + u1.y*tAngle).toFixed(1)
+       + ' L'+(P[k].x + (u1.x+u2.x)*tAngle).toFixed(1)+' '+(P[k].y + (u1.y+u2.y)*tAngle).toFixed(1)
+       + ' L'+(P[k].x + u2.x*tAngle).toFixed(1)+' '+(P[k].y + u2.y*tAngle).toFixed(1)
+       + '" fill="none" stroke="'+TRAIT+'" stroke-width="1.8"/>';
+  }
+
+  for (i = 0; i < L.length; i++) s += rendreEtiquette(L[i]);
+  return s;
+}
+
+/* ═══ GÉNÉRATEURS ═══════════════════════════════════════════════════════ */
+/* Triplets pythagoriciens dont le dessin reste équilibré */
+var TRIPLETS = [
+  [3,4,5], [6,8,10], [9,12,15], [12,16,20], [15,20,25], [18,24,30],
+  [5,12,13], [10,24,26], [8,15,17], [20,21,29], [12,35,37]
+];
+function tripletsDessinables(){
+  return TRIPLETS.filter(function(t){ return Math.min(t[0],t[1]) / Math.max(t[0],t[1]) > 0.32; });
+}
+
+/* Les données affichées sont TOUJOURS exactes : seule l'inconnue est arrondie. */
+function genHyp(){
+  var a, b, t;
+  if (Math.random() < 0.35) {
+    t = pick(tripletsDessinables());
+    a = t[0]; b = t[1];
+    if (Math.random() < 0.5) { var z = a; a = b; b = z; }
+  } else {
+    do { a = rand(3,14); b = rand(3,14); }
+    while (Math.min(a,b) / Math.max(a,b) < 0.3);     /* figure trop effilée */
+  }
+  var h = Math.sqrt(a*a + b*b);
+  var noms = shuffle(LETTRES).slice(0,3);
+  var pts = tourner([{x:0,y:0},{x:a,y:0},{x:a,y:b}], rand(0,3));
+  var cAB = noms[0]+noms[1], cBC = noms[1]+noms[2], cAC = noms[0]+noms[2];
+
+  return {
+    fam:'hyp', pts:pts, noms:noms, droitEn:1,
+    cotes:[
+      { de:0, a:1, texte:nb(a)+' cm' },
+      { de:1, a:2, texte:nb(b)+' cm' },
+      { de:0, a:2, texte:'?', inconnu:true }
+    ],
+    donnees:cAB+' = '+nb(a)+' cm · '+cBC+' = '+nb(b)+' cm',
+    question:'Calculer la longueur '+cAC,
+    inconnue:cAC,
+    reponse:h,
+    reponseTexte:nb2(h)+' cm',
+    hint:'Angle droit en '+noms[1]+', donc '+cAC+'² = '+cAB+'² + '+cBC+'²',
+    detail:cAC+'² = '+nb(a)+'² + '+nb(b)+'² = '+nb(a*a)+' + '+nb(b*b)+' = '+nb(a*a+b*b)
+         + ', donc '+cAC+' = √'+nb(a*a+b*b)+' ≈ '+nb2(h)+' cm'
+  };
+}
+
+function genCot(){
+  var h, a, b, t, essais = 0;
+  if (Math.random() < 0.35) {
+    t = pick(tripletsDessinables());
+    h = t[2];
+    if (Math.random() < 0.5) { a = t[0]; b = t[1]; } else { a = t[1]; b = t[0]; }
+  } else {
+    do {
+      h = rand(7,22);
+      a = rand(3, h-2);
+      b = Math.sqrt(h*h - a*a);
+      essais++;
+    } while ((b < 3 || a/b < 0.32 || a/b > 3.1) && essais < 80);
+    if (b < 3) { h = 13; a = 5; b = 12; }
+  }
+  var noms = shuffle(LETTRES).slice(0,3);
+  var pts = tourner([{x:0,y:0},{x:a,y:0},{x:a,y:b}], rand(0,3));
+  var cAB = noms[0]+noms[1], cBC = noms[1]+noms[2], cAC = noms[0]+noms[2];
+
+  return {
+    fam:'cot', pts:pts, noms:noms, droitEn:1,
+    cotes:[
+      { de:0, a:1, texte:nb(a)+' cm' },
+      { de:1, a:2, texte:'?', inconnu:true },
+      { de:0, a:2, texte:nb(h)+' cm' }
+    ],
+    donnees:cAC+' = '+nb(h)+' cm (hypoténuse) · '+cAB+' = '+nb(a)+' cm',
+    question:'Calculer la longueur '+cBC,
+    inconnue:cBC,
+    reponse:b,
+    reponseTexte:nb2(b)+' cm',
+    hint:'Angle droit en '+noms[1]+', donc '+cBC+'² = '+cAC+'² '+M+' '+cAB+'²',
+    detail:cBC+'² = '+nb(h)+'² '+M+' '+nb(a)+'² = '+nb(h*h)+' '+M+' '+nb(a*a)+' = '+nb(h*h-a*a)
+         + ', donc '+cBC+' = √'+nb(h*h-a*a)+' ≈ '+nb2(b)+' cm'
+  };
+}
+
+function genRec(){
+  var t, p, q, r, rect, d, x, y, essais = 0;
+  do {
+    t = pick(TRIPLETS);
+    p = t[0]; q = t[1]; r = t[2];
+    rect = Math.random() < 0.5;
+    if (!rect) {
+      d = pick([-2,-1,1,2]);
+      if (Math.random() < 0.5) r = r + d; else q = q + d;
+    }
+    /* A = (0,0), B = (r,0) : le plus grand côté est AB. C est le sommet restant. */
+    x = (r*r + q*q - p*p) / (2*r);
+    y = Math.sqrt(Math.max(q*q - x*x, 0));
+    essais++;
+  } while (essais < 80 && (
+      r <= Math.max(p,q) ||           /* r doit rester le plus grand côté */
+      p + q <= r + 0.001 ||           /* inégalité triangulaire */
+      p < 2 || q < 2 ||
+      y / r < 0.25 ||                 /* triangle trop aplati pour être coté */
+      (!rect && Math.abs(r*r - (p*p + q*q)) < 0.5)
+  ));
+  var noms = shuffle(LETTRES).slice(0,3);
+  var pts = tourner([{x:0,y:0},{x:r,y:0},{x:x,y:y}], rand(0,3));
+  var cAB = noms[0]+noms[1], cAC = noms[0]+noms[2], cBC = noms[1]+noms[2];
+  var somme = p*p + q*q, grand = r*r;
+
+  return {
+    fam:'rec', pts:pts, noms:noms, droitEn:null,
+    cotes:[
+      { de:0, a:1, texte:nb(r)+' cm' },
+      { de:0, a:2, texte:nb(q)+' cm' },
+      { de:1, a:2, texte:nb(p)+' cm' }
+    ],
+    donnees:cAB+' = '+nb(r)+' cm · '+cAC+' = '+nb(q)+' cm · '+cBC+' = '+nb(p)+' cm',
+    question:'Le triangle '+noms[0]+noms[1]+noms[2]+' est-il rectangle ?',
+    inconnue:'',
+    reponse:rect ? 'oui' : 'non',
+    reponseTexte:rect ? 'Rectangle en '+noms[2] : 'Pas rectangle',
+    hint:'Le plus grand côté est '+cAB+'. On compare '+cAB+'² à '+cAC+'² + '+cBC+'².',
+    detail:cAB+'² = '+nb(grand)+'  et  '+cAC+'² + '+cBC+'² = '+nb(q*q)+' + '+nb(p*p)+' = '+nb(somme)
+         + (rect
+            ? '. Les deux résultats sont égaux : d\u2019après la réciproque du théorème de Pythagore, le triangle est rectangle en '+noms[2]+'.'
+            : '. Les deux résultats sont différents : d\u2019après la contraposée du théorème, le triangle n\u2019est pas rectangle.')
+  };
+}
+
+var generateurs = { hyp:genHyp, cot:genCot, rec:genRec };
+var famNoms     = { hyp:'Hypoténuse', cot:'Côté de l\u2019angle droit', rec:'Réciproque' };
+var famConsignes= { hyp:'Calcule la longueur manquante', cot:'Calcule la longueur manquante',
+                    rec:'Ce triangle est-il rectangle ?' };
+var famAides    = {
+  hyp:'hypoténuse² = somme des carrés des deux côtés de l\u2019angle droit',
+  cot:'côté² = hypoténuse² '+M+' autre côté² (on soustrait)',
+  rec:'comparer le carré du plus grand côté à la somme des carrés des deux autres'
+};
+
+/* ═══ MODES ═════════════════════════════════════════════════════════════ */
+var currentMode = 'explo';
+
+function setMode(m, btn){
+  currentMode = m;
+  var tabs = document.querySelectorAll('.mode-tab'), i;
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+
+  var isDefi = (m !== 'explo');
+  if (isDefi) PG.stop();
+  document.getElementById('mode-explo').style.display = isDefi ? 'none' : 'block';
+  /* montrerBloc pose le display ET la classe active d'un seul geste : c'est
+     le piège #mode-defi de lp-ui.css, désormais impossible à rater. */
+  LP.defi.montrerBloc('#mode-defi', isDefi);
+
+  document.getElementById('defi-mode-title').textContent =
+    (m === 'defiplus') ? 'Défi ⁺ — sans aide' : 'Mode défi — avec aide';
+
+  /* Le badge « propriété masquée » est posé par le moteur, qui interroge
+     modePlus() à chaque question. */
+  if (isDefi) defi.ui.suivante();
+}
+
+/* ═══ EXPLORATEUR ═══════════════════════════════════════════════════════ */
+var currentShape = 'perigal';
+
+function setShape(s, btn){
+  if (s !== 'perigal') PG.stop();
+  currentShape = s;
+  document.getElementById('btn-rnd').style.display = (s === 'perigal') ? 'none' : '';
+  var tabs = document.querySelectorAll('#mode-explo .shape-tab'), i;
+  for (i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+  var panels = document.querySelectorAll('#mode-explo .panel');
+  for (i = 0; i < panels.length; i++) panels[i].classList.remove('active');
+  document.getElementById('panel-'+s).classList.add('active');
+}
+
+function randomizeCurrent(){
+  var t;
+  if (currentShape === 'hyp') {
+    if (Math.random() < 0.4) { t = pick(tripletsDessinables()); document.getElementById('hy-a').value = t[0]; document.getElementById('hy-b').value = t[1]; }
+    else { document.getElementById('hy-a').value = rand(3,16); document.getElementById('hy-b').value = rand(3,16); }
+    calcHyp();
+  } else if (currentShape === 'cot') {
+    if (Math.random() < 0.4) { t = pick(tripletsDessinables()); document.getElementById('co-h').value = t[2]; document.getElementById('co-a').value = t[0]; }
+    else { var h = rand(8,24); document.getElementById('co-h').value = h; document.getElementById('co-a').value = rand(3,h-2); }
+    calcCot();
+  } else {
+    t = pick(TRIPLETS);
+    var p = t[0], q = t[1], r = t[2];
+    if (Math.random() < 0.5) { r = r + pick([-2,-1,1,2]); }
+    document.getElementById('re-1').value = p;
+    document.getElementById('re-2').value = q;
+    document.getElementById('re-3').value = r;
+    calcRec();
+  }
+}
+
+function calcHyp(){
+  var a = val('hy-a'), b = val('hy-b');
+  if (a <= 0) a = 1;
+  if (b <= 0) b = 1;
+  var h = Math.sqrt(a*a + b*b);
+
+  document.getElementById('hy-detail').textContent =
+    'BC² = '+nb(a)+'² + '+nb(b)+'² = '+nb(a*a)+' + '+nb(b*b)+' = '+nb(a*a+b*b)+'  →  BC = √'+nb(a*a+b*b);
+  document.getElementById('hy-result').innerHTML = nb2(h)+'<span class="result-unit">cm</span>';
+  var exact = Math.abs(h - Math.round(h)) < 1e-9;
+  document.getElementById('hy-sub').textContent = exact
+    ? 'Tombe juste : ' + nb(a) + ', ' + nb(b) + ' et ' + nb(h) + ' forment un triplet pythagoricien.'
+    : 'Valeur arrondie au centième. La valeur exacte est √' + nb(a*a+b*b) + '.';
+
+  var ex = {
+    pts:[{x:0,y:0},{x:a,y:0},{x:a,y:b}], noms:['A','B','C'], droitEn:0,
+    cotes:[
+      { de:0, a:1, texte:'AB = '+nb(a)+' cm' },
+      { de:0, a:2, texte:'AC = '+nb(b)+' cm' },
+      { de:1, a:2, texte:'BC = '+nb2(h)+' cm', inconnu:true }
+    ]
+  };
+  document.getElementById('hy-svg').innerHTML = dessin(ex, 320, 240, {});
+}
+
+function calcCot(){
+  var h = val('co-h'), a = val('co-a');
+  if (h <= 0) h = 1;
+  if (a <= 0) a = 1;
+  var res = document.getElementById('co-result');
+  var sub = document.getElementById('co-sub');
+
+  if (a >= h) {
+    document.getElementById('co-detail').textContent =
+      'Impossible : AB = '+nb(a)+' cm ne peut pas atteindre ou dépasser l\u2019hypoténuse BC = '+nb(h)+' cm.';
+    res.innerHTML = '—<span class="result-unit">cm</span>';
+    sub.textContent = 'Dans un triangle rectangle, l\u2019hypoténuse est strictement le plus long côté.';
+    document.getElementById('co-svg').innerHTML =
+      '<text x="160" y="115" text-anchor="middle" font-size="15" fill="'+INCONNU+'">Triangle impossible</text>'
+    + '<text x="160" y="140" text-anchor="middle" font-size="13" fill="'+GRIS+'">AB doit être plus court que BC</text>';
+    return;
+  }
+
+  var b = Math.sqrt(h*h - a*a);
+  document.getElementById('co-detail').textContent =
+    'AC² = '+nb(h)+'² '+M+' '+nb(a)+'² = '+nb(h*h)+' '+M+' '+nb(a*a)+' = '+nb(h*h-a*a)+'  →  AC = √'+nb(h*h-a*a);
+  res.innerHTML = nb2(b)+'<span class="result-unit">cm</span>';
+  var exact = Math.abs(b - Math.round(b)) < 1e-9;
+  sub.textContent = exact
+    ? 'Tombe juste : '+nb(a)+', '+nb(b)+' et '+nb(h)+' forment un triplet pythagoricien.'
+    : 'Valeur arrondie au centième. La valeur exacte est √'+nb(h*h-a*a)+'.';
+
+  var ex = {
+    pts:[{x:0,y:0},{x:a,y:0},{x:0,y:b}], noms:['A','B','C'], droitEn:0,
+    cotes:[
+      { de:0, a:1, texte:'AB = '+nb(a)+' cm' },
+      { de:0, a:2, texte:'AC = '+nb2(b)+' cm', inconnu:true },
+      { de:1, a:2, texte:'BC = '+nb(h)+' cm' }
+    ]
+  };
+  document.getElementById('co-svg').innerHTML = dessin(ex, 320, 240, {});
+}
+
+function calcRec(){
+  var L = [val('re-1'), val('re-2'), val('re-3')].map(function(z){ return z <= 0 ? 1 : z; });
+  var tri = L.slice().sort(function(u,w){ return u - w; });
+  var p = tri[0], q = tri[1], r = tri[2];
+  var somme = p*p + q*q, grand = r*r;
+  var possible = (p + q > r + 1e-9);
+
+  var code = document.getElementById('re-code');
+  var det  = document.getElementById('re-detail');
+  var comp = document.getElementById('re-compare');
+  var verd = document.getElementById('re-verdict');
+
+  if (!possible) {
+    code.textContent = 'Triangle impossible';
+    det.textContent = nb(p)+' + '+nb(q)+' = '+nb(p+q)+' n\u2019atteint pas '+nb(r)+' : ces trois longueurs ne forment pas un triangle.';
+    comp.innerHTML = '';
+    verd.className = 'verdict pas';
+    verd.textContent = 'Pas de triangle possible';
+    document.getElementById('re-svg').innerHTML =
+      '<text x="160" y="115" text-anchor="middle" font-size="15" fill="'+INCONNU+'">Triangle impossible</text>'
+    + '<text x="160" y="140" text-anchor="middle" font-size="13" fill="'+GRIS+'">le plus grand côté dépasse la somme des deux autres</text>';
+    return;
+  }
+
+  var rectangle = Math.abs(grand - somme) < 1e-9;
+  code.textContent = 'Plus grand côté : '+nb(r)+' cm';
+  det.textContent = 'On compare son carré à la somme des carrés des deux autres.';
+  comp.innerHTML =
+      '<div class="l"><span>carré du plus grand côté</span><b>'+nb(r)+'² = '+nb(grand)+'</b></div>'
+    + '<div class="l"><span>somme des deux autres carrés</span><b>'+nb(q)+'² + '+nb(p)+'² = '+nb(somme)+'</b></div>'
+    + '<div class="l"><span>écart</span><b>'+nb(Math.abs(grand - somme))+'</b></div>';
+  verd.className = 'verdict ' + (rectangle ? 'oui' : 'non');
+  verd.textContent = rectangle
+    ? 'Égalité : le triangle est rectangle'
+    : 'Pas d\u2019égalité : le triangle n\u2019est pas rectangle';
+
+  var x = (r*r + q*q - p*p) / (2*r);
+  var y = Math.sqrt(Math.max(q*q - x*x, 0.01));
+  var ex = {
+    pts:[{x:0,y:0},{x:r,y:0},{x:x,y:y}], noms:['A','B','C'], droitEn:null,
+    cotes:[
+      { de:0, a:1, texte:nb(r)+' cm' },
+      { de:0, a:2, texte:nb(q)+' cm' },
+      { de:1, a:2, texte:nb(p)+' cm' }
+    ]
+  };
+  document.getElementById('re-svg').innerHTML = dessin(ex, 320, 240, {});
+}
+
+/* ═══ MODE DÉFI ════════════════════════════════════════════════ */
+/* Toute la boucle est dans lp-defi.js. Ce qui reste ici est du contenu :
+   les générateurs (au-dessus, inchangés), les libellés, les indices. */
+
+/* ⚠ INDICES DU SECOND ESSAI — PREMIER JET, À RELIRE
+   Ce sont les seules phrases nouvelles de la migration. Elles sont données
+   après un premier essai raté, dans les deux modes, avant la correction.
+   Un indice doit désigner l'erreur probable sans donner la réponse.
+   Si tu en supprimes un, le moteur reste correct : il annonce simplement
+   qu'il reste un essai. */
+var famIndices = {
+  hyp:'Tu cherches l\u2019hypoténuse : c\u2019est le côté opposé à l\u2019angle droit, '
+    + 'toujours le plus long des trois. On ADDITIONNE les carrés des deux '
+    + 'autres côtés, puis on prend la racine carrée du résultat.',
+  cot:'Tu cherches un côté de l\u2019angle droit, pas l\u2019hypoténuse : ici on '
+    + 'SOUSTRAIT le carré du côté connu au carré de l\u2019hypoténuse, avant de '
+    + 'prendre la racine carrée. Vérifie que ton résultat reste plus court '
+    + 'que l\u2019hypoténuse.',
+  rec:'Compare le carré du plus GRAND côté à la somme des carrés des deux '
+    + 'autres — pas n\u2019importe quel côté au numérateur. Une égalité signifie '
+    + 'rectangle, un écart signifie pas rectangle.'
+};
+
+/* Adapte un générateur existant à l'objet question normalisé.
+   Les générateurs eux-mêmes n'ont pas bougé d'une ligne. */
+function adapter(fam){
+  return function(){
+    var ex = generateurs[fam]();
+    var estRec = (fam === 'rec');
+
+    /* Piège de nommage propre à Pythagore (absent de Thalès, qui utilise
+       ex.mesures en interne) : ex.cotes désigne ici le tableau géométrique
+       consommé par dessin()/etiquettesDe(), pas le texte de données attendu
+       par le moteur. On le sauvegarde avant de réaffecter le champ. */
+    var cotesGeo = ex.cotes;
+
+    ex.enonce = ex.question;
+    ex.cotes  = ex.donnees;              // à partir d'ici : texte pour le moteur
+    ex.rappel = ex.hint;                 // la propriété, avant de répondre
+    ex.hint   = famIndices[fam];         // l'indice, après un essai raté
+    ex.comp   = estRec ? 'C4' : 'C3';    // valider / réaliser
+
+    if (estRec) {
+      ex.type  = 'choix';
+      ex.choix = [
+        { val:'oui', label:'Oui, il est rectangle' },
+        { val:'non', label:'Non, il ne l\u2019est pas' }
+      ];
+    } else {
+      ex.type  = 'nombre';
+      ex.label = ex.inconnue + ' =';
+      ex.unite = 'cm';
+      ex.tol   = 0.05;
+    }
+
+    /* Une seule figure, deux formats. Mêmes réglages qu'à l'ancienne fiche :
+       les valeurs restent affichées, seule l'inconnue porte un « ? ».
+       On reconstitue l'objet géométrique attendu par dessin() avec le
+       tableau cotesGeo sauvegardé plus haut : dessin() lui-même n'a pas
+       bougé d'une ligne et ignore tout ce qu'on ajoute par ailleurs à ex. */
+    ex.figure = function(o){
+      var figEx = { pts:ex.pts, noms:ex.noms, droitEn:ex.droitEn, cotes:cotesGeo };
+      return o && o.fiche
+        ? dessin(figEx, 200, 160, { fs:11, offCote:11, offSom:12, tAngle:10 })
+        : dessin(figEx, 320, 240, {});
+    };
+    delete ex.svg;
+    return ex;
+  };
+}
+
+var defi = LP.defi.creer({
+  outil:    'pythagore',
+  serie:    0,                        // flux continu ; mettre 10 pour une série
+  essaisMax: 2,
+  melange:  { label:'Mélange', couleur:'purple' },
+  modePlus: function(){ return currentMode === 'defiplus'; },
+  familles: [
+    { value:'hyp', label:'Hypoténuse',              couleur:'pink', gen:adapter('hyp'),
+      nom:famNoms.hyp, consigne:famConsignes.hyp, comp:'C3' },
+    { value:'cot', label:'Côté de l\u2019angle droit', couleur:'blue', gen:adapter('cot'),
+      nom:famNoms.cot, consigne:famConsignes.cot, comp:'C3' },
+    { value:'rec', label:'Réciproque',              couleur:'green', gen:adapter('rec'),
+      nom:famNoms.rec, consigne:famConsignes.rec, comp:'C4' }
+  ]
+});
+
+/* ═══ FICHE IMPRIMABLE ══════════════════════════════════════════════ */
+LP.ficheModal.init({
+  familles: [
+    { value:'hyp', label:"Calculer l'hypoténuse" },
+    { value:'cot', label:"Calculer un côté de l'angle droit" },
+    { value:'rec', label:"Réciproque : le triangle est-il rectangle ?" }
+  ],
+  onConfirm: function(plan, sel){
+    var isPlus = (currentMode === 'defiplus');
+    LP.fiche({
+      icon:'\u{1F4D0}',
+      title: (sel.length === 3) ? 'Théorème de Pythagore'
+           : 'Pythagore — ' + sel.map(function(f){ return famNoms[f]; }).join(', '),
+      subtitle:'3e prépa-métiers · CAP · 2de Bac Pro',
+      modeLabel: isPlus ? 'Défi ⁺' : 'Mode défi',
+      isPlus: isPlus,
+      tolerance:'± 0,05 cm',
+      accent:'#993556',
+      answerLabel:'Réponse :',
+      unit:'',
+      aide: sel.map(function(f){ return famAides[f]; }).join('<br>'),
+      questions: defi.questionsFiche(plan)      // même objet que le défi
+    });
+  }
+});
+
+/* ═══ EXPLORATEUR — PUZZLE DE PERIGAL ═══════════════════════════════════ */
+/* Animation pas à pas, à suivre au tableau pendant que les élèves construisent
+   sur leur feuille. Repris de l'animation autonome « découpage de Perigal »,
+   réécrit en ES5 et préfixé pg- pour cohabiter avec le moteur de défi.
+   ⚠ TEXTES DES ÉTAPES : PREMIER JET, À RELIRE (voir aussi la fiche PDF). */
+var PG = (function(){
+  var svg = document.getElementById('pg-svg');
+  if (!svg) return { stop:function(){}, actif:function(){ return false; } };
+  var NS = 'http://www.w3.org/2000/svg';
+  var tSlider = document.getElementById('pg-t'), shape = document.getElementById('pg-shape');
+  var playBtn = document.getElementById('pg-play');
+  var elPhase = document.getElementById('pg-phase'), elCap = document.getElementById('pg-caption'), elTip = document.getElementById('pg-tip');
+
+  /* ---------- Déroulé ---------- */
+  var STEPS = [
+    {id:'tri',   dur:10,  phase:'1 · Le triangle',
+     cap:'Trace un triangle ABC <b>rectangle en A</b> : trace d\'abord l\'angle droit en A avec ton équerre, puis les côtés [AC] et [AB], et enfin l\'hypoténuse [BC].',
+     tip:'Place A à 8 cm du haut de la feuille. Choisis AC et AB entre 4 cm et 6 cm, de longueurs différentes.'},
+    {id:'sqAC',  dur:5,   phase:'2 · Les trois carrés',
+     cap:'Construis le carré de côté [AC], <b>à l\'extérieur</b> du triangle, puis colorie-le en <span class="pg-r">rouge</span>. Son aire vaut <span class="pg-r">AC²</span>.',
+     tip:'Avec l\'équerre, trace les perpendiculaires à [AC] en A et en C, puis reporte la longueur AC au compas.'},
+    {id:'sqAB',  dur:5,   phase:'2 · Les trois carrés',
+     cap:'Construis le carré de côté [AB] à l\'extérieur du triangle et colorie-le en <span class="pg-g">vert</span>. Son aire vaut <span class="pg-g">AB²</span>.',
+     tip:'Même méthode : équerre pour les angles droits, compas pour reporter la longueur.'},
+    {id:'sqBC',  dur:5,   phase:'2 · Les trois carrés',
+     cap:'Construis le carré de côté [BC] à l\'extérieur du triangle et colorie-le en <span class="pg-b">bleu</span>. Son aire vaut <span class="pg-b">BC²</span>.',
+     tip:'Colorie légèrement : c\'est dans ce carré qu\'on va reconstituer le puzzle. Avant de continuer : à ton avis, le rouge et le vert posés sur le bleu vont-ils laisser un vide, le couvrir juste, ou dépasser ?'},
+    {id:'diag',  dur:5,   phase:'3 · Découper le carré vert',
+     cap:'Choisis le <b>plus grand</b> des deux carrés de l\'angle droit (ici le <span class="pg-g">vert</span>). Trace ses deux diagonales au crayon : elles se coupent au <b>centre O</b> du carré.',
+     tip:'Attention : si tu choisis le plus petit carré, le puzzle ne se referme pas !'},
+    {id:'par',   dur:5,   phase:'3 · Découper le carré vert',
+     cap:'Trace la droite qui passe par O et qui est <b>parallèle à (BC)</b>, c\'est-à-dire parallèle à un côté du carré <span class="pg-b">bleu</span>.',
+     tip:'Fais glisser ton équerre le long de la règle pour tracer une parallèle.'},
+    {id:'perp',  dur:5,   phase:'3 · Découper le carré vert',
+     cap:'Trace la droite qui passe par O et qui est <b>perpendiculaire à (BC)</b>. Le carré vert est maintenant partagé en 4 morceaux : numérote-les (2), (3), (4) et (5).',
+     tip:'Les deux droites forment un angle droit en O. Tu peux effacer les diagonales.'},
+    {id:'cutG',  dur:2.5, phase:'3 · Découper le carré vert',
+     cap:'Découpe soigneusement le carré <span class="pg-g">vert</span>, puis les 4 morceaux le long des deux droites.',
+     tip:'Découpe bien sur les traits : plus tu es précis, mieux le puzzle s\'assemblera.'},
+    {id:'cutR',  dur:2.5, phase:'4 · Découper le carré rouge',
+     cap:'Découpe le carré <span class="pg-r">rouge</span> et numérote-le (1).',
+     tip:'Tu as maintenant 5 pièces : le carré rouge et les 4 morceaux verts.'},
+    {id:'m1',    dur:3,   phase:'5 · Le puzzle dans le carré bleu',
+     cap:'Place la pièce (1), le carré <span class="pg-r">rouge</span>, au centre du carré <span class="pg-b">bleu</span>, <b>sans la faire tourner</b>.',
+     tip:'Ses côtés restent parallèles à ceux qu\'il avait au départ.'},
+    {id:'m2',    dur:3,   phase:'5 · Le puzzle dans le carré bleu',
+     cap:'Fais glisser la pièce (2) dans un coin du carré bleu, toujours sans la tourner : l\'angle droit qui était en O se place dans le coin.',
+     tip:''},
+    {id:'m3',    dur:3,   phase:'5 · Le puzzle dans le carré bleu',
+     cap:'Même chose avec la pièce (3), dans un autre coin.', tip:''},
+    {id:'m4',    dur:3,   phase:'5 · Le puzzle dans le carré bleu',
+     cap:'Puis avec la pièce (4).', tip:''},
+    {id:'m5',    dur:3,   phase:'5 · Le puzzle dans le carré bleu',
+     cap:'La pièce (5) complète le puzzle : il n\'y a ni trou ni chevauchement. Colle les pièces.', tip:''},
+    {id:'end',   dur:3,   phase:'6 · Conclusion',
+     cap:'Les pièces du carré <span class="pg-r">rouge</span> et du carré <span class="pg-g">vert</span> recouvrent exactement le carré <span class="pg-b">bleu</span>, sans trou ni chevauchement.',
+     tip:''},
+    {id:'sheet', dur:2,   phase:'6 · Conclusion',
+     cap:'Agrandissons la feuille vers le bas pour écrire ce que l\'on vient de montrer…', tip:''},
+    {id:'sum',   dur:5,   phase:'6 · Conclusion',
+     cap:'Aire du carré <span class="pg-r">rouge</span> + aire du carré <span class="pg-g">vert</span> = aire du carré <span class="pg-b">bleu</span>.',
+     tip:'Les trois carrés ont gardé leur vraie taille.'},
+    {id:'final', dur:3,   phase:'6 · Conclusion',
+     cap:'Le théorème de Pythagore est une simple <b>addition d\'aires</b> : dans un triangle rectangle, <b><span class="pg-r">AC²</span> + <span class="pg-g">AB²</span> = <span class="pg-b">BC²</span></b>. Le carré de l\'hypoténuse est égal à la somme des carrés des côtés de l\'angle droit.',
+     tip:'Avec le curseur « Forme du triangle », vérifie que ça marche pour d\'autres triangles rectangles.'}
+  ];
+  var starts = [], TOTAL = 0, idx = {};
+  STEPS.forEach(function(s, i){ starts.push(TOTAL); TOTAL += s.dur; idx[s.id] = i; });
+  var T = 0, playing = false, last = null, stopAt = null, jeton = 0;
+
+  function clamp(x){ return Math.max(0, Math.min(1, x)); }
+  function ease(x){ return x < .5 ? 4*x*x*x : 1 - Math.pow(-2*x + 2, 3)/2; }
+  function P(id){ return clamp((T - starts[idx[id]]) / STEPS[idx[id]].dur); }   // avancement d'une étape (0..1)
+  function sub_(k, a, b){ return clamp((k - a)/(b - a)); }                       // sous-phase
+  function currentStep(){ for (var i = STEPS.length-1; i >= 0; i--) if (T >= starts[i] - 1e-6) return i; return 0; }
+
+  /* ---------- Géométrie ---------- */
+  var a = 100, C = [0,0], B = [a,0];
+  function add(p,q){ return [p[0]+q[0], p[1]+q[1]]; }
+  function sub(p,q){ return [p[0]-q[0], p[1]-q[1]]; }
+  function mul(p,k){ return [p[0]*k, p[1]*k]; }
+  function dot(p,q){ return p[0]*q[0] + p[1]*q[1]; }
+  function len(p){ return Math.sqrt(p[0]*p[0] + p[1]*p[1]); }
+  function lerp(p,q,k){ return add(p, mul(sub(q,p), k)); }
+  function squareOn(Pp, Q, R){ var d = sub(Q,Pp), n = [d[1], -d[0]]; if (dot(n, sub(R,Pp)) > 0) n = mul(n,-1); return [Pp, Q, add(Q,n), add(Pp,n)]; }
+  function clip(poly, f){
+    var o = [], i, p, q, fp, fq;
+    for (i = 0; i < poly.length; i++) {
+      p = poly[i]; q = poly[(i+1) % poly.length]; fp = f(p); fq = f(q);
+      if (fp >= 0) o.push(p);
+      if ((fp >= 0) !== (fq >= 0)) o.push(lerp(p, q, fp/(fp - fq)));
+    }
+    return o;
+  }
+  function centroid(poly){ return mul(poly.reduce(function(s,p){ return add(s,p); }, [0,0]), 1/poly.length); }
+  function unit(p){ return mul(p, 1/len(p)); }
+  function ext(o){ var i, k; for (i = 1; i < arguments.length; i++) for (k in arguments[i]) o[k] = arguments[i][k]; return o; }
+  function nbf(x){ return x.toFixed(2).replace('.', ','); }
+
+  var G;
+  function build(){
+    var th = parseFloat(shape.value)*Math.PI/180;
+    var AC = a*Math.cos(th), AB = a*Math.sin(th);
+    var A = [AC*Math.cos(th), -AC*Math.sin(th)];
+    var sqAC = squareOn(A,C,B), sqAB = squareOn(A,B,C), sqBC = squareOn(C,B,A);
+    var O = centroid(sqAB), triC = centroid([A,B,C]);
+    var pieces = [{poly:sqAC, d:sub([a/2,a/2], centroid(sqAC)), label:'1', fill:'#e8492b', stroke:'#a52a12', step:'m1',
+                   lift:mul(unit(sub(centroid(sqAC), triC)), 3.5)}];
+    [{sx:-1,sy:-1,l:'2',T:[a,a],s:'m2'},{sx:1,sy:-1,l:'3',T:[0,a],s:'m3'},{sx:-1,sy:1,l:'4',T:[a,0],s:'m4'},{sx:1,sy:1,l:'5',T:[0,0],s:'m5'}]
+      .forEach(function(q){
+        var p = clip(sqAB, function(z){ return q.sx*(z[0]-O[0]); });
+        p = clip(p, function(z){ return q.sy*(z[1]-O[1]); });
+        pieces.push({poly:p, d:sub(q.T,O), label:q.l, fill:'#4a8a25', stroke:'#244d0e', step:q.s, lift:mul(unit(sub(centroid(p),O)), 3.5)});
+      });
+    var all = sqAC.concat(sqAB, sqBC), xs = all.map(function(p){ return p[0]; }), ys = all.map(function(p){ return p[1]; }), m = 16;
+    var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs), minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+    var vb0 = [minX - m, minY - m, maxX - minX + 2*m, maxY - minY + 2*m + 20];
+    /* Ligne « carré + carré = carré » (vraie taille), sous la figure */
+    var gap = 18, rowW = AC + AB + a + 2*gap, cx = vb0[0] + vb0[2]/2, x0 = cx - rowW/2, yb = 2*a + 40;
+    function ang(sq){ var d = sub(sq[1], sq[0]); var r = Math.atan2(d[1], d[0])*180/Math.PI; r = ((r % 90) + 90) % 90; if (r > 45) r -= 90; return r; }
+    var row = [
+      {from:centroid(sqAC), r:ang(sqAC), s:AC, to:[x0 + AC/2, yb - AC/2], fill:'#e8492b', stroke:'#a52a12', lab:'AC²'},
+      {from:O,              r:ang(sqAB), s:AB, to:[x0 + AC + gap + AB/2, yb - AB/2], fill:'#4a8a25', stroke:'#244d0e', lab:'AB²'},
+      {from:[a/2,a/2],      r:0,         s:a,  to:[x0 + AC + AB + 2*gap + a/2, yb - a/2], fill:'#4a7bf0', stroke:'#2448b8', lab:'BC²'}
+    ];
+    var ops = [{s:'+', p:[x0 + AC + gap/2, yb - Math.min(AC,AB)/2]}, {s:'=', p:[x0 + AC + gap + AB + gap/2, yb - Math.min(AB,a)/2]}];
+    var left = Math.min(vb0[0], x0 - m), right = Math.max(vb0[0] + vb0[2], x0 + rowW + m), bottom = yb + 32;
+    var vb1 = [left, vb0[1], right - left, bottom - vb0[1]];
+    G = {A:A, AC:AC, AB:AB, sqAC:sqAC, sqAB:sqAB, sqBC:sqBC, O:O, pieces:pieces, vb0:vb0, vb1:vb1, row:row, ops:ops, yb:yb, cx:cx};
+    var k = 5/a;
+    document.getElementById('pg-vals').textContent =
+      'AC ≈ ' + nbf(AC*k) + '   AB ≈ ' + nbf(AB*k) + '   BC = 5   →   AC² + AB² ≈ '
+      + nbf(Math.pow(AC*k,2)) + ' + ' + nbf(Math.pow(AB*k,2)) + ' = 25';
+  }
+
+  /* ---------- Dessin ---------- */
+  function pts(poly){ return poly.map(function(p){ return p[0].toFixed(2) + ',' + p[1].toFixed(2); }).join(' '); }
+  function el(name, attrs, parent){ var e = document.createElementNS(NS, name); for (var k in attrs) e.setAttribute(k, attrs[k]); (parent || svg).appendChild(e); return e; }
+  function text(x, y, s, attrs){ var e = el('text', ext({x:x, y:y, 'text-anchor':'middle', 'dominant-baseline':'middle', 'font-family':'Arial,sans-serif'}, attrs)); e.textContent = s; return e; }
+  function partial(points, k){ // début d'une ligne brisée (fraction k de sa longueur)
+    if (k <= 0) return [points[0], points[0]];
+    var L = [], tot = 0, i, l;
+    for (i = 1; i < points.length; i++) { l = len(sub(points[i], points[i-1])); L.push(l); tot += l; }
+    var rem = k*tot, out = [points[0]];
+    for (i = 1; i < points.length; i++) {
+      if (rem >= L[i-1]) { out.push(points[i]); rem -= L[i-1]; }
+      else { out.push(lerp(points[i-1], points[i], rem/L[i-1])); break; }
+    }
+    return out;
+  }
+  function stroke(points, k, attrs){ if (k <= 0) return; el('polyline', ext({points:pts(partial(points,k)), fill:'none', 'stroke-linecap':'round', 'stroke-linejoin':'round'}, attrs)); }
+  /* dessin d'un carré : côtés manquants tracés puis remplissage */
+  function drawSquare(sq, k, fill, col, op){
+    op = op || 0.9;
+    var kl = sub_(k,0,0.7), kf = sub_(k,0.72,1);
+    if (kf > 0) el('polygon', {points:pts(sq), fill:fill, 'fill-opacity':op*kf, stroke:'none'});
+    stroke([sq[1],sq[2],sq[3],sq[0]], ease(kl), {stroke:col, 'stroke-width':0.8});
+    return kf;
+  }
+
+  /* couleur intermédiaire */
+  function hex(h){ return [1,3,5].map(function(i){ return parseInt(h.substr(i,2), 16); }); }
+  function mix(c1, c2, k){ var a1 = hex(c1), a2 = hex(c2); return 'rgb(' + a1.map(function(v,i){ return Math.round(v + (a2[i]-v)*k); }).join(',') + ')'; }
+
+  function render(){
+    var g = G; svg.innerHTML = '';
+    var kSheet = P('sheet'), kSum = P('sum'), kFinal = P('final');
+    var ks = ease(kSheet), vb = g.vb0.map(function(v,i){ return v + (g.vb1[i]-v)*ks; });
+    svg.setAttribute('viewBox', vb.join(' '));
+    var defs = el('defs', {});
+    var pat = el('pattern', {id:'pg-grid', width:5, height:5, patternUnits:'userSpaceOnUse', x:0, y:0}, defs);
+    el('path', {d:'M5 0H0V5', fill:'none', stroke:'#e3e8f2', 'stroke-width':0.35}, pat);
+    el('rect', {x:vb[0], y:vb[1], width:vb[2], height:vb[3], fill:'#fff'});
+    el('rect', {x:vb[0], y:vb[1], width:vb[2], height:vb[3], fill:'url(#pg-grid)'});
+    if (kSheet > 0) el('line', {x1:vb[0], y1:vb[1]+vb[3]-0.3, x2:vb[0]+vb[2], y2:vb[1]+vb[3]-0.3, stroke:'#c9cfdb', 'stroke-width':0.6});
+    var f = el('filter', {id:'pg-sh', x:'-20%', y:'-20%', width:'140%', height:'140%'}, defs);
+    el('feDropShadow', {dx:0.8, dy:1.2, stdDeviation:1, 'flood-opacity':0.35}, f);
+    var f2 = el('filter', {id:'pg-sh2', x:'-10%', y:'-30%', width:'120%', height:'160%'}, defs);
+    el('feDropShadow', {dx:0, dy:0.8, stdDeviation:1.4, 'flood-opacity':0.3}, f2);
+    var cp = el('clipPath', {id:'pg-cpAB'}, defs); el('polygon', {points:pts(g.sqAB)}, cp);
+    var fs = 5.2;
+    var kTri = P('tri'), kAC = P('sqAC'), kAB = P('sqAB'), kBC = P('sqBC');
+    var kD = P('diag'), kPar = P('par'), kPerp = P('perp');
+    var kD2 = sub_(kD,0,0.45), kPar2 = sub_(kPar,0,0.5), kPerp2 = sub_(kPerp,0,0.5);   // partie « tracé » des étapes
+    var kCG = P('cutG'), kCR = P('cutR'), kEnd = P('end');
+
+    /* Carré bleu */
+    drawSquare(g.sqBC, sub_(kBC,0,0.55), '#4a7bf0', '#2448b8', 0.35);
+    if (kCR > 0) el('polygon', {points:pts(g.sqAC), fill:'#fff', 'fill-opacity':0.6, stroke:'#e8492b', 'stroke-width':0.5, 'stroke-dasharray':'2 1.5'});
+    if (kCG > 0) el('polygon', {points:pts(g.sqAB), fill:'#fff', 'fill-opacity':0.6, stroke:'#3f7f1e', 'stroke-width':0.5, 'stroke-dasharray':'2 1.5'});
+    if (kCR <= 0) drawSquare(g.sqAC, sub_(kAC,0,0.55), '#e8492b', '#a52a12');
+    if (kCG <= 0) drawSquare(g.sqAB, sub_(kAB,0,0.55), '#4a8a25', '#244d0e');
+
+    /* Diagonales et centre */
+    var op, hl, k, r, ra;
+    if (kD2 > 0 && kCG <= 0) {
+      op = 1 - sub_(kPerp2,0.6,1)*0.75;
+      stroke([g.sqAB[0], g.sqAB[2]], ease(sub_(kD2,0,0.45)), {stroke:'#fff', 'stroke-width':0.5, 'stroke-dasharray':'1.6 1.2', opacity:op});
+      stroke([g.sqAB[1], g.sqAB[3]], ease(sub_(kD2,0.45,0.9)), {stroke:'#fff', 'stroke-width':0.5, 'stroke-dasharray':'1.6 1.2', opacity:op});
+    }
+    var O = g.O, big = g.AB;
+    if (kPar2 > 0 && kCG <= 0) {
+      hl = Math.sin(Math.PI*sub_(kPar2,0,0.5));
+      if (hl > 0.01) el('line', {x1:C[0], y1:C[1], x2:B[0], y2:B[1], stroke:'#ffb000', 'stroke-width':2.2, opacity:hl, 'stroke-linecap':'round'});
+      k = ease(sub_(kPar2,0.3,1));
+      el('line', {x1:O[0]-big*k, y1:O[1], x2:O[0]+big*k, y2:O[1], stroke:'#111', 'stroke-width':0.9, 'clip-path':'url(#pg-cpAB)'});
+    }
+    if (kPerp2 > 0 && kCG <= 0) {
+      hl = Math.sin(Math.PI*sub_(kPerp2,0,0.5));
+      if (hl > 0.01) el('line', {x1:0, y1:0, x2:0, y2:a, stroke:'#ffb000', 'stroke-width':2.2, opacity:hl, 'stroke-linecap':'round'});
+      k = ease(sub_(kPerp2,0.2,0.8));
+      el('line', {x1:O[0], y1:O[1]-big*k, x2:O[0], y2:O[1]+big*k, stroke:'#111', 'stroke-width':0.9, 'clip-path':'url(#pg-cpAB)'});
+      r = 3.2; ra = sub_(kPerp2,0.75,0.9);
+      if (ra > 0) el('polyline', {points:pts([[O[0]+r,O[1]],[O[0]+r,O[1]-r],[O[0],O[1]-r]]), fill:'none', stroke:'#111', 'stroke-width':0.5, opacity:ra});
+    }
+    if (kD2 > 0.85 && kCG <= 0) {
+      el('circle', {cx:O[0], cy:O[1], r:1.2, fill:'#111'});
+      text(O[0]-3.2, O[1]-3.4, 'O', {'font-size':fs*0.85, fill:'#111', 'font-weight':700, 'paint-order':'stroke', stroke:'#fff', 'stroke-width':0.8});
+    }
+
+    /* Pièces découpées / déplacées */
+    g.pieces.forEach(function(p, i){
+      var isRed = (i === 0), kCut = isRed ? kCR : kCG, c;
+      if (kCut <= 0) {
+        if (!isRed && kPerp2 > 0.9) { c = centroid(p.poly); text(c[0], c[1], '('+p.label+')', {'font-size':fs*0.85, fill:'#fff', 'font-weight':600, opacity:sub_(kPerp2,0.9,1)}); }
+        return;
+      }
+      var kLift = ease(sub_(kCut,0,0.6)), kMove = ease(P(p.step));
+      var off = lerp(mul(p.lift,kLift), p.d, kMove);
+      var moved = p.poly.map(function(z){ return add(z,off); });
+      var flying = kMove > 0 && kMove < 1;
+      el('polygon', {points:pts(moved), fill:p.fill, stroke:p.stroke, 'stroke-width':flying ? 1 : 0.6, 'stroke-linejoin':'round', filter:(kMove < 1) ? 'url(#pg-sh)' : 'none'});
+      c = centroid(moved);
+      text(c[0], c[1], '('+p.label+')', {'font-size':fs*0.85, fill:'#fff', 'font-weight':600});
+    });
+
+    /* Triangle (tracé progressif) */
+    var A = g.A;
+    if (kTri > 0) {
+      if (kTri >= 1) el('polygon', {points:pts([A,C,B]), fill:'#fff', 'fill-opacity':0.85, stroke:'none'});
+      stroke([A,C], ease(sub_(kTri,0.06,0.16)), {stroke:'#e8492b', 'stroke-width':1.1});
+      stroke([A,B], ease(sub_(kTri,0.40,0.50)), {stroke:'#3f7f1e', 'stroke-width':1.1});
+      stroke([B,C], ease(sub_(kTri,0.72,0.80)), {stroke:'#2f62d8', 'stroke-width':1.1});
+      ra = sub_(kTri,0,0.06);
+      var u1 = mul(sub(C,A), 4/g.AC), u2 = mul(sub(B,A), 4/g.AB);
+      if (ra > 0) el('polyline', {points:pts([add(A,u1), add(add(A,u1),u2), add(A,u2)]), fill:'none', stroke:'#1d1d1f', 'stroke-width':0.55, opacity:ra});
+      var lab = function(Q, s, dx, dy, o){ if (o > 0) text(Q[0]+dx, Q[1]+dy, s, {'font-size':fs, fill:'#2448b8', 'font-weight':700, opacity:o}); };
+      lab(A,'A',-2,-4.5,ra); lab(C,'C',-4.5,-2,sub_(kTri,0.13,0.17)); lab(B,'B',4.5,-2,sub_(kTri,0.47,0.51));
+    }
+    /* Étiquettes d'aires */
+    function outer(sq, Q1, Q2){ var c = centroid(sq), d = sub(c, centroid([Q1,Q2])); return add(c, mul(unit(d), len(d)+6)); }
+    var tAC = outer(g.sqAC,A,C), tAB = outer(g.sqAB,A,B);
+    var oAC = sub_(kAC,0.42,0.55), oAB = sub_(kAB,0.42,0.55), oBC = sub_(kBC,0.42,0.55);
+    if (oAC > 0) text(tAC[0], tAC[1], 'AC²', {'font-size':fs*1.1, fill:'#e8492b', 'font-weight':700, opacity:oAC});
+    if (oAB > 0) text(tAB[0], tAB[1], 'AB²', {'font-size':fs*1.1, fill:'#3f7f1e', 'font-weight':700, opacity:oAB});
+    if (oBC > 0) text(a/2, a+8, 'BC²', {'font-size':fs*1.1, fill:'#2448b8', 'font-weight':700, opacity:oBC});
+
+    /* ---------- Sous-titres qui glissent à leur place ---------- */
+    /* kIn : 0→0.2 apparition en sous-titre, 0.2→0.55 lecture, 0.55→1 glissement ; kOut : disparition */
+    var subY = g.vb0[1] + g.vb0[3] - 11, subX = g.vb0[0] + g.vb0[2]/2;
+    function fly(sp, kIn, kOut){
+      if (kIn <= 0 || kOut >= 1) return;
+      var ap = ease(sub_(kIn,0,0.2)), gl = ease(sub_(kIn,0.55,1)), opa = ap*(1-kOut);
+      var n = sp.lines.length, maxc = Math.max.apply(null, sp.lines.map(function(l){ return l.length; }));
+      var subText = sp.sub || sp.lines.join(' ');
+      /* en sous-titre : une seule ligne, aussi grande que possible */
+      var F = Math.min(8.5, 0.9*g.vb0[2]/(subText.length*0.56));
+      var size = F + (sp.size - F)*gl;
+      var at = lerp([subX, subY + (1-ap)*4], sp.at, gl), rot = (sp.rot || 0)*gl;
+      var grp = el('g', {transform:'translate(' + at[0].toFixed(2) + ' ' + at[1].toFixed(2) + ') rotate(' + rot.toFixed(2) + ')', opacity:opa});
+      if (gl < 1) { // bandeau de sous-titre
+        var wS = subText.length*0.56*F + 10, hS = F*1.7, wE = maxc*0.56*sp.size + 4, hE = n*1.2*sp.size + 2;
+        var w = wS + (wE-wS)*gl, h = hS + (hE-hS)*gl;
+        el('rect', {x:-w/2, y:-h/2, width:w, height:h, rx:h*0.3, fill:'#fff', stroke:'#d6d9e0', 'stroke-width':0.4, opacity:1-gl, filter:'url(#pg-sh2)'}, grp);
+      }
+      var lines = gl < 0.5 ? [subText] : sp.lines;   // une ligne en sous-titre, plusieurs à l'arrivée
+      var fill = mix(sp.subColor || sp.color, sp.color, gl);
+      lines.forEach(function(l, i){
+        var y = (i - (lines.length-1)/2)*1.2*size;
+        var t = text(0, y, l, {'font-size':size, 'font-weight':700, fill:fill, 'paint-order':'stroke',
+          stroke:sp.halo || '#fff', 'stroke-width':(sp.haloW || 1.2)*gl, 'stroke-linejoin':'round'});
+        grp.appendChild(t);
+      });
+    }
+    function alongSpec(P1, P2, R, dist){
+      var M = centroid([P1,P2]), d = sub(P2,P1), n = unit([d[1], -d[0]]);
+      if (dot(n, sub(R,M)) > 0) n = mul(n,-1);
+      var deg = Math.atan2(d[1], d[0])*180/Math.PI; if (deg > 90) deg -= 180; if (deg < -90) deg += 180;
+      return {at:add(M, mul(n,dist)), rot:deg};
+    }
+    var S = 4.6; // taille des étiquettes une fois en place
+    var sAC = alongSpec(A,C,B,4.6), sAB = alongSpec(A,B,C,4.6), sBC = alongSpec(B,C,A,5.2);
+    fly({lines:['côté de l\'angle droit'], at:sAC.at, rot:sAC.rot, size:S, color:'#c23a1f'}, sub_(kTri,0.16,0.40), sub_(kAC,0,0.12));
+    fly({lines:['côté de l\'angle droit'], at:sAB.at, rot:sAB.rot, size:S, color:'#2f6b14'}, sub_(kTri,0.50,0.72), sub_(kAB,0,0.12));
+    fly({lines:['hypoténuse'], at:sBC.at, rot:sBC.rot, size:S+0.6, color:'#2448b8'}, sub_(kTri,0.80,1), sub_(kBC,0,0.12));
+    var wht = {color:'#ffffff', subColor:'#1d1d1f', halo:'rgba(0,0,0,.35)', haloW:0.7};
+    var dk  = {color:'#ffffff', subColor:'#1d1d1f', halo:'#244d0e', haloW:1.1};
+    fly(ext({lines:['carré d\'un côté','de l\'angle droit'], at:centroid(g.sqAC), size:4.2}, wht, {subColor:'#c23a1f'}), sub_(kAC,0.55,1), sub_(kCR,0,0.2));
+    fly(ext({lines:['carré d\'un côté','de l\'angle droit'], at:centroid(g.sqAB), size:4.6}, wht, {subColor:'#2f6b14'}), sub_(kAB,0.55,1), sub_(kD,0,0.1));
+    fly({lines:['carré de','l\'hypoténuse'], at:[a/2,a/2], size:6, color:'#1d3c99'}, sub_(kBC,0.55,1), sub_(P('m1'),0,0.2));
+    fly(ext({lines:['centre du plus grand','carré de l\'angle droit'], at:[O[0],O[1]+9], size:4.3}, dk), sub_(kD,0.45,1), sub_(kPar,0,0.1));
+    var hx = O[0] + g.AB*0.25, vy = O[1] + g.AB*0.27, ps = 3.9;
+    fly(ext({lines:['parallèle à un côté','du carré bleu'], at:[hx,O[1]-5.3], size:ps}, dk), sub_(kPar,0.5,1), sub_(kCG,0,0.2));
+    fly(ext({lines:['parallèle à un autre côté','du carré bleu'], at:[O[0]-5.3,vy], rot:-90, size:ps}, dk), sub_(kPerp,0.5,1), sub_(kCG,0,0.2));
+
+    /* Conclusion : contour bleu qui pulse */
+    if (kEnd > 0) {
+      var pulse = 0.5 + 0.5*Math.sin(kEnd*Math.PI*4);
+      el('polygon', {points:pts(g.sqBC), fill:'none', stroke:'#2448b8', 'stroke-width':1 + 1.4*pulse});
+    }
+
+    /* ---------- Addition d'aires (vraie taille) ---------- */
+    if (kSum > 0) {
+      g.row.forEach(function(q, i){
+        var kk = ease(sub_(kSum, i*0.2, i*0.2 + 0.45)); if (kk <= 0) return;
+        var c = lerp(q.from, q.to, kk), rr = q.r*(1-kk);
+        var gr = el('g', {transform:'translate(' + c[0].toFixed(2) + ' ' + c[1].toFixed(2) + ') rotate(' + rr.toFixed(2) + ')', filter:kk < 1 ? 'url(#pg-sh)' : 'none'});
+        el('rect', {x:-q.s/2, y:-q.s/2, width:q.s, height:q.s, fill:q.fill, 'fill-opacity':0.92, stroke:q.stroke, 'stroke-width':0.7}, gr);
+        var lo = sub_(kk,0.8,1);
+        if (lo > 0) { var t = text(0, 0, q.lab, {'font-size':Math.min(9, q.s*0.22), fill:'#fff', 'font-weight':700, opacity:lo}); gr.appendChild(t); }
+      });
+      var oo = sub_(kSum,0.85,1);
+      g.ops.forEach(function(o){ if (oo > 0) text(o.p[0], o.p[1], o.s, {'font-size':11, 'font-weight':700, fill:'#1d1d1f', opacity:oo}); });
+    }
+    if (kFinal > 0) {
+      text(g.cx, g.yb+11, 'Le théorème de Pythagore est une simple addition d\'aires',
+           {'font-size':Math.min(8, 0.9*vb[2]/(56*0.55)), 'font-weight':700, fill:'#1d1d1f', opacity:sub_(kFinal,0,0.4)});
+      var o2 = sub_(kFinal,0.35,0.75);
+      if (o2 > 0) {
+        var tt = text(g.cx, g.yb+23, '', {'font-size':10, 'font-weight':800, opacity:o2});
+        [['AC²','#e8492b'],[' + ','#1d1d1f'],['AB²','#3f7f1e'],[' = ','#1d1d1f'],['BC²','#2448b8']].forEach(function(wc){
+          var sp = document.createElementNS(NS, 'tspan'); sp.setAttribute('fill', wc[1]); sp.textContent = wc[0]; tt.appendChild(sp);
+        });
+      }
+    }
+
+    /* Légende */
+    var s = currentStep(), st = STEPS[s];
+    elPhase.textContent = 'Étape ' + (s+1) + ' / ' + STEPS.length + ' — ' + st.phase;
+    elCap.innerHTML = st.cap; elTip.textContent = st.tip ? '💡 ' + st.tip : '';
+    tSlider.value = Math.round(T/TOTAL*1000);
+    var dl = document.querySelectorAll('.pg-dot'), j;
+    for (j = 0; j < dl.length; j++) dl[j].className = 'pg-dot' + (j === s ? ' on' : (j < s ? ' done' : ''));
+  }
+
+  /* ---------- Contrôles ---------- */
+  /* Un jeton par lecture : une boucle d'animation abandonnée s'arrête d'elle-même
+     au lieu de se greffer sur la suivante. */
+  var raf = window.requestAnimationFrame || function(cb){ return setTimeout(function(){ cb(Date.now()); }, 16); };
+  /* On s'arrête un millième avant la fin : la figure est complète et la
+     légende reste celle de l'étape qu'on vient de tracer. */
+  var EPS = 1e-3;
+  function finEtape(i){ return (i === STEPS.length-1) ? TOTAL : starts[i] + STEPS[i].dur - EPS; }
+  function motionOff(){ return document.documentElement.getAttribute('data-motion') === 'off'; }
+  function majBouton(){ playBtn.textContent = playing ? '❚❚ Pause' : '▶ Lecture'; }
+  function stop(){ playing = false; stopAt = null; jeton++; majBouton(); }
+  function boucle(monJeton){
+    return function(ts){
+      if (!playing || monJeton !== jeton) return;
+      if (last !== null) T += (ts - last)/1000;
+      last = ts;
+      if (stopAt !== null && T >= stopAt) { T = stopAt; stop(); render(); return; }
+      if (T >= TOTAL) { T = TOTAL; stop(); render(); return; }
+      render(); raf(boucle(monJeton));
+    };
+  }
+  function lancer(fin){
+    jeton++; playing = true; last = null; stopAt = fin; majBouton();
+    raf(boucle(jeton));
+  }
+  function play(){ if (T >= TOTAL) T = 0; lancer(null); }
+  /* Étape suivante : joue l'étape en cours (ou la suivante si elle est finie) puis s'arrête */
+  function playStep(){
+    stop();
+    var i = currentStep(), end = starts[i] + STEPS[i].dur;
+    if (T >= end - 2*EPS) { if (i+1 >= STEPS.length) { render(); return; } i++; T = starts[i]; }
+    if (motionOff()) { T = finEtape(i); render(); return; }   // animations coupées : on saute à la fin de l'étape
+    lancer(finEtape(i));
+  }
+  function prevStep(){ stop(); var i = currentStep(); if (T - starts[i] < 0.3 && i > 0) i--; T = starts[i]; render(); }
+
+  var dots = document.getElementById('pg-dots');
+  STEPS.forEach(function(st, i){
+    var d = document.createElement('button'); d.type = 'button'; d.className = 'pg-dot'; d.textContent = i+1; d.title = st.phase;
+    d.onclick = function(){ stop(); T = finEtape(i); render(); };
+    dots.appendChild(d);
+  });
+  playBtn.onclick = function(){ if (playing) stop(); else play(); };
+  document.getElementById('pg-next').onclick = playStep;
+  document.getElementById('pg-prev').onclick = prevStep;
+  document.getElementById('pg-reset').onclick = function(){ stop(); T = 0; render(); };
+  tSlider.oninput = function(){ stop(); T = tSlider.value/1000*TOTAL; render(); };
+  shape.oninput = function(){ build(); render(); };
+
+  build(); render();
+  return {
+    stop: stop,
+    toggle: function(){ if (playing) stop(); else play(); },
+    next: playStep,
+    prev: prevStep
+  };
+})();
+
+/* Raccourcis du puzzle : espace = lecture/pause, flèches = étapes.
+   Actifs seulement sur l'onglet Perigal de l'explorateur, jamais pendant
+   une saisie (T, P, D, M restent gérés par lp-ui.js). */
+document.addEventListener('keydown', function(e){
+  if (currentMode !== 'explo' || currentShape !== 'perigal') return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  var a = document.activeElement, tag = a ? a.tagName : '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (a && a.isContentEditable)) return;
+  if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); PG.toggle(); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); PG.next(); }
+  else if (e.key === 'ArrowLeft')  { e.preventDefault(); PG.prev(); }
+});
+
+/* ═══ INITIALISATION ════════════════════════════════════════════════════ */
+calcHyp();
+calcCot();
+calcRec();
+defi.demarrer();
+</script>
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio collège</a> &nbsp;·&nbsp;
+  Licence MIT · © 2025 Moïse Muller &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
+</footer>
+</body>
+</html>
