@@ -1,0 +1,1606 @@
+<!--
+Combustion — atomes, molécules et équations de combustion à équilibrer
+Copyright (c) 2026 Moise Muller <lessavoirfairepartager@gmail.com>
+Créé pour outilslp.netlify.app
+
+Items visés (référentiel v5, 1re Bac Pro, module Thermique) :
+  1PRO-PC-THERM-Combustion-Ca3  Écrire et ajuster l'équation de la réaction modélisant la combustion d'un hydrocarbure.
+  1PRO-PC-THERM-Combustion-Ca4  Déterminer la masse de CO2 dégagée par la combustion complète d'une masse donnée d'hydrocarbure.
+  1PRO-PC-THERM-Combustion-Co1  Connaître les produits de la combustion complète ou incomplète d'un hydrocarbure dans l'air.
+  1PRO-PC-THERM-Combustion-Co2  Connaître la dangerosité des composés produits lors d'une combustion incomplète.
+  1PRO-PC-THERM-Combustion-Co4  Savoir que le dioxyde de carbone est un des principaux gaz à effet de serre.
+
+Structure : design system partagé (lp-ui.css / lp-ui.js / lp-fiche.js),
+boucle de défi déléguée à assets/lp-defi.js en dom:true, sur le modèle
+outils/forces_poids.html. Fiche imprimable via LP.ficheModal.
+
+MODELES : chaque atome est une bille. Noir = carbone, blanc = hydrogène,
+rouge = oxygène (conventions du cours). La lettre du symbole est écrite dans
+la bille : la couleur n'est jamais le seul repère (daltonisme, impression
+en noir et blanc).
+
+CONTENU PEDAGOGIQUE : rappels, indices, détails, énoncés, choix des
+combustibles, classement par compétence et tolérances sont un PREMIER JET,
+à relire par l'auteur.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Combustion — équilibrer une équation — 1re Bac Pro</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--amber); --accent-bg: var(--amber-bg); }
+
+  /* ── Explorateur : panneaux en pleine largeur ────────────────────────── */
+  #panel-reaction.active, #panel-molecules.active { grid-template-columns: minmax(0,1fr); }
+  #panel-reaction .sketch-card svg { max-width: 860px; }
+  html[data-size="projection"] #panel-reaction .sketch-card svg { max-width: 1100px; }
+
+  .cb-pills { display: flex; gap: 7px; flex-wrap: wrap; }
+  .cb-pill {
+    padding: 8px 14px; border-radius: 999px; font-family: inherit;
+    font-size: var(--fs-xs); font-weight: 600; border: 1px solid var(--border);
+    cursor: pointer; background: var(--surface); color: var(--text2);
+    transition: background-color .15s, color .15s, border-color .15s;
+  }
+  .cb-pill:hover { border-color: var(--border2); color: var(--text); }
+  .cb-pill.on { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
+  .cb-pill:disabled { opacity: .4; cursor: not-allowed; }
+
+  .cb-lecture { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .cb-btn {
+    padding: 10px 18px; border-radius: var(--radius); font-family: inherit;
+    font-size: var(--fs-sm); font-weight: 700; cursor: pointer;
+    border: 1.5px solid var(--border2); background: var(--surface2); color: var(--text);
+  }
+  .cb-btn.principal { background: var(--accent); border-color: var(--accent); color: #fff; }
+  html[data-theme="dark"] .cb-btn.principal { color: #14130f; }
+  .cb-btn:hover { filter: brightness(1.06); }
+
+  .cb-narr {
+    font-size: var(--fs-sm); color: var(--text); text-align: center;
+    line-height: 1.5; min-height: 3em; max-width: 760px;
+  }
+  .cb-grille { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: var(--gap); }
+  @media (max-width: 860px) { .cb-grille { grid-template-columns: 1fr; } }
+  .cb-col { display: flex; flex-direction: column; gap: 1rem; }
+
+  .cb-equation {
+    font-size: var(--fs-lg); font-weight: 700; color: var(--text);
+    text-align: center; line-height: 1.5;
+  }
+  .cb-equation sub, .cb-formule sub, .cb-trou { font-weight: 700; }
+  .cb-noms { font-size: var(--fs-xs); color: var(--text2); text-align: center; }
+
+  /* ── Tableau de comptage des atomes (explorateur et défi) ────────────── */
+  .cb-bilan { width: 100%; max-width: 460px; margin: 0 auto; border-collapse: collapse; font-size: var(--fs-xs); }
+  .cb-bilan th, .cb-bilan td { border: 1px solid var(--border); padding: 6px 9px; text-align: center; }
+  .cb-bilan th { background: var(--surface2); font-weight: 700; color: var(--text2); }
+  .cb-bilan td.nom { text-align: left; font-weight: 600; color: var(--text); white-space: nowrap; }
+  .cb-bilan td.val { font-weight: 700; font-size: var(--fs-sm); color: var(--text); }
+  .cb-bilan tr.ok td.etat { background: var(--teal-bg); color: var(--teal); font-weight: 700; }
+  .cb-bilan tr.ko td.etat { background: var(--red-bg);  color: var(--red);  font-weight: 700; }
+  .cb-pastille {
+    display: inline-block; width: 14px; height: 14px; border-radius: 50%;
+    border: 1.5px solid #6b6962; vertical-align: -2px; margin-right: 6px;
+  }
+
+  /* ── Galerie des molécules ───────────────────────────────────────────── */
+  .cb-galerie { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+  .cb-carte {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  }
+  .cb-carte svg { width: 100%; height: auto; background: var(--sketch-bg); border-radius: var(--radius); }
+  .cb-carte .f { font-size: var(--fs-lg); font-weight: 700; color: var(--text); }
+  .cb-carte .n { font-size: var(--fs-xs); font-weight: 600; color: var(--accent); }
+  .cb-carte .c { font-size: var(--fs-xs); color: var(--text2); line-height: 1.4; }
+
+  /* ── Défi : équation à équilibrer, billes en direct ──────────────────── */
+  /* Ce bloc est injecté par le générateur dans #defi-cotes, que le moteur
+     repeuple à chaque question. */
+  .cb-widget { width: 100%; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  .cb-ecrite { font-size: var(--fs-lg); font-weight: 700; color: var(--text); line-height: 1.5; }
+  .cb-eq { display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 6px; width: 100%; }
+  .cb-cote { display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 6px; }
+  .cb-terme {
+    background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-lg);
+    padding: 8px; width: 172px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .cb-op { font-size: var(--fs-xl); font-weight: 700; color: var(--text2); align-self: center; padding: 0 2px; }
+  .cb-op.fleche { color: var(--accent); }
+  .cb-coef { display: flex; align-items: center; gap: 5px; }
+  .cb-coef button {
+    width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--border2);
+    background: var(--surface2); color: var(--text); font-family: inherit;
+    font-size: 22px; font-weight: 700; line-height: 1; cursor: pointer;
+  }
+  .cb-coef button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .cb-coef button:disabled, .cb-coef input:disabled { opacity: .55; cursor: default; }
+  .cb-coef input {
+    width: 52px; text-align: center; padding: 6px 4px; border: 1.5px solid var(--border);
+    border-radius: var(--radius); font-family: inherit; font-size: var(--fs-md);
+    font-weight: 700; background: var(--surface); color: var(--accent);
+  }
+  .cb-coef input:focus { border-color: var(--accent); outline: none; }
+  .cb-formule { font-size: var(--fs-lg); font-weight: 700; color: var(--text); line-height: 1.2; }
+  .cb-nom { font-size: 13px; color: var(--text3); line-height: 1.2; }
+  .cb-terme svg.cb-billes { width: 100%; max-width: none; height: auto; background: var(--sketch-bg); border-radius: var(--radius); }
+  .cb-etat { font-size: var(--fs-xs); color: var(--text3); line-height: 1.5; }
+  .cb-widget.plus .cb-bilan { display: none; }
+  .cb-widget.plus.fige .cb-bilan { display: table; }
+  .cb-legende { font-size: 13px; color: var(--text3); }
+  .cb-trou {
+    display: inline-block; min-width: 1.5em; padding: 0 .3em; border-radius: 6px;
+    background: var(--accent-bg); color: var(--accent); border: 1.5px dashed var(--accent);
+  }
+  @media (max-width: 520px) {
+    .cb-terme { width: 132px; padding: 6px; }
+    .cb-coef button { width: 32px; height: 32px; font-size: 19px; }
+    .cb-coef input { width: 42px; }
+    .cb-bilan th, .cb-bilan td { padding: 5px 4px; }
+    .cb-bilan .lib { display: none; }
+    .cb-bilan td.nom { white-space: normal; }
+  }
+  .cb-masses { text-align: left; max-width: 560px; margin: 0 auto; font-weight: 400; }
+
+  /* Le champ du moteur ne sert que de relais pour la famille « équilibrer » */
+  #defi-reponse.cb-relais .defi-input-row { display: none; }
+
+  /* Choix illustrés (un modèle par proposition) */
+  .cb-choix-svg { width: 132px; height: 74px; background: var(--sketch-bg); border-radius: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <path d="M20 4 C27 13 31 19 28 28 C26 34 14 34 12 28 C10 21 15 18 16 11 C18 13 19 15 20 4 Z"
+            fill="var(--amber)"/>
+      <path d="M20 19 C23 23 24 26 22 29 C21 31 18 31 17 29 C16 26 18 24 20 19 Z" fill="var(--amber-bg)"/>
+    </svg></div>
+  <div>
+    <h1>Combustion</h1>
+    <p>Atomes et molécules &middot; équilibrer une équation &middot; combustion complète ou incomplète</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- SELECTEUR DE MODE -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('explo',this)">Explorateur</button>
+    <button class="mode-tab" onclick="setMode('defi',this)">Mode défi</button>
+    <button class="mode-tab defiplus-tab" onclick="setMode('defiplus',this)">Défi &#8314;</button>
+  </div>
+
+  <!-- ═══════════════ EXPLORATEUR ═══════════════ -->
+  <div id="mode-explo">
+    <div class="shape-tabs-row">
+      <div class="shape-tabs">
+        <button class="shape-tab active" data-color="amber" onclick="setPan('reaction',this)"><span class="dot" style="background:var(--amber)"></span>Réaction animée</button>
+        <button class="shape-tab" data-color="blue" onclick="setPan('molecules',this)"><span class="dot" style="background:var(--blue)"></span>Les molécules</button>
+      </div>
+      <button class="btn-rnd" onclick="hasardReaction()">&#127922; Autre combustible</button>
+    </div>
+
+    <!-- REACTION ANIMEE -->
+    <div id="panel-reaction" class="panel active">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--amber-bg);color:var(--amber)" id="x-badge">Combustion complète du méthane</span>
+        <svg id="x-svg" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img"
+             aria-label="Modèle animé de la réaction de combustion"></svg>
+        <div class="cb-narr" id="x-narr" role="status" aria-live="polite"></div>
+        <div class="cb-lecture">
+          <button class="cb-btn principal" onclick="lancerReaction()">&#9654; Lancer la réaction</button>
+          <button class="cb-btn" onclick="etapeSuivante()">Étape suivante &rsaquo;</button>
+          <button class="cb-btn" onclick="retourReactifs()">&#8634; Revenir au début</button>
+        </div>
+      </div>
+
+      <div class="cb-grille">
+        <div class="controls-card">
+          <p class="section-label">Combustible</p>
+          <div class="cb-pills" id="x-comb"></div>
+          <p class="section-label">Type de combustion</p>
+          <div class="cb-pills" id="x-type"></div>
+          <div class="formula-box">
+            <code>combustible + dioxygène &rarr; produits</code>
+            <div class="formula-detail" id="x-info"></div>
+          </div>
+          <div class="error-box"><strong>Erreur fréquente :</strong> modifier une formule pour « faire tomber juste » (écrire O<sub>4</sub> au lieu de 2&nbsp;O<sub>2</sub>). On ne touche jamais aux formules : on écrit un <b>coefficient devant</b> la molécule.</div>
+        </div>
+        <div class="controls-card">
+          <p class="section-label">Équation de la réaction</p>
+          <div class="cb-equation" id="x-eq"></div>
+          <div class="cb-noms" id="x-noms"></div>
+          <p class="section-label">Compter les atomes</p>
+          <table class="cb-bilan" id="x-bilan"></table>
+          <div class="result-block">
+            <div class="result-label">Atomes en jeu, avant comme après</div>
+            <div class="result-value" id="x-total">9<span class="result-unit">atomes</span></div>
+            <div class="result-sub">« Rien ne se perd, rien ne se crée, tout se transforme. » — Lavoisier</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LES MOLECULES -->
+    <div id="panel-molecules" class="panel">
+      <div class="controls-card">
+        <p class="section-label">Modèle, formule et composition</p>
+        <div class="cb-legende" style="font-size:var(--fs-xs);color:var(--text2)">
+          <span class="cb-pastille" style="background:#2C2C2A"></span>carbone C &nbsp;&nbsp;
+          <span class="cb-pastille" style="background:#fff"></span>hydrogène H &nbsp;&nbsp;
+          <span class="cb-pastille" style="background:#D63A2F"></span>oxygène O
+        </div>
+        <div class="cb-galerie" id="m-galerie"></div>
+        <div class="formula-box">
+          <code>C<sub>3</sub>H<sub>8</sub> : 3 atomes C et 8 atomes H</code>
+          <div class="formula-detail">L'<b>indice</b>, écrit en bas à droite, donne le nombre d'atomes dans la molécule. On n'écrit pas l'indice 1. Le <b>coefficient</b>, écrit devant, donne le nombre de molécules.</div>
+        </div>
+        <div class="error-box"><strong>Erreur fréquente :</strong> écrire le chiffre 0 à la place de la lettre O. On écrit CO<sub>2</sub>, jamais C0<sub>2</sub>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ DÉFI + DÉFI ⁺ ═══════════════ -->
+  <!-- Balisage standard du moteur : onglets de familles et zone de réponse
+       sont construits par lp-defi.js. -->
+  <div id="mode-defi">
+    <div class="defi-card">
+      <div id="defi-plus-badge" class="defi-mode-badge">&#128274; DÉFI &#8314; — Rappels et comptage masqués</div>
+      <div class="defi-header">
+        <div class="defi-title" id="defi-mode-title">Mode défi — Combustion</div>
+        <div class="defi-score" id="defi-score">0 / 0 correct</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="defi-progress" style="width:0%"></div></div>
+
+      <div id="defi-familles" style="margin-bottom:1.25rem"></div>
+
+      <div class="defi-aide" id="defi-aide"></div>
+
+      <div class="defi-shape-display" id="defi-figure">
+        <svg id="defi-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" style="max-width:300px;width:100%;"></svg>
+        <div class="defi-enonce" id="defi-enonce"></div>
+        <div class="defi-cotes" id="defi-cotes" style="width:100%"></div>
+      </div>
+
+      <div id="defi-reponse"></div>
+
+      <div style="font-size:var(--fs-xs);color:var(--text3);margin-bottom:.75rem;" id="defi-tol"></div>
+
+      <button class="btn-check" id="btn-check">Vérifier ma réponse</button>
+      <div class="feedback-box" id="defi-feedback" role="status" aria-live="polite"></div>
+      <button class="btn-next" id="btn-next" style="display:none">Question suivante →</button>
+
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem;">
+        <button class="btn-fiche" onclick="ouvrirFiche()">&#128196; Générer une fiche d'exercices</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- La modale de choix des familles est construite par LP.ficheModal -->
+
+<script src="/assets/lp-fiche.js"></script>
+<script src="/assets/lp-defi.js"></script>
+<script>
+/* ═════════════════════════════════════════════════════════════════════════
+   COMBUSTION — script de l'outil
+   ES5 strict (var / function), apostrophes DROITES uniquement dans le JS :
+   les apostrophes typographiques du texte affiché sont écrites \u2019.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ─── OUTILLAGE ───────────────────────────────────────────────────────── */
+
+function el(id) { return document.getElementById(id); }
+function auHasard(t) { return t[Math.floor(Math.random() * t.length)]; }
+function entier(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
+function melange(t) { return LP.defi.melanger(t); }
+function fnb(x, d) { return LP.nb(x, d === undefined ? 2 : d); }
+function r1(x) { return Math.round(x * 10) / 10; }
+function animFigee() { return document.documentElement.getAttribute('data-motion') === 'off'; }
+
+/* Articles avec élision : « du propane », « de l'eau », « d'éthane ». */
+function voyelle(nom) { return /^[aeiouyhéè]/i.test(nom); }
+function de(nom) { return voyelle(nom) ? 'd\u2019' + nom : 'de ' + nom; }
+function du(nom) { return voyelle(nom) ? 'de l\u2019' + nom : 'du ' + nom; }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   ATOMES ET MOLECULES
+   Coordonnées en « unités » : le rayon de la bille de carbone vaut 1.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var ATOMES = {
+  C: { nom: 'carbone',   r: 1.00, fond: '#2C2C2A', bord: '#000000', texte: '#FFFFFF' },
+  H: { nom: 'hydrogène', r: 0.68, fond: '#FFFFFF', bord: '#6B6962', texte: '#1A1917' },
+  O: { nom: 'oxygène',   r: 0.95, fond: '#D63A2F', bord: '#8E1F17', texte: '#FFFFFF' }
+};
+var ORDRE = ['C', 'H', 'O'];
+
+var D_CC = 1.75, D_CH = 1.42;
+
+/* Alcane CnH2n+2 : chaîne de carbones, un H au-dessus et un au-dessous de
+   chacun, un H à chaque bout. Les H sont listés d'abord : ils passent
+   derrière les carbones, comme sur un modèle compact. */
+function alcane(n) {
+  var at = [], i;
+  at.push({ e: 'H', x: -D_CH, y: 0 });
+  at.push({ e: 'H', x: (n - 1) * D_CC + D_CH, y: 0 });
+  for (i = 0; i < n; i++) {
+    at.push({ e: 'H', x: i * D_CC, y: -D_CH });
+    at.push({ e: 'H', x: i * D_CC, y: D_CH });
+  }
+  for (i = 0; i < n; i++) at.push({ e: 'C', x: i * D_CC, y: 0 });
+  return at;
+}
+
+var ESPECES = {
+  'C':     { nom: 'carbone', at: [{ e: 'C', x: 0, y: 0 }] },
+  'O2':    { nom: 'dioxygène', at: [{ e: 'O', x: -0.82, y: 0 }, { e: 'O', x: 0.82, y: 0 }] },
+  'CO2':   { nom: 'dioxyde de carbone',
+             at: [{ e: 'O', x: -1.7, y: 0 }, { e: 'O', x: 1.7, y: 0 }, { e: 'C', x: 0, y: 0 }] },
+  'H2O':   { nom: 'eau',
+             at: [{ e: 'H', x: -1.12, y: 0.82 }, { e: 'H', x: 1.12, y: 0.82 }, { e: 'O', x: 0, y: 0 }] },
+  'CO':    { nom: 'monoxyde de carbone', at: [{ e: 'O', x: 0.9, y: 0 }, { e: 'C', x: -0.8, y: 0 }] },
+  'CH4':   { nom: 'méthane',  at: alcane(1) },
+  'C2H6':  { nom: 'éthane',   at: alcane(2) },
+  'C3H8':  { nom: 'propane',  at: alcane(3) },
+  'C4H10': { nom: 'butane',   at: alcane(4) },
+  'C5H12': { nom: 'pentane',  at: alcane(5) },
+  'C7H16': { nom: 'heptane',  at: alcane(7) },
+  'C2H2':  { nom: 'acétylène',
+             at: [{ e: 'H', x: -D_CH, y: 0 }, { e: 'H', x: D_CC + D_CH, y: 0 },
+                  { e: 'C', x: 0, y: 0 }, { e: 'C', x: D_CC, y: 0 }] },
+  /* Atomes isolés, pour la phase « liaisons rompues » de l'animation. */
+  '_H':    { nom: 'hydrogène', interne: true, at: [{ e: 'H', x: 0, y: 0 }] },
+  '_O':    { nom: 'oxygène',   interne: true, at: [{ e: 'O', x: 0, y: 0 }] }
+};
+var ATOME_SEUL = { C: 'C', H: '_H', O: '_O' };
+
+/* Préparation : recentrage, encombrement, composition, écriture HTML. */
+(function () {
+  var cle, E, i, a, r, x0, x1, y0, y1;
+  for (cle in ESPECES) if (Object.prototype.hasOwnProperty.call(ESPECES, cle)) {
+    E = ESPECES[cle];
+    x0 = y0 = 1e9; x1 = y1 = -1e9;
+    E.comp = { C: 0, H: 0, O: 0 };
+    for (i = 0; i < E.at.length; i++) {
+      a = E.at[i]; r = ATOMES[a.e].r;
+      x0 = Math.min(x0, a.x - r); x1 = Math.max(x1, a.x + r);
+      y0 = Math.min(y0, a.y - r); y1 = Math.max(y1, a.y + r);
+      E.comp[a.e]++;
+    }
+    for (i = 0; i < E.at.length; i++) {
+      E.at[i].x -= (x0 + x1) / 2;
+      E.at[i].y -= (y0 + y1) / 2;
+    }
+    E.cle = cle;
+    E.w = x1 - x0;
+    E.h = y1 - y0;
+    E.html = cle.replace(/^_/, '').replace(/(\d+)/g, '<sub>$1</sub>');
+  }
+})();
+
+function compositionTexte(E) {
+  var p = [], i, n;
+  for (i = 0; i < ORDRE.length; i++) {
+    n = E.comp[ORDRE[i]];
+    if (n) p.push(n + ' atome' + (n > 1 ? 's' : '') + ' ' + ORDRE[i]);
+  }
+  return p.join(' et ');
+}
+
+/* ─── Dessin d'une bille ──────────────────────────────────────────────── */
+
+function bille(e, x, y, r) {
+  var A = ATOMES[e];
+  var s = '<circle cx="' + r1(x) + '" cy="' + r1(y) + '" r="' + r1(r) + '" fill="' + A.fond
+        + '" stroke="' + A.bord + '" stroke-width="' + r1(Math.max(0.6, r * 0.09)) + '"/>';
+  if (e !== 'H') {
+    s += '<circle cx="' + r1(x - r * 0.32) + '" cy="' + r1(y - r * 0.34) + '" r="' + r1(r * 0.26)
+       + '" fill="#FFFFFF" opacity="0.3"/>';
+  }
+  if (r >= 5.5) {
+    s += '<text x="' + r1(x) + '" y="' + r1(y + r * 0.4) + '" text-anchor="middle" font-family="Arial, sans-serif"'
+       + ' font-size="' + r1(r * 1.15) + '" font-weight="700" fill="' + A.texte + '">' + e + '</text>';
+  }
+  return s;
+}
+
+/* Dispose n molécules d'une espèce dans une boîte. Renvoie la liste des
+   atomes placés { e, x, y, r }, à l'échelle la plus grande qui tient. */
+function disposer(cle, n, bx, by, bw, bh, uMax) {
+  var E = ESPECES[cle], out = [];
+  if (n <= 0) return out;
+  var g = 0.45, cw = E.w + g, ch = E.h + g;
+  var cols, rows, u, best = { u: 0, cols: 1, rows: n };
+  for (cols = 1; cols <= n; cols++) {
+    rows = Math.ceil(n / cols);
+    u = Math.min(bw / (cols * cw), bh / (rows * ch));
+    if (u > best.u + 1e-9) best = { u: u, cols: cols, rows: rows };
+  }
+  u = Math.min(best.u, uMax || 99);
+  var k, i, lig, col, nLig, cx, cy, a;
+  var hTot = best.rows * ch * u;
+  for (k = 0; k < n; k++) {
+    lig = Math.floor(k / best.cols);
+    col = k % best.cols;
+    nLig = (lig === best.rows - 1) ? (n - lig * best.cols) : best.cols;
+    cx = bx + bw / 2 + (col - (nLig - 1) / 2) * cw * u;
+    cy = by + bh / 2 - hTot / 2 + (lig + 0.5) * ch * u;
+    for (i = 0; i < E.at.length; i++) {
+      a = E.at[i];
+      out.push({ e: a.e, x: cx + a.x * u, y: cy + a.y * u, r: ATOMES[a.e].r * u });
+    }
+  }
+  return out;
+}
+
+function svgBilles(atomes) {
+  var s = '', i;
+  for (i = 0; i < atomes.length; i++) s += bille(atomes[i].e, atomes[i].x, atomes[i].y, atomes[i].r);
+  return s;
+}
+
+/* Empile plusieurs espèces dans une colonne, en donnant plus de hauteur à
+   celles qui ont le plus d'atomes à montrer. */
+function empiler(termes, bx, by, bw, bh, uMax) {
+  var poids = [], somme = 0, i, E, out = [];
+  for (i = 0; i < termes.length; i++) {
+    E = ESPECES[termes[i][0]];
+    poids.push(Math.sqrt(termes[i][1] * E.w * E.h));
+    somme += poids[i];
+  }
+  var y = by, h, part;
+  for (i = 0; i < termes.length; i++) {
+    part = poids[i] / somme;
+    if (termes.length > 1) part = Math.max(0.24, Math.min(0.76, part));
+    h = bh * part;
+    out = out.concat(disposer(termes[i][0], termes[i][1], bx, y + 4, bw, h - 8, uMax));
+    y += h;
+  }
+  return out;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   REACTIONS
+   R = réactifs, P = produits, sous la forme [espèce, coefficient].
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var REACTIONS = [
+  { id: 'c',       comb: 'C',     type: 'complete', R: [['C', 1], ['O2', 1]],      P: [['CO2', 1]] },
+  { id: 'ch4',     comb: 'CH4',   type: 'complete', R: [['CH4', 1], ['O2', 2]],    P: [['CO2', 1], ['H2O', 2]] },
+  { id: 'c2h6',    comb: 'C2H6',  type: 'complete', R: [['C2H6', 2], ['O2', 7]],   P: [['CO2', 4], ['H2O', 6]] },
+  { id: 'c3h8',    comb: 'C3H8',  type: 'complete', R: [['C3H8', 1], ['O2', 5]],   P: [['CO2', 3], ['H2O', 4]] },
+  { id: 'c4h10',   comb: 'C4H10', type: 'complete', R: [['C4H10', 2], ['O2', 13]], P: [['CO2', 8], ['H2O', 10]] },
+  { id: 'c2h2',    comb: 'C2H2',  type: 'complete', R: [['C2H2', 2], ['O2', 5]],   P: [['CO2', 4], ['H2O', 2]] },
+  { id: 'c5h12',   comb: 'C5H12', type: 'complete', R: [['C5H12', 1], ['O2', 8]],  P: [['CO2', 5], ['H2O', 6]] },
+  { id: 'c7h16',   comb: 'C7H16', type: 'complete', R: [['C7H16', 1], ['O2', 11]], P: [['CO2', 7], ['H2O', 8]] },
+  { id: 'c_co',    comb: 'C',     type: 'co',       R: [['C', 2], ['O2', 1]],      P: [['CO', 2]] },
+  { id: 'ch4_co',  comb: 'CH4',   type: 'co',       R: [['CH4', 2], ['O2', 3]],    P: [['CO', 2], ['H2O', 4]] },
+  { id: 'ch4_c',   comb: 'CH4',   type: 'suie',     R: [['CH4', 1], ['O2', 1]],    P: [['C', 1], ['H2O', 2]] },
+  { id: 'c3h8_co', comb: 'C3H8',  type: 'co',       R: [['C3H8', 2], ['O2', 7]],   P: [['CO', 6], ['H2O', 8]] }
+];
+
+var TYPES = {
+  complete: { label: 'Complète', nom: 'Combustion complète',
+              info: 'Assez de dioxygène : flamme bleue. Les seuls produits sont le dioxyde de carbone CO<sub>2</sub> et l\u2019eau H<sub>2</sub>O.' },
+  co:       { label: 'Incomplète (CO)', nom: 'Combustion incomplète',
+              info: 'Manque de dioxygène : il se forme du <b>monoxyde de carbone CO</b>, gaz incolore, inodore et mortel.' },
+  suie:     { label: 'Incomplète (suie)', nom: 'Combustion incomplète',
+              info: 'Manque de dioxygène : flamme jaune-orangé. Il se forme du <b>carbone C</b> (suie, noir de fumée).' }
+};
+
+function reaction(id) {
+  var i;
+  for (i = 0; i < REACTIONS.length; i++) if (REACTIONS[i].id === id) return REACTIONS[i];
+  return REACTIONS[0];
+}
+function reactionsDe(filtre) {
+  var out = [], i;
+  for (i = 0; i < REACTIONS.length; i++) if (filtre(REACTIONS[i])) out.push(REACTIONS[i]);
+  return out;
+}
+function termesDe(r) { return r.R.concat(r.P); }
+function solutionDe(r) {
+  var t = termesDe(r), out = [], i;
+  for (i = 0; i < t.length; i++) out.push(t[i][1]);
+  return out;
+}
+
+/* Compte les atomes de chaque côté pour un jeu de coefficients. */
+function compter(r, coefs) {
+  var g = { C: 0, H: 0, O: 0 }, d = { C: 0, H: 0, O: 0 };
+  var t = termesDe(r), i, k, c;
+  for (i = 0; i < t.length; i++) {
+    c = ESPECES[t[i][0]].comp;
+    for (k = 0; k < ORDRE.length; k++) {
+      if (i < r.R.length) g[ORDRE[k]] += coefs[i] * c[ORDRE[k]];
+      else d[ORDRE[k]] += coefs[i] * c[ORDRE[k]];
+    }
+  }
+  return { g: g, d: d };
+}
+
+function pgcd(a, b) { while (b) { var t = a % b; a = b; b = t; } return a; }
+
+/* Diagnostic d'un jeu de coefficients : équilibré ? minimal ? quel est le
+   premier atome qui ne colle pas (dans l'ordre conseillé C, H, O) ? */
+function diagnostic(r, coefs) {
+  var n = compter(r, coefs), i, faux = [], p = 0;
+  for (i = 0; i < ORDRE.length; i++) if (n.g[ORDRE[i]] !== n.d[ORDRE[i]]) faux.push(ORDRE[i]);
+  for (i = 0; i < coefs.length; i++) p = pgcd(p, coefs[i]);
+  return { n: n, faux: faux, equilibre: faux.length === 0, minimal: p === 1, diviseur: p };
+}
+
+/* Écriture HTML d'une équation. Le coefficient 1 ne s'écrit pas.
+   opt.trou  : rang du coefficient remplacé par « ? »
+   opt.blancs : tous les coefficients remplacés par des pointillés */
+function eqHTML(r, coefs, opt) {
+  var t = termesDe(r), s = '', i, c;
+  coefs = coefs || solutionDe(r);
+  opt = opt || {};
+  for (i = 0; i < t.length; i++) {
+    if (i === r.R.length) s += ' → ';
+    else if (i > 0) s += ' + ';
+    if (opt.blancs) c = '… ';
+    else if (opt.trou === i) c = '<span class="cb-trou">?</span> ';
+    else c = (coefs[i] === 1) ? '' : coefs[i] + ' ';
+    s += c + ESPECES[t[i][0]].html;
+  }
+  return s;
+}
+
+function bilanTexte(r, coefs) {
+  var n = compter(r, coefs || solutionDe(r)), p = [], i;
+  for (i = 0; i < ORDRE.length; i++) if (n.g[ORDRE[i]]) p.push(n.g[ORDRE[i]] + ' ' + ORDRE[i]);
+  return p.join(', ');
+}
+
+function nomReaction(r) {
+  return TYPES[r.type].nom + ' ' + du(ESPECES[r.comb].nom);
+}
+
+function tableBilan(r, coefs, avecEtat) {
+  var n = compter(r, coefs), h, i, e, ok;
+  h = '<tr><th>Atome</th><th>Avant (réactifs)</th><th>Après (produits)</th>' + (avecEtat ? '<th></th>' : '') + '</tr>';
+  for (i = 0; i < ORDRE.length; i++) {
+    e = ORDRE[i];
+    if (!n.g[e] && !n.d[e] && !presentDans(r, e)) continue;
+    ok = (n.g[e] === n.d[e]);
+    h += '<tr class="' + (ok ? 'ok' : 'ko') + '"><td class="nom"><span class="cb-pastille" style="background:'
+       + ATOMES[e].fond + '"></span>' + ATOMES[e].nom + ' ' + e + '</td>'
+       + '<td class="val">' + n.g[e] + '</td><td class="val">' + n.d[e] + '</td>'
+       + (avecEtat ? '<td class="etat">' + (ok ? '✓<span class="lib"> autant</span>' : '✗<span class="lib"> différent</span>') + '</td>' : '') + '</tr>';
+  }
+  return h;
+}
+function presentDans(r, e) {
+  var t = termesDe(r), i;
+  for (i = 0; i < t.length; i++) if (ESPECES[t[i][0]].comp[e]) return true;
+  return false;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   FIGURES STATIQUES (viewBox 200 x 160 : écran du défi et fiche papier)
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function figModele(cle) { return svgBilles(disposer(cle, 1, 10, 10, 180, 140, 24)); }
+function figGroupe(cle, n) { return svgBilles(disposer(cle, n, 8, 8, 184, 144, 18)); }
+
+function signe(x, y, t) {
+  return '<text x="' + x + '" y="' + y + '" text-anchor="middle" font-family="Arial, sans-serif" font-size="20"'
+       + ' font-weight="700" fill="#55534E">' + t + '</text>';
+}
+
+/* Une molécule de chaque espèce : réactifs en haut, produits en bas. */
+function figEspeces(r) {
+  function ligne(termes, x0, y0, w, h) {
+    var n = termes.length, ecart = 18, lw = (w - (n - 1) * ecart) / n, s = '', i;
+    for (i = 0; i < n; i++) {
+      s += svgBilles(disposer(termes[i][0], 1, x0 + i * (lw + ecart), y0, lw, h, 11));
+      if (i < n - 1) s += signe(x0 + (i + 1) * (lw + ecart) - ecart / 2, y0 + h / 2 + 7, '+');
+    }
+    return s;
+  }
+  return ligne(r.R, 8, 6, 184, 66)
+       + '<line x1="8" y1="80" x2="192" y2="80" stroke="#C2C0B6" stroke-width="1" stroke-dasharray="3 3"/>'
+       + signe(18, 127, '→')
+       + ligne(r.P, 34, 88, 158, 66);
+}
+
+function figFlamme(genre) {
+  var bec = '<rect x="86" y="118" width="28" height="34" rx="3" fill="#8D8981"/>'
+          + '<rect x="70" y="150" width="60" height="6" rx="2" fill="#55534E"/>';
+  if (genre === 'bleue') {
+    return bec + '<path d="M100 44 C118 72 120 98 100 118 C80 98 82 72 100 44 Z" fill="#2F7FD6"/>'
+         + '<path d="M100 78 C108 92 108 106 100 118 C92 106 92 92 100 78 Z" fill="#A9D2F7"/>';
+  }
+  if (genre === 'jaune') {
+    return bec + '<path d="M100 14 C112 40 132 70 122 98 C116 112 108 116 100 118 C92 116 82 112 78 98 C70 72 96 52 100 14 Z" fill="#F2A31E"/>'
+         + '<path d="M100 62 C110 82 112 102 100 118 C88 102 90 82 100 62 Z" fill="#F9E08A"/>'
+         + '<circle cx="128" cy="30" r="3" fill="#2C2C2A"/><circle cx="118" cy="16" r="2.4" fill="#2C2C2A"/>'
+         + '<circle cx="136" cy="14" r="2" fill="#2C2C2A"/><circle cx="84" cy="24" r="2.2" fill="#2C2C2A"/>';
+  }
+  return bec + '<path d="M100 30 C120 64 122 96 100 118 C78 96 80 64 100 30 Z" fill="none" stroke="#8D8981"'
+       + ' stroke-width="2.5" stroke-dasharray="6 5"/>'
+       + '<text x="100" y="96" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#8D8981">?</text>';
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   EXPLORATEUR — RÉACTION ANIMÉE
+   Trois états : 0 réactifs · 1 atomes séparés · 2 produits.
+   Chaque bille garde son identité d'un bout à l'autre : c'est le même atome
+   qui quitte une molécule et en rejoint une autre.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var COMBUSTIBLES_EXPLO = ['C', 'CH4', 'C2H6', 'C3H8', 'C4H10', 'C2H2'];
+var U_BASE = 10;      /* les billes de l'animation sont dessinées à cette échelle */
+
+var X = { r: reaction('ch4'), phase: 0, jeton: 0, pos: [[], [], []], n: 0, panneau: 'reaction' };
+
+function construireScene() {
+  var r = X.r, i, e, k;
+  var G = empiler(r.R, 14, 44, 228, 246, 12);
+  var D = empiler(r.P, 478, 44, 228, 246, 12);
+
+  var total = { C: 0, H: 0, O: 0 };
+  for (i = 0; i < G.length; i++) total[G[i].e]++;
+  var lignes = [];
+  for (k = 0; k < ORDRE.length; k++) if (total[ORDRE[k]]) lignes.push([ATOME_SEUL[ORDRE[k]], total[ORDRE[k]]]);
+  var M = empiler(lignes, 266, 44, 188, 246, 9);
+
+  /* Appariement élément par élément : le i-ème carbone des réactifs devient
+     le i-ème carbone libre, puis le i-ème carbone des produits. */
+  var fileM = { C: [], H: [], O: [] }, fileD = { C: [], H: [], O: [] };
+  for (i = 0; i < M.length; i++) fileM[M[i].e].push(M[i]);
+  for (i = 0; i < D.length; i++) fileD[D[i].e].push(D[i]);
+
+  X.pos = [[], [], []];
+  var html = '';
+  for (i = 0; i < G.length; i++) {
+    e = G[i].e;
+    X.pos[0].push(G[i]);
+    X.pos[1].push(fileM[e].shift());
+    X.pos[2].push(fileD[e].shift());
+    html += '<g id="xa-' + i + '">' + bille(e, 0, 0, ATOMES[e].r * U_BASE) + '</g>';
+  }
+  X.n = G.length;
+
+  var tete = function (x, id, t) {
+    return '<text id="' + id + '" x="' + x + '" y="24" text-anchor="middle" font-family="Arial, sans-serif"'
+         + ' font-size="15" font-weight="700" fill="#55534E">' + t + '</text>';
+  };
+  el('x-svg').innerHTML =
+      '<rect id="xz-0" x="8" y="34" width="240" height="260" rx="10" fill="#F5F4F0" stroke="#D8D6CE"/>'
+    + '<rect id="xz-1" x="260" y="34" width="200" height="260" rx="10" fill="#F5F4F0" stroke="#D8D6CE"/>'
+    + '<rect id="xz-2" x="472" y="34" width="240" height="260" rx="10" fill="#F5F4F0" stroke="#D8D6CE"/>'
+    + tete(128, 'xt-0', 'AVANT · réactifs')
+    + tete(360, 'xt-1', 'PENDANT · atomes séparés')
+    + tete(592, 'xt-2', 'APRÈS · produits')
+    + html;
+  poser(0, 0, 1);
+}
+
+function poser(a, b, k) {
+  var i, p, q, x, y, s, g;
+  for (i = 0; i < X.n; i++) {
+    p = X.pos[a][i]; q = X.pos[b][i];
+    /* Petit décalage au départ : les atomes ne partent pas tous ensemble. */
+    var kk = Math.max(0, Math.min(1, (k * 1.25) - 0.25 * ((i % 9) / 8)));
+    kk = kk < 0.5 ? 2 * kk * kk : 1 - Math.pow(-2 * kk + 2, 2) / 2;
+    x = p.x + (q.x - p.x) * kk;
+    y = p.y + (q.y - p.y) * kk;
+    s = (p.r + (q.r - p.r) * kk) / (ATOMES[p.e].r * U_BASE);
+    g = el('xa-' + i);
+    if (g) g.setAttribute('transform', 'translate(' + r1(x) + ' ' + r1(y) + ') scale(' + (Math.round(s * 1000) / 1000) + ')');
+  }
+}
+
+function marquerPhase(ph) {
+  var i, t, z;
+  X.phase = ph;
+  for (i = 0; i < 3; i++) {
+    t = el('xt-' + i); z = el('xz-' + i);
+    if (t) t.setAttribute('fill', i === ph ? '#854F0B' : '#8D8981');
+    if (z) {
+      z.setAttribute('fill', i === ph ? '#FAEEDA' : '#F5F4F0');
+      z.setAttribute('stroke', i === ph ? '#854F0B' : '#D8D6CE');
+    }
+  }
+  var r = X.r, s = solutionDe(r), t2 = termesDe(r), noms = [], j;
+  function liste(deb, fin) {
+    var p = [];
+    for (j = deb; j < fin; j++) {
+      p.push(s[j] + ' molécule' + (s[j] > 1 ? 's' : '') + ' ' + de(ESPECES[t2[j][0]].nom));
+    }
+    return p.join(' et ');
+  }
+  var texte;
+  if (ph === 0) {
+    texte = '<b>Avant :</b> ' + liste(0, r.R.length).replace(/molécules? de carbone/, function (m) {
+      return m.replace('molécule', 'atome');
+    }) + '.';
+  } else if (ph === 1) {
+    texte = '<b>Pendant :</b> les liaisons se cassent, les atomes se séparent. '
+          + 'Compte-les : ' + bilanTexte(r) + '. Aucun ne disparaît, aucun n\u2019apparaît.';
+  } else {
+    texte = '<b>Après :</b> les mêmes atomes se sont assemblés autrement : '
+          + liste(r.R.length, t2.length).replace(/molécules? de carbone/, function (m) {
+              return m.replace('molécule', 'atome');
+            }) + '.';
+  }
+  el('x-narr').innerHTML = texte;
+}
+
+/* Jeton : toute action de l'élève invalide les animations et les attentes
+   en cours, qui s'arrêtent d'elles-mêmes au tour suivant. */
+function glisser(a, b, duree, fin) {
+  var j = X.jeton, t0 = null;
+  if (animFigee() || !window.requestAnimationFrame) {
+    poser(a, b, 1); marquerPhase(b); if (fin) fin();
+    return;
+  }
+  function pas(ts) {
+    if (j !== X.jeton) return;
+    if (t0 === null) t0 = ts;
+    var k = Math.min(1, (ts - t0) / duree);
+    poser(a, b, k);
+    if (k < 1) window.requestAnimationFrame(pas);
+    else { marquerPhase(b); if (fin) fin(); }
+  }
+  window.requestAnimationFrame(pas);
+}
+function attendre(ms, suite) {
+  var j = X.jeton;
+  setTimeout(function () { if (j === X.jeton) suite(); }, ms);
+}
+
+function lancerReaction() {
+  X.jeton++;
+  poser(0, 0, 1); marquerPhase(0);
+  attendre(animFigee() ? 1200 : 700, function () {
+    glisser(0, 1, 1700, function () {
+      attendre(animFigee() ? 2200 : 1900, function () { glisser(1, 2, 1700); });
+    });
+  });
+}
+function etapeSuivante() {
+  X.jeton++;
+  var a = X.phase, b = (a + 1) % 3;
+  if (b === 0) { poser(0, 0, 1); marquerPhase(0); }
+  else glisser(a, b, 1500);
+}
+function retourReactifs() {
+  X.jeton++;
+  poser(0, 0, 1); marquerPhase(0);
+}
+
+function reactionExplo(comb, type) {
+  var i;
+  for (i = 0; i < REACTIONS.length; i++) {
+    if (REACTIONS[i].comb === comb && REACTIONS[i].type === type) return REACTIONS[i];
+  }
+  return null;
+}
+
+function majExplo() {
+  var r = X.r, i, h, c, t, s = solutionDe(r), tt = termesDe(r);
+  X.jeton++;
+
+  h = '';
+  for (i = 0; i < COMBUSTIBLES_EXPLO.length; i++) {
+    c = COMBUSTIBLES_EXPLO[i];
+    h += '<button type="button" class="cb-pill' + (c === r.comb ? ' on' : '') + '" onclick="choisirComb(\'' + c + '\')">'
+       + ESPECES[c].nom.charAt(0).toUpperCase() + ESPECES[c].nom.slice(1) + ' ' + ESPECES[c].html + '</button>';
+  }
+  el('x-comb').innerHTML = h;
+
+  h = '';
+  for (t in TYPES) if (Object.prototype.hasOwnProperty.call(TYPES, t)) {
+    h += '<button type="button" class="cb-pill' + (t === r.type ? ' on' : '') + '"'
+       + (reactionExplo(r.comb, t) ? '' : ' disabled title="Non proposé pour ce combustible"')
+       + ' onclick="choisirType(\'' + t + '\')">' + TYPES[t].label + '</button>';
+  }
+  el('x-type').innerHTML = h;
+
+  el('x-badge').textContent = nomReaction(r);
+  el('x-info').innerHTML = TYPES[r.type].info;
+  el('x-eq').innerHTML = eqHTML(r);
+  var noms = [];
+  for (i = 0; i < tt.length; i++) {
+    noms.push((i === r.R.length ? '→ ' : (i > 0 ? '+ ' : '')) + ESPECES[tt[i][0]].nom);
+  }
+  el('x-noms').textContent = noms.join(' ');
+  el('x-bilan').innerHTML = tableBilan(r, s, true);
+  var n = compter(r, s);
+  el('x-total').innerHTML = (n.g.C + n.g.H + n.g.O) + '<span class="result-unit">atomes</span>';
+
+  construireScene();
+  marquerPhase(0);
+}
+
+function choisirComb(c) {
+  X.r = reactionExplo(c, X.r.type) || reactionExplo(c, 'complete');
+  majExplo();
+}
+function choisirType(t) {
+  var r = reactionExplo(X.r.comb, t);
+  if (r) { X.r = r; majExplo(); }
+}
+function hasardReaction() {
+  if (X.panneau !== 'reaction') setPan('reaction', document.querySelector('#mode-explo .shape-tab'));
+  var pool = reactionsDe(function (r) { return COMBUSTIBLES_EXPLO.indexOf(r.comb) >= 0 && r.id !== X.r.id; });
+  X.r = auHasard(pool);
+  majExplo();
+}
+
+function remplirGalerie() {
+  var h = '', cle, E;
+  var ordre = ['C', 'O2', 'CO2', 'H2O', 'CO', 'CH4', 'C2H6', 'C3H8', 'C4H10', 'C2H2', 'C5H12', 'C7H16'];
+  var i;
+  for (i = 0; i < ordre.length; i++) {
+    cle = ordre[i]; E = ESPECES[cle];
+    h += '<div class="cb-carte"><svg viewBox="0 0 150 84" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Modèle : '
+       + E.nom + '">' + svgBilles(disposer(cle, 1, 6, 6, 138, 72, 15)) + '</svg>'
+       + '<div class="f">' + E.html + '</div><div class="n">' + E.nom + '</div>'
+       + '<div class="c">' + compositionTexte(E) + '</div></div>';
+  }
+  el('m-galerie').innerHTML = h;
+}
+
+function setPan(id, btn) {
+  var panneaux = document.querySelectorAll('.panel'), i;
+  for (i = 0; i < panneaux.length; i++) panneaux[i].classList.remove('active');
+  var onglets = document.querySelectorAll('#mode-explo .shape-tab');
+  for (i = 0; i < onglets.length; i++) onglets[i].classList.remove('active');
+  el('panel-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  X.panneau = id;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   DÉFI — WIDGET « ÉQUILIBRER » : coefficients réglables, billes en direct
+   Le HTML est injecté par le générateur dans #defi-cotes. L'état vit dans
+   EQ ; le champ texte du moteur (#defi-input) n'est qu'un relais qui porte
+   les coefficients sous la forme « 1|5|3|4 ».
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var COEF_MAX = 16;
+var EQ = { r: null, coefs: [], fige: false };
+
+function widgetHTML(r) {
+  var t = termesDe(r), i, E, h, cote;
+  h = '<div class="cb-widget' + (currentMode === 'defiplus' ? ' plus' : '') + '" id="cb-widget">'
+    + '<div class="cb-ecrite" id="cb-ecrite"></div>'
+    + '<div class="cb-eq">';
+  for (i = 0; i < t.length; i++) {
+    E = ESPECES[t[i][0]];
+    if (i === 0 || i === r.R.length) h += '<div class="cb-cote">';
+    else h += '<div class="cb-op">+</div>';
+    h += '<div class="cb-terme">'
+       + '<div class="cb-coef">'
+       + '<button type="button" data-d="-1" data-i="' + i + '" aria-label="Diminuer le coefficient de ' + E.nom + '">−</button>'
+       + '<input type="text" inputmode="numeric" autocomplete="off" maxlength="2" value="1" data-i="' + i
+       + '" id="cb-c-' + i + '" aria-label="Coefficient de ' + E.nom + '">'
+       + '<button type="button" data-d="1" data-i="' + i + '" aria-label="Augmenter le coefficient de ' + E.nom + '">+</button>'
+       + '</div>'
+       + '<div class="cb-formule">' + E.html + '</div>'
+       + '<svg class="cb-billes" id="cb-b-' + i + '" viewBox="0 0 150 104" xmlns="http://www.w3.org/2000/svg"></svg>'
+       + '<div class="cb-nom">' + E.nom + '</div>'
+       + '</div>';
+    if (i === r.R.length - 1) h += '</div><div class="cb-op fleche">→</div>';
+    if (i === t.length - 1) h += '</div>';
+  }
+  h += '</div>'
+     + '<table class="cb-bilan" id="cb-bilan"></table>'
+     + '<div class="cb-etat" id="cb-etat"></div>'
+     + '</div>';
+  return h;
+}
+
+function lireCoefs() {
+  var out = [], i, c, v;
+  for (i = 0; i < EQ.coefs.length; i++) {
+    c = el('cb-c-' + i);
+    v = c ? parseInt(String(c.value).replace(/\D/g, ''), 10) : NaN;
+    if (!(v >= 1)) v = 1;
+    if (v > COEF_MAX) v = COEF_MAX;
+    out.push(v);
+  }
+  return out;
+}
+
+function majWidget() {
+  if (!EQ.r || !el('cb-widget')) return;
+  var r = EQ.r, t = termesDe(r), i, zone;
+  EQ.coefs = lireCoefs();
+  for (i = 0; i < t.length; i++) {
+    zone = el('cb-b-' + i);
+    if (zone) zone.innerHTML = svgBilles(disposer(t[i][0], EQ.coefs[i], 5, 5, 140, 94, 13));
+  }
+  el('cb-ecrite').innerHTML = eqHTML(r, EQ.coefs);
+  el('cb-bilan').innerHTML = tableBilan(r, EQ.coefs, true);
+  var plus = (currentMode === 'defiplus');
+  el('cb-widget').className = 'cb-widget' + (plus ? ' plus' : '') + (EQ.fige ? ' fige' : '');
+  if (!EQ.fige) {
+    el('cb-etat').innerHTML = plus
+      ? 'Règle les coefficients avec − et +, puis vérifie. Les billes suivent ; à toi de compter.'
+      : 'Règle les coefficients avec − et + : les billes et le tableau suivent en direct.';
+  }
+  var champ = el('defi-input');
+  if (champ) champ.value = EQ.coefs.join('|');
+}
+
+function figerWidget(solution) {
+  var i, c, btns;
+  EQ.fige = true;
+  for (i = 0; i < solution.length; i++) {
+    c = el('cb-c-' + i);
+    if (c) { c.value = solution[i]; c.disabled = true; }
+  }
+  btns = document.querySelectorAll('#cb-widget .cb-coef button');
+  for (i = 0; i < btns.length; i++) btns[i].disabled = true;
+  majWidget();
+  if (el('cb-etat')) el('cb-etat').innerHTML = 'Équation équilibrée : autant d\u2019atomes de chaque sorte avant et après la flèche.';
+}
+
+/* Indice ciblé du second essai : on nomme le premier atome qui ne colle pas,
+   dans l'ordre conseillé (carbone, hydrogène, puis oxygène). En Défi ⁺ on
+   ne donne pas les nombres : l'élève recompte lui-même. */
+function indiceEquilibre(d) {
+  if (d.equilibre) return '';
+  var e = d.faux[0], nom = ATOMES[e].nom;
+  var s = 'Regarde les atomes ' + (voyelle(nom) ? 'd\u2019' : 'de ') + nom + ' (' + e + ') : ';
+  if (currentMode === 'defiplus') {
+    s += 'il n\u2019y en a pas autant avant et après la flèche. Recompte-les sur les billes.';
+  } else {
+    s += d.n.g[e] + ' avant la flèche, ' + d.n.d[e] + ' après. ';
+    s += (e === 'O')
+      ? 'Termine toujours par l\u2019oxygène : règle le coefficient de O<sub>2</sub> en dernier.'
+      : 'Ajuste le coefficient d\u2019une molécule qui contient cet atome.';
+  }
+  return s;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   DÉFI — GÉNÉRATEURS
+   Textes (rappels, indices, détails) : PREMIER JET À RELIRE.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var currentMode = 'explo';
+
+var RAPPEL_EQ = 'Il doit y avoir autant d\u2019atomes de chaque sorte avant et après la flèche. '
+              + 'On écrit un coefficient DEVANT la formule, sans jamais modifier la formule. '
+              + 'Méthode : le carbone d\u2019abord, puis l\u2019hydrogène, et l\u2019oxygène en dernier.';
+
+/* ─── Famille 1 — Du modèle à la formule (C1) ─────────────────────────── */
+
+var ESPECES_QUIZ = ['O2', 'CO2', 'H2O', 'CO', 'CH4', 'C2H6', 'C3H8', 'C4H10', 'C2H2'];
+
+function formuleInversee(cle) {
+  /* Distracteur classique : indices échangés (C3H8 -> C8H3, CO2 -> C2O). */
+  var m = cle.match(/^([A-Z])(\d*)([A-Z])(\d*)$/);
+  if (!m) return null;
+  var f = m[1] + m[4] + m[3] + m[2];
+  return (f === cle) ? null : f;
+}
+function htmlFormule(f) { return f.replace(/(\d+)/g, '<sub>$1</sub>'); }
+
+function genFormule() {
+  var cle = auHasard(ESPECES_QUIZ), E = ESPECES[cle];
+  var autres = melange(ESPECES_QUIZ.slice(0)), i;
+
+  if (Math.random() < 0.55) {
+    /* Variante A : on montre le modèle, on demande la formule. */
+    var props = [cle], inv = formuleInversee(cle);
+    if (inv) props.push(inv);
+    for (i = 0; i < autres.length && props.length < 4; i++) {
+      if (props.indexOf(autres[i]) < 0) props.push(autres[i]);
+    }
+    melange(props);
+    var choix = [];
+    for (i = 0; i < props.length; i++) choix.push({ val: props[i], label: htmlFormule(props[i]) });
+    var svg = figModele(cle);
+    return {
+      type: 'choix', svg: svg, figure: function () { return svg; },
+      enonce: 'Quelle est la formule de cette molécule ?',
+      choix: choix, reponse: cle, reponseTexte: E.html + ' (' + E.nom + ')',
+      ficheCotes: 'Écris la formule de cette molécule.',
+      ficheReponse: E.html + ' (' + E.nom + ')',
+      rappel: 'Bille noire : carbone C. Bille blanche : hydrogène H. Bille rouge : oxygène O. '
+            + 'L\u2019indice, en bas à droite, donne le nombre d\u2019atomes ; on n\u2019écrit pas l\u2019indice 1.',
+      hint: 'Compte les billes une couleur à la fois, puis écris ce nombre en indice, juste après le symbole.',
+      detail: 'Cette molécule contient ' + compositionTexte(E) + ' : c\u2019est ' + E.html + ', ' + E.nom + '.'
+    };
+  }
+
+  /* Variante B : on donne le nom et la formule, on demande le modèle. */
+  var mod = [cle];
+  for (i = 0; i < autres.length && mod.length < 4; i++) if (mod.indexOf(autres[i]) < 0) mod.push(autres[i]);
+  melange(mod);
+  var ch = [], lettres = ['A', 'B', 'C', 'D'], fiche = '', bonne = '';
+  for (i = 0; i < mod.length; i++) {
+    ch.push({
+      val: mod[i],
+      label: '<svg class="cb-choix-svg" viewBox="0 0 132 74" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Modèle '
+           + lettres[i] + '">' + svgBilles(disposer(mod[i], 1, 5, 5, 122, 64, 12)) + '</svg>'
+    });
+    var cx = (i % 2) * 100, cy = Math.floor(i / 2) * 80;
+    fiche += '<text x="' + (cx + 6) + '" y="' + (cy + 16) + '" font-family="Arial, sans-serif" font-size="13"'
+           + ' font-weight="700" fill="#1A1917">' + lettres[i] + '</text>'
+           + svgBilles(disposer(mod[i], 1, cx + 14, cy + 6, 82, 68, 9));
+    if (mod[i] === cle) bonne = lettres[i];
+  }
+  return {
+    type: 'choix', svg: '',
+    enonce: 'Quel modèle représente ' + (voyelle(E.nom) ? 'l\u2019' : 'le ') + E.nom + ' ' + E.html + ' ?',
+    choix: ch, reponse: cle, reponseTexte: 'le modèle à ' + compositionTexte(E),
+    ficheSvg: fiche,
+    ficheCotes: 'Quel modèle (A, B, C ou D) représente ' + (voyelle(E.nom) ? 'l\u2019' : 'le ') + E.nom + ' ' + E.html + ' ?',
+    ficheReponse: 'Modèle ' + bonne,
+    rappel: 'Bille noire : carbone C. Bille blanche : hydrogène H. Bille rouge : oxygène O. '
+          + 'L\u2019indice donne le nombre d\u2019atomes ; pas d\u2019indice veut dire un seul atome.',
+    hint: 'Lis la formule symbole par symbole : combien de C, combien de H, combien de O ? Cherche le modèle qui a exactement ces billes.',
+    detail: E.html + ' contient ' + compositionTexte(E) + '.'
+  };
+}
+
+/* ─── Famille 2 — Compter les atomes (C1) ─────────────────────────────── */
+
+function genCompter() {
+  var cle = auHasard(['O2', 'CO2', 'H2O', 'CO', 'CH4', 'C2H6', 'C3H8', 'C4H10']);
+  var E = ESPECES[cle];
+  var nMax = Math.max(2, Math.min(6, Math.floor(36 / E.at.length)));
+  var n = entier(2, nMax);
+  var plus = (currentMode === 'defiplus');
+  /* En Défi ⁺ on ne montre qu'UNE molécule : le coefficient se calcule. */
+  var svg = plus ? figModele(cle) : figGroupe(cle, n);
+  var c = E.comp, ecrit = n + ' ' + E.html, parts = [], i, e;
+  for (i = 0; i < ORDRE.length; i++) {
+    e = ORDRE[i];
+    parts.push(e + ' : ' + n + ' × ' + c[e] + ' = ' + (n * c[e]));
+  }
+  return {
+    type: 'multi', svg: svg, figure: function () { return svg; },
+    enonce: 'Combien d\u2019atomes de chaque sorte y a-t-il dans ' + ecrit + ' ?',
+    cotes: plus ? 'Le dessin montre une seule molécule. Écris 0 si l\u2019atome est absent.'
+                : 'Écris 0 si l\u2019atome est absent.',
+    champs: [
+      { label: 'Carbone C',   reponse: n * c.C, tol: 0 },
+      { label: 'Hydrogène H', reponse: n * c.H, tol: 0 },
+      { label: 'Oxygène O',   reponse: n * c.O, tol: 0 }
+    ],
+    reponseTexte: 'C : ' + (n * c.C) + ' ; H : ' + (n * c.H) + ' ; O : ' + (n * c.O),
+    ficheCotes: 'Nombre d\u2019atomes C, H et O dans <b>' + ecrit + '</b> ?',
+    rappel: 'Nombre d\u2019atomes = coefficient × indice. Le coefficient, écrit devant, compte les molécules ; '
+          + 'l\u2019indice compte les atomes dans UNE molécule.',
+    hint: 'Le coefficient ' + n + ' multiplie TOUS les atomes de la molécule. Compte d\u2019abord dans une seule molécule, puis multiplie.',
+    detail: 'Dans ' + ecrit + ' : ' + parts.join(' ; ') + '.'
+  };
+}
+
+/* ─── Famille 3 — Trouver le coefficient manquant (C3) ────────────────── */
+
+function genCompleter() {
+  var r = auHasard(reactionsDe(function (x) {
+    var s = solutionDe(x), i;
+    for (i = 0; i < s.length; i++) if (s[i] > 1) return true;
+    return false;
+  }));
+  var s = solutionDe(r), t = termesDe(r), cand = [], i;
+  for (i = 0; i < s.length; i++) if (s[i] > 1) cand.push(i);
+  var k = auHasard(cand), cle = t[k][0], E = ESPECES[cle];
+  var svg = figEspeces(r), n = compter(r, s), hint;
+
+  if (cle === 'O2') {
+    hint = 'Compte les atomes d\u2019oxygène après la flèche : il y en a ' + n.d.O
+         + '. Chaque molécule O<sub>2</sub> en apporte 2.';
+  } else if (cle === 'H2O') {
+    hint = 'Compte les atomes d\u2019hydrogène avant la flèche : il y en a ' + n.g.H
+         + '. Chaque molécule H<sub>2</sub>O en contient 2.';
+  } else if (cle === 'CO2' || cle === 'CO' || cle === 'C') {
+    hint = 'Compte les atomes de carbone de l\u2019autre côté de la flèche : il y en a ' + n.g.C + '.';
+  } else {
+    hint = 'Compare les atomes de carbone : il y en a ' + n.d.C + ' après la flèche, et '
+         + E.comp.C + ' dans une molécule ' + de(E.nom) + '.';
+  }
+  return {
+    type: 'nombre', svg: svg, figure: function () { return svg; },
+    enonce: 'Trouve le coefficient manquant.',
+    cotes: '<span class="cb-equation">' + eqHTML(r, s, { trou: k }) + '</span>',
+    label: '? =', unite: '', reponse: s[k], tol: 0,
+    reponseTexte: String(s[k]),
+    ficheCotes: 'Trouve le coefficient manquant :<br><b>' + eqHTML(r, s, { trou: k }) + '</b>',
+    ficheReponse: '? = ' + s[k] + ' &nbsp;(' + eqHTML(r) + ')',
+    rappel: RAPPEL_EQ,
+    hint: hint,
+    detail: 'L\u2019équation équilibrée est ' + eqHTML(r) + '. De chaque côté : ' + bilanTexte(r) + '.'
+  };
+}
+
+/* ─── Famille 4 — Équilibrer une équation, billes en direct (C3) ──────── */
+
+function genEquilibrer() {
+  var r = auHasard(REACTIONS);
+  var s = solutionDe(r);
+  return {
+    type: 'texte', svg: '',
+    reac: r,
+    enonce: 'Équilibre l\u2019équation de la ' + nomReaction(r).toLowerCase() + '.',
+    cotes: widgetHTML(r),
+    label: 'Coefficients',
+    reponse: s.join('|'),
+    reponseTexte: eqHTML(r),
+    accepteFn: function (saisie) {
+      return String(saisie).replace(/\s+/g, '') === s.join('|');
+    },
+    ficheSvg: figEspeces(r),
+    ficheCotes: 'Équilibre l\u2019équation (' + nomReaction(r).toLowerCase() + ') :<br><b>' + eqHTML(r, s, { blancs: true }) + '</b>',
+    ficheReponse: eqHTML(r),
+    rappel: RAPPEL_EQ,
+    hint: 'Compte les atomes une sorte à la fois : carbone, puis hydrogène, puis oxygène.',
+    detail: 'Équation équilibrée : <b>' + eqHTML(r) + '</b>. De chaque côté de la flèche : ' + bilanTexte(r) + '.'
+  };
+}
+
+/* ─── Famille 5 — Valider une équation écrite par un élève (C4) ───────── */
+
+function genValider() {
+  var r = auHasard(reactionsDe(function (x) { return x.type === 'complete' && x.P.length === 2; }));
+  var s = solutionDe(r), c = s.slice(0);
+  var a = s[0], b = s[1], cc = s[2], d = s[3];
+  var cas = auHasard(['ok', 'ok', 'O', 'O', 'H', 'H', 'C', 'F', 'F']);
+  var html, detail, v;
+
+  if (cas === 'O') {
+    c[1] = (b > 1 && Math.random() < 0.5) ? b - 1 : b + 1;
+  } else if (cas === 'H') {
+    v = (d > 2 && Math.random() < 0.5) ? d - 2 : d + 2;
+    c[3] = v; c[1] = (2 * cc + v) / 2;
+  } else if (cas === 'C') {
+    v = (cc > 2 && Math.random() < 0.5) ? cc - 2 : cc + 2;
+    c[2] = v; c[1] = (2 * v + d) / 2;
+  }
+
+  if (cas === 'F') {
+    /* L'élève a « rangé » un coefficient dans la formule. */
+    var E0 = ESPECES[r.R[0][0]];
+    if (b > 1 && Math.random() < 0.6) {
+      html = (a === 1 ? '' : a + ' ') + E0.html + ' + O<sub>' + (2 * b) + '</sub> → '
+           + (cc === 1 ? '' : cc + ' ') + 'CO<sub>2</sub> + ' + (d === 1 ? '' : d + ' ') + 'H<sub>2</sub>O';
+      detail = 'Les atomes sont bien en même nombre, mais l\u2019élève a écrit O<sub>' + (2 * b)
+             + '</sub> : cette molécule n\u2019existe pas dans la réaction. Le dioxygène s\u2019écrit toujours O<sub>2</sub> ; on écrit '
+             + b + ' O<sub>2</sub>. Équation correcte : ' + eqHTML(r) + '.';
+    } else {
+      html = (a === 1 ? '' : a + ' ') + E0.html + ' + ' + (b === 1 ? '' : b + ' ') + 'O<sub>2</sub> → '
+           + (cc === 1 ? '' : cc + ' ') + 'CO<sub>2</sub> + H<sub>' + (2 * d) + '</sub>O<sub>' + d + '</sub>';
+      detail = 'L\u2019élève a écrit H<sub>' + (2 * d) + '</sub>O<sub>' + d + '</sub> au lieu de ' + d
+             + ' H<sub>2</sub>O : il a modifié la formule de l\u2019eau. Équation correcte : ' + eqHTML(r) + '.';
+    }
+  } else {
+    html = eqHTML(r, c);
+    var n = compter(r, c);
+    if (cas === 'ok') {
+      detail = 'De chaque côté de la flèche : ' + bilanTexte(r) + '. Les formules sont respectées : l\u2019équation est correcte.';
+    } else {
+      detail = 'Atomes ' + (cas === 'O' ? 'd\u2019oxygène' : (cas === 'H' ? 'd\u2019hydrogène' : 'de carbone')) + ' : '
+             + n.g[cas] + ' avant la flèche, ' + n.d[cas] + ' après. Équation correcte : ' + eqHTML(r) + '.';
+    }
+  }
+
+  var choix = [
+    { val: 'ok', label: 'Elle est correcte' },
+    { val: 'C',  label: 'Les atomes de carbone ne sont pas conservés' },
+    { val: 'H',  label: 'Les atomes d\u2019hydrogène ne sont pas conservés' },
+    { val: 'O',  label: 'Les atomes d\u2019oxygène ne sont pas conservés' },
+    { val: 'F',  label: 'Une formule a été modifiée' }
+  ];
+  var rep = '', i;
+  for (i = 0; i < choix.length; i++) if (choix[i].val === cas) rep = choix[i].label;
+  var svg = figEspeces(r);
+  return {
+    type: 'choix', svg: svg, figure: function () { return svg; },
+    enonce: 'Un élève a écrit cette équation pour la ' + nomReaction(r).toLowerCase() + '. Qu\u2019en penses-tu ?',
+    cotes: '<span class="cb-equation">' + html + '</span>',
+    choix: choix, reponse: cas, reponseTexte: rep,
+    ficheCotes: 'Un élève a écrit :<br><b>' + html + '</b><br>Est-elle correcte ? Sinon, quelle est l\u2019erreur ?',
+    ficheReponse: rep + (cas === 'ok' ? '' : ' &nbsp;→ ' + eqHTML(r)),
+    rappel: 'Une équation est correcte si chaque formule est respectée ET s\u2019il y a autant d\u2019atomes de chaque sorte '
+          + 'avant et après la flèche.',
+    hint: 'Vérifie d\u2019abord les formules (O<sub>2</sub>, CO<sub>2</sub>, H<sub>2</sub>O), puis compte les atomes un par un : C, puis H, puis O.',
+    detail: detail
+  };
+}
+
+/* ─── Famille 6 — Complète ou incomplète, produits et dangers (C2) ────── */
+
+var QCM_NATURE = [
+  { q: 'Quels sont les produits de la combustion complète du méthane ?', f: 'neutre',
+    ok: 'Du dioxyde de carbone CO<sub>2</sub> et de l\u2019eau H<sub>2</sub>O',
+    ko: ['Du monoxyde de carbone CO et de l\u2019eau H<sub>2</sub>O', 'Du carbone C et de l\u2019eau H<sub>2</sub>O', 'Du dioxyde de carbone CO<sub>2</sub> seulement'],
+    d: 'Avec assez de dioxygène, un hydrocarbure brûle en ne donnant que du CO<sub>2</sub> et de l\u2019eau.' },
+  { q: 'Quels sont les produits de la combustion complète du propane ?', f: 'neutre',
+    ok: 'Du dioxyde de carbone CO<sub>2</sub> et de l\u2019eau H<sub>2</sub>O',
+    ko: ['Du monoxyde de carbone CO et de l\u2019eau H<sub>2</sub>O', 'Du dioxygène O<sub>2</sub> et de l\u2019eau H<sub>2</sub>O', 'De l\u2019eau H<sub>2</sub>O seulement'],
+    d: 'Avec assez de dioxygène, un hydrocarbure brûle en ne donnant que du CO<sub>2</sub> et de l\u2019eau.' },
+  { q: 'Quel est le produit de la combustion complète du carbone ?', f: 'neutre',
+    ok: 'Du dioxyde de carbone CO<sub>2</sub> seulement',
+    ko: ['Du dioxyde de carbone CO<sub>2</sub> et de l\u2019eau H<sub>2</sub>O', 'De l\u2019eau H<sub>2</sub>O seulement', 'Du dioxygène O<sub>2</sub>'],
+    d: 'Le carbone ne contient pas d\u2019hydrogène : sa combustion ne peut pas produire d\u2019eau. C + O<sub>2</sub> → CO<sub>2</sub>.' },
+  { q: 'La flamme est jaune-orangé et un dépôt noir apparaît. Que peut-on dire ?', f: 'jaune',
+    ok: 'La combustion est incomplète : il manque du dioxygène',
+    ko: ['La combustion est complète : il y a assez de dioxygène', 'La combustion est incomplète : il y a trop de dioxygène', 'Il n\u2019y a pas de combustion'],
+    d: 'Flamme jaune-orangé et suie sont les signes d\u2019une combustion incomplète, par manque de dioxygène.' },
+  { q: 'La flamme est bleue et ne laisse aucun dépôt. Que peut-on dire ?', f: 'bleue',
+    ok: 'La combustion est complète : il y a assez de dioxygène',
+    ko: ['La combustion est incomplète : il manque du dioxygène', 'La combustion est complète : il manque du dioxygène', 'Il se forme du monoxyde de carbone'],
+    d: 'Une flamme bleue signale une combustion complète : l\u2019arrivée d\u2019air apporte assez de dioxygène.' },
+  { q: 'Quel gaz toxique, incolore et inodore, peut se former lors d\u2019une combustion incomplète ?', f: 'neutre',
+    ok: 'Le monoxyde de carbone CO',
+    ko: ['Le dioxyde de carbone CO<sub>2</sub>', 'Le dioxygène O<sub>2</sub>', 'La vapeur d\u2019eau H<sub>2</sub>O'],
+    d: 'Le monoxyde de carbone CO est incolore, inodore et mortel : on ne le détecte pas sans appareil.' },
+  { q: 'De quoi est fait le dépôt noir (suie) laissé par une combustion incomplète ?', f: 'jaune',
+    ok: 'De carbone C',
+    ko: ['De monoxyde de carbone CO', 'De dioxyde de carbone CO<sub>2</sub>', 'D\u2019eau H<sub>2</sub>O'],
+    d: 'La suie (noir de fumée) est du carbone qui n\u2019a pas brûlé, faute de dioxygène.' },
+  { q: 'Pourquoi une chaudière mal entretenue est-elle dangereuse ?', f: 'neutre',
+    ok: 'Elle peut produire du monoxyde de carbone CO',
+    ko: ['Elle produit trop de vapeur d\u2019eau', 'Elle consomme tout le dioxyde de carbone', 'Elle produit du dioxygène'],
+    d: 'Si l\u2019arrivée d\u2019air est mal réglée, la combustion devient incomplète et forme du CO, gaz mortel.' },
+  { q: 'Dans une combustion, quel est le comburant ?', f: 'neutre',
+    ok: 'Le dioxygène O<sub>2</sub> de l\u2019air',
+    ko: ['Le combustible (bois, gaz, essence…)', 'Le dioxyde de carbone CO<sub>2</sub>', 'L\u2019eau H<sub>2</sub>O'],
+    d: 'Le combustible brûle ; le comburant, le dioxygène de l\u2019air, lui permet de brûler.' },
+  { q: 'Quel produit de la combustion complète est un gaz à effet de serre ?', f: 'bleue',
+    ok: 'Le dioxyde de carbone CO<sub>2</sub>',
+    ko: ['Le dioxygène O<sub>2</sub>', 'Le monoxyde de carbone CO', 'Le carbone C'],
+    d: 'Le CO<sub>2</sub> s\u2019accumule dans l\u2019atmosphère et accentue le réchauffement climatique.' },
+  { q: 'Quelle précaution limite le risque d\u2019intoxication au monoxyde de carbone ?', f: 'neutre',
+    ok: 'Aérer et ne jamais boucher les grilles de ventilation',
+    ko: ['Fermer les fenêtres pour garder la chaleur', 'Boucher les grilles de ventilation en hiver', 'Augmenter l\u2019arrivée de gaz'],
+    d: 'Il faut de l\u2019air neuf pour que la combustion reste complète : aération, entretien annuel, détecteur de CO.' }
+];
+
+function genNature() {
+  var Q = auHasard(QCM_NATURE);
+  var props = melange([Q.ok].concat(Q.ko)), choix = [], i, lettres = ['a', 'b', 'c', 'd'];
+  var fiche = '', bonne = '';
+  for (i = 0; i < props.length; i++) {
+    choix.push({ val: String(i), label: props[i] });
+    fiche += '<br>' + lettres[i] + ') ' + props[i];
+    if (props[i] === Q.ok) bonne = String(i);
+  }
+  var svg = figFlamme(Q.f);
+  return {
+    type: 'choix', svg: svg, figure: function () { return svg; },
+    enonce: Q.q,
+    choix: choix, reponse: bonne, reponseTexte: Q.ok,
+    ficheCotes: Q.q + '<span style="font-size:10pt;font-weight:400">' + fiche + '</span>',
+    ficheReponse: lettres[Number(bonne)] + ') ' + Q.ok,
+    rappel: 'Combustion complète (assez de dioxygène, flamme bleue) : CO<sub>2</sub> et eau. '
+          + 'Combustion incomplète (manque de dioxygène, flamme jaune-orangé) : carbone C (suie) et monoxyde de carbone CO, gaz mortel.',
+    hint: 'Demande-toi d\u2019abord s\u2019il y a assez de dioxygène ou non : tout le reste en découle.',
+    detail: Q.d
+  };
+}
+
+/* ─── Famille 7 — Conservation de la masse (C3) ───────────────────────── */
+
+var MASSE_MOL = { C: 12, H: 1, O: 16 };
+
+function genMasse() {
+  var r = auHasard(reactionsDe(function (x) {
+    return x.type === 'complete' && ['C', 'CH4', 'C2H6', 'C3H8', 'C4H10'].indexOf(x.comb) >= 0;
+  }));
+  var t = termesDe(r), s = solutionDe(r), m = [], i, k, g = 0, c;
+  for (i = 0; i < t.length; i++) {
+    c = ESPECES[t[i][0]].comp;
+    m.push(s[i] * (c.C * MASSE_MOL.C + c.H * MASSE_MOL.H + c.O * MASSE_MOL.O));
+    g = pgcd(g, m[i]);
+  }
+  var f = auHasard([1, 2, 3, 5, 10]);
+  for (i = 0; i < m.length; i++) m[i] = m[i] / g * f;
+
+  k = entier(1, t.length - 1);                 /* la masse du combustible est toujours donnée */
+  var nomK = ESPECES[t[k][0]].nom;
+  function liste(deb, fin) {
+    var p = [];
+    for (i = deb; i < fin; i++) {
+      var nom = ESPECES[t[i][0]].nom;
+      p.push(i === k ? du(nom) + ' (masse inconnue)' : '<b>' + m[i] + ' g</b> ' + de(nom));
+    }
+    return p.join(' et ');
+  }
+  var nR = r.R.length, estProduit = (k >= nR);
+  var connu = 0, autre = 0, termesConnus = [];
+  for (i = 0; i < t.length; i++) {
+    if ((i < nR) === estProduit) { connu += m[i]; termesConnus.push(m[i]); }   /* côté entièrement connu */
+    else if (i !== k) autre += m[i];
+  }
+  var detail = 'Masse des ' + (estProduit ? 'réactifs' : 'produits') + ' : '
+             + (termesConnus.length > 1 ? termesConnus.join(' + ') + ' = ' : '') + connu + ' g. '
+             + 'La masse se conserve, donc masse ' + de(nomK) + ' = ' + connu
+             + (autre ? ' − ' + autre : '') + ' = ' + m[k] + ' g.';
+  var texte = nomReaction(r) + ' : ' + liste(0, nR) + ' réagissent. Il se forme ' + liste(nR, t.length) + '.';
+  var svg = figEspeces(r);
+  return {
+    type: 'nombre', svg: svg, figure: function () { return svg; },
+    enonce: 'Calcule la masse ' + de(nomK) + '.',
+    cotes: '<div class="cb-masses">' + texte + '</div>',
+    label: 'm =', unite: 'g', reponse: m[k], tol: 0,
+    reponseTexte: m[k] + ' g',
+    ficheCotes: texte + '<br>Calcule la masse ' + de(nomK) + '.',
+    rappel: 'Lavoisier : « Rien ne se perd, rien ne se crée, tout se transforme. » '
+          + 'Masse des réactifs = masse des produits.',
+    hint: 'Additionne les masses du côté de la flèche où tout est connu. L\u2019autre côté a exactement la même masse totale.',
+    detail: detail
+  };
+}
+
+/* ─── Famille 8 — Masse de CO2 rejetée (Ca4, C3) ──────────────────────── */
+
+var REJETS = [
+  { cle: 'CH4',   nom: 'méthane', k: 2.75, masses: [4, 8, 20, 40, 200] },
+  { cle: 'C3H8',  nom: 'propane', k: 3,    masses: [5, 13, 35, 92, 150] },
+  { cle: 'C4H10', nom: 'butane',  k: 3,    masses: [6, 13, 26, 50] },
+  { cle: 'C',     nom: 'charbon de bois (carbone)', k: 3.7, masses: [2, 5, 10, 30] }
+];
+
+function genRejet() {
+  var R = auHasard(REJETS), m = auHasard(R.masses), rep = Math.round(m * R.k * 100) / 100;
+  var r = reactionExplo(R.cle, 'complete'), svg = figEspeces(r);
+  var donnee = 'La combustion complète de 1 kg de ' + R.nom + ' rejette environ <b>' + fnb(R.k) + ' kg</b> de CO<sub>2</sub>.';
+  var question = 'Calcule la masse de CO<sub>2</sub> rejetée par la combustion de <b>' + m + ' kg</b> de ' + R.nom + '.';
+  return {
+    type: 'nombre', svg: svg, figure: function () { return svg; },
+    enonce: question,
+    cotes: '<div class="cb-masses">' + donnee + '</div>',
+    label: 'm(CO₂) =', unite: 'kg', reponse: rep, tol: 0.05,
+    reponseTexte: fnb(rep) + ' kg',
+    ficheCotes: donnee + '<br>' + question,
+    rappel: 'C\u2019est une situation de proportionnalité : masse de CO<sub>2</sub> = masse de combustible × masse de CO<sub>2</sub> rejetée par kilogramme.',
+    hint: 'Pour 1 kg, on rejette ' + fnb(R.k) + ' kg de CO<sub>2</sub>. Pour ' + m + ' kg, on en rejette ' + m + ' fois plus.',
+    detail: m + ' × ' + fnb(R.k) + ' = ' + fnb(rep) + ' kg de CO<sub>2</sub>. Le CO<sub>2</sub> est un gaz à effet de serre.'
+  };
+}
+
+/* ─── Table des familles ──────────────────────────────────────────────── */
+
+var FAMILLES = [
+  { value: 'formule',    label: 'Modèle et formule',     couleur: 'blue',   comp: 'C1', gen: genFormule,
+    ficheAide: 'noir = C, blanc = H, rouge = O ; l\u2019indice compte les atomes.' },
+  { value: 'compter',    label: 'Compter les atomes',    couleur: 'teal',   comp: 'C1', gen: genCompter,
+    ficheAide: 'nombre d\u2019atomes = coefficient × indice.' },
+  { value: 'completer',  label: 'Coefficient manquant',  couleur: 'green',  comp: 'C3', gen: genCompleter,
+    ficheAide: 'autant d\u2019atomes de chaque sorte avant et après la flèche.' },
+  { value: 'equilibrer', label: 'Équilibrer',            couleur: 'amber',  comp: 'C3', gen: genEquilibrer,
+    ficheAide: 'C d\u2019abord, puis H, et O en dernier. On ne modifie pas les formules.' },
+  { value: 'valider',    label: 'Valider une équation',  couleur: 'coral',  comp: 'C4', gen: genValider,
+    ficheAide: 'vérifie les formules, puis compte C, H et O de chaque côté.' },
+  { value: 'nature',     label: 'Complète ou incomplète', couleur: 'pink',  comp: 'C2', gen: genNature,
+    ficheAide: 'complète : CO₂ et eau. Incomplète : C (suie) et CO.' },
+  { value: 'masse',      label: 'Conservation de la masse', couleur: 'purple', comp: 'C3', gen: genMasse,
+    ficheAide: 'masse des réactifs = masse des produits.' },
+  { value: 'rejet',      label: 'Masse de CO₂',     couleur: 'amber2', comp: 'C3', gen: genRejet,
+    ficheAide: 'proportionnalité : masse × rejet par kilogramme.' }
+];
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LE MOTEUR — dom: true. Onglets de familles, zone de réponse, fil des
+   essais, score et touche Entrée sont construits par assets/lp-defi.js.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var defi = LP.defi.creer({
+  outil: 'combustion',
+  serie: 0,
+  essaisMax: 2,
+  melange: { label: 'Mélange', couleur: 'purple' },
+  modePlus: function () { return currentMode === 'defiplus'; },
+  familles: FAMILLES
+});
+
+/* ─── Branchements de la famille « équilibrer » ───────────────────────────
+   1. Délégation sur #defi-cotes : le moteur y réinjecte le HTML à chaque
+      question ; l'écouteur, lui, reste en place.
+   2. Observateur sur #defi-reponse : c'est le signal « nouvelle question
+      affichée ». On y initialise le widget et on masque le champ relais.
+   3. Enveloppe de defi.verifier : une équation équilibrée mais non
+      simplifiée (2, 4, 2, 4) ne coûte pas d'essai, et l'indice du second
+      essai est calculé sur les coefficients réellement posés.
+   4. À la clôture, le widget affiche la solution, billes comprises.      */
+
+var zoneCotes = el('defi-cotes');
+
+zoneCotes.addEventListener('click', function (e) {
+  var b = e.target;
+  if (!b || !b.getAttribute || b.getAttribute('data-d') === null) return;
+  if (EQ.fige || defi.verrou) return;
+  var champ = el('cb-c-' + b.getAttribute('data-i'));
+  if (!champ) return;
+  var v = parseInt(champ.value, 10);
+  if (!(v >= 1)) v = 1;
+  v += Number(b.getAttribute('data-d'));
+  champ.value = Math.max(1, Math.min(COEF_MAX, v));
+  majWidget();
+});
+
+zoneCotes.addEventListener('input', function (e) {
+  if (e.target && e.target.id && e.target.id.indexOf('cb-c-') === 0 && !EQ.fige) majWidget();
+});
+
+/* À la sortie du champ, on réécrit la valeur réellement prise en compte. */
+zoneCotes.addEventListener('change', function (e) {
+  if (e.target && e.target.id && e.target.id.indexOf('cb-c-') === 0 && !EQ.fige) {
+    var i = Number(e.target.getAttribute('data-i'));
+    e.target.value = lireCoefs()[i];
+  }
+});
+
+function preparerQuestion() {
+  var q = defi.q;
+  if (!q) return;
+  var estEq = (q.fam === 'equilibrer');
+  el('defi-reponse').classList.toggle('cb-relais', estEq);
+  el('defi-svg').style.display = q.svg ? '' : 'none';
+  if (estEq) {
+    EQ.r = q.reac;
+    EQ.fige = false;
+    EQ.coefs = [];
+    var i, n = termesDe(q.reac).length;
+    for (i = 0; i < n; i++) EQ.coefs.push(1);
+    majWidget();
+  } else {
+    EQ.r = null;
+  }
+}
+
+if (window.MutationObserver) {
+  new MutationObserver(preparerQuestion).observe(el('defi-reponse'), { childList: true });
+}
+
+var verifierMoteur = defi.verifier;
+defi.verifier = function (rep) {
+  var q = defi.q;
+  if (q && !defi.verrou && q.fam === 'equilibrer' && EQ.r) {
+    var coefs = lireCoefs();
+    var d = diagnostic(EQ.r, coefs);
+    if (d.equilibre && !d.minimal) {
+      var fb = el('defi-feedback');
+      fb.className = 'feedback-box wrong';
+      fb.innerHTML = '<strong>Presque !</strong> Les atomes sont bien conservés, mais on peut simplifier : '
+                   + 'divise tous les coefficients par ' + d.diviseur + '. <em>Cet essai n\u2019est pas compté.</em>';
+      return null;
+    }
+    q.hint = indiceEquilibre(d) || q.hint;
+    rep = coefs.join('|');
+  }
+  return verifierMoteur(rep);
+};
+
+document.addEventListener('lp:defi:reponse', function (e) {
+  if (e.detail && e.detail.fam === 'equilibrer' && EQ.r) figerWidget(solutionDe(EQ.r));
+});
+
+/* ═════════════════════════════════════════════════════════════════════════
+   FICHE IMPRIMABLE — LP.ficheModal, une case par famille
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function familleDe(cle) {
+  var i;
+  for (i = 0; i < FAMILLES.length; i++) if (FAMILLES[i].value === cle) return [FAMILLES[i]];
+  return [];
+}
+
+function questionFiche(fam, num) {
+  var g = fam.gen();
+  return {
+    num: num,
+    nom: fam.comp + ' — ' + fam.label,
+    hint: fam.ficheAide ? 'Rappel : ' + fam.ficheAide : '',
+    svg: (g.ficheSvg !== undefined) ? g.ficheSvg : g.svg,
+    cotes: (g.ficheCotes !== undefined) ? g.ficheCotes : (g.cotes || g.enonce),
+    answerText: g.ficheReponse || g.reponseTexte
+  };
+}
+
+function ouvrirFiche() {
+  var cases = [], i;
+  for (i = 0; i < FAMILLES.length; i++) {
+    cases.push({ value: FAMILLES[i].value, label: FAMILLES[i].comp + ' · ' + FAMILLES[i].label });
+  }
+  LP.ficheModal.init({
+    familles: cases,
+    titre: '📄 Fiche d\u2019exercices — Combustion',
+    onConfirm: function (plan, sel, opt) {
+      var sortie = LP.defi.remplirFiche(plan, familleDe, questionFiche);
+      var estPlus = (currentMode === 'defiplus');
+      LP.fiche({
+        icon: '🔥',
+        title: 'Combustion et équations de réaction',
+        subtitle: 'Physique-chimie · 1re Bac Pro',
+        modeLabel: estPlus ? 'Défi ⁺' : 'Mode défi',
+        isPlus: estPlus,
+        accent: '#854F0B',
+        answerLabel: 'Réponse :',
+        unit: '',
+        aide: 'Modèles : noir = carbone C, blanc = hydrogène H, rouge = oxygène O '
+            + '&nbsp;&nbsp;•&nbsp;&nbsp; Équilibrer : autant d\u2019atomes de chaque sorte avant et après la flèche ; '
+            + 'coefficient devant la formule, jamais dans la formule '
+            + '&nbsp;&nbsp;•&nbsp;&nbsp; Complète : CO<sub>2</sub> + H<sub>2</sub>O &nbsp;|&nbsp; Incomplète : C (suie), CO (mortel) '
+            + '&nbsp;&nbsp;•&nbsp;&nbsp; Masse des réactifs = masse des produits',
+        questions: sortie,
+        avecCorrige: opt ? opt.avecCorrige : undefined
+      });
+    }
+  });
+  LP.ficheModal.open();
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   NAVIGATION
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function setMode(m, btn) {
+  currentMode = m;
+  var onglets = document.querySelectorAll('.mode-tab'), i;
+  for (i = 0; i < onglets.length; i++) onglets[i].classList.remove('active');
+  if (btn) btn.classList.add('active');
+
+  el('mode-explo').style.display = (m === 'explo') ? 'block' : 'none';
+  if (m !== 'explo') X.jeton++;                 /* on coupe l'animation en cours */
+
+  var estDefi = (m === 'defi' || m === 'defiplus');
+  /* montrerBloc pose le display ET la classe active d'un seul geste : c'est
+     le piège #mode-defi de lp-ui.css. */
+  LP.defi.montrerBloc('#mode-defi', estDefi);
+
+  el('defi-mode-title').textContent =
+    (m === 'defiplus') ? 'Défi ⁺ — Combustion' : 'Mode défi — Combustion';
+
+  if (estDefi) defi.ui.suivante();
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   DÉMARRAGE
+   ═════════════════════════════════════════════════════════════════════════ */
+
+remplirGalerie();
+majExplo();
+defi.demarrer();
+
+</script>
+<footer class="lp-footer">
+  <a href="/">← Tous les outils</a> &nbsp;·&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">🖩 Calculatrice Casio collège</a> &nbsp;·&nbsp;
+  Licence MIT · © 2026 Moïse Muller &nbsp;·&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée">Raccourcis : T · P · D</span>
+</footer>
+</body>
+</html>
