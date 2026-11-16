@@ -525,7 +525,17 @@ flame:`<path d="M20 4C27 13 31 19 28 28C26 34 14 34 12 28C10 21 15 18 16 11C18 1
 /* Les deux nombres flottent au-dessus de leur PGCD */
 pgcd:`<text x="20" y="17" text-anchor="middle" font-size="11.5" font-weight="700" fill="currentColor" class="lp-float">12 · 18</text>
 <line x1="7" y1="21" x2="33" y2="21" stroke="currentColor" stroke-width="2.6"/>
-<text x="20" y="32" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor" class="lp-blink">PGCD</text>`
+<text x="20" y="32" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor" class="lp-blink">PGCD</text>`,
+
+/* Micro qui capte, ondes à gauche puis à droite : deux voix qui dialoguent */
+mic:`<rect x="14.5" y="4" width="11" height="19" rx="5.5" fill="none" stroke="currentColor" stroke-width="2.5"/>
+<rect x="17.6" y="8" width="4.8" height="12" rx="2.4" fill="currentColor" opacity=".6" class="lp-grow"/>
+<path d="M10.5 17.5 a9.5 9.5 0 0 0 19 0" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M20 27 V33 M14.5 34.5 H25.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M8.5 9 Q6 13.5 8.5 18" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" class="lp-blink"/>
+<path d="M4.5 7 Q1.2 13.5 4.5 20" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" class="lp-blink" style="animation-delay:.3s"/>
+<path d="M31.5 9 Q34 13.5 31.5 18" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" class="lp-blink" style="animation-delay:.95s"/>
+<path d="M35.5 7 Q38.8 13.5 35.5 20" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" class="lp-blink" style="animation-delay:1.25s"/>`
 };
 
 /* =========================================================================
@@ -587,6 +597,7 @@ const SECTIONS = [
   note: 'Simulations, banques de ressources et utilitaires de préparation.',
   items: [
     { url:'profs/grille_surfaces.html', nom:'Grille de surfaces', desc:'Figures quadrillées pour fiches : carreaux, obliques, export PNG', ico:'quadri', cats:['prof','outil'] },
+    { url:'profs/podcast_voix.html', nom:'Studio podcast', desc:'Dialogue à 1, 2 ou 3 voix de synthèse, export MP3', ico:'mic', cats:['prof','outil'] },
 	{ url:'https://phet.colorado.edu/fr/simulations/filter?type=html', nom:'Simulations PhET', desc:'Physique et chimie en HTML5, en français', ico:'play', cats:['prof','science'], ext:true },
     { url:'https://javalab.org/en/', nom:'Simulations Javalab', desc:'Grande collection de simulations interactives', ico:'play', cats:['prof','science'], ext:true },
     { url:'https://chemix.org/', nom:'Chemix', desc:'Dessine des montages de laboratoire', ico:'flask', cats:['prof','science'], ext:true },
