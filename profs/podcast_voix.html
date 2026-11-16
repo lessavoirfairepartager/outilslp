@@ -1,0 +1,1393 @@
+<!--
+Studio podcast — dialogue à 1, 2 ou 3 voix de synthèse
+Copyright (c) 2026 Moise Muller <lessavoirfairepartager@gmail.com>
+Créé pour outilslp.netlify.app le 16 novembre 2026.
+
+Fonctionnement : tout se passe dans le navigateur, aucun serveur.
+  · Piper (voix neuronales libres, format ONNX) tourne en WebAssembly
+    grâce à onnxruntime-web ; espeak-ng (piper_phonemize) transforme le
+    texte en phonèmes.
+  · Les voix viennent de huggingface.co/rhasspy/piper-voices et sont
+    gardées sur l'appareil après le premier téléchargement (Cache API).
+  · Le montage (pauses, stéréo, ambiance, jingle) se fait avec un
+    OfflineAudioContext, puis export WAV, MP3 (lamejs) ou M4A (WebCodecs
+    + mp4-muxer).
+
+Les bibliothèques sont cherchées d'abord dans /assets/piper/ (si on les y
+dépose, l'outil ne dépend plus d'aucun CDN), sinon sur cdn.jsdelivr.net.
+Fichiers attendus dans /assets/piper/ (facultatif) :
+  ort.wasm.min.js, ort-wasm-simd.wasm, ort-wasm.wasm,
+  piper_phonemize.js, piper_phonemize.wasm, piper_phonemize.data,
+  lame.min.js, mp4-muxer.js, et voices/<clé>.onnx + voices/<clé>.onnx.json
+
+Ce fichier utilise du JavaScript moderne (async/await) et non de l'ES5 :
+WebAssembly, Cache API et WebCodecs n'existent de toute façon que dans
+des navigateurs récents.
+
+Licences des briques : onnxruntime-web (MIT), piper_phonemize / espeak-ng
+(GPL-3.0), lamejs (LGPL), mp4-muxer (MIT). Chaque voix Piper a sa propre
+licence, indiquée dans sa fiche (MODEL_CARD) sur Hugging Face.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio podcast — voix de synthèse</title>
+<link rel="stylesheet" href="/assets/lp-ui.css">
+<script src="/assets/lp-ui.js"></script>
+<style>
+  :root { --accent: var(--purple); --accent-bg: var(--purple-bg); }
+
+  .pc-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--pad-card);
+    margin-bottom: var(--gap);
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  .pc-card h2 { font-size: var(--fs-md); font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .pc-num {
+    width: 32px; height: 32px; flex-shrink: 0;
+    border-radius: 50%; background: var(--accent-bg); color: var(--accent);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: var(--fs-sm); font-weight: 700;
+  }
+  .pc-note { font-size: var(--fs-xs); color: var(--text2); }
+  .pc-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+  .spk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: var(--gap); }
+  .spk-card {
+    border: 1px solid var(--border);
+    border-left: 6px solid var(--spk);
+    border-radius: var(--radius);
+    padding: 1rem;
+    display: flex; flex-direction: column; gap: .7rem;
+    background: var(--surface);
+  }
+  .spk-card[hidden], .pc-field[hidden] { display: none; }
+  .spk-title { font-weight: 700; color: var(--spk); font-size: var(--fs-sm); }
+
+  .pc-field { display: flex; flex-direction: column; gap: 4px; }
+  .pc-field label { font-size: var(--fs-xs); color: var(--text2); font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+  .pc-field label output { color: var(--text); font-weight: 700; }
+  .pc-field input[type="text"], .pc-field select, .pc-text {
+    font-family: inherit; font-size: var(--fs-sm);
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    width: 100%;
+  }
+  .pc-field input[type="text"]:focus, .pc-field select:focus, .pc-text:focus { outline: none; border-color: var(--accent); }
+  .pc-field input[type="range"] { width: 100%; accent-color: var(--spk, var(--accent)); }
+  textarea.pc-text { resize: vertical; line-height: 1.5; }
+  #script { min-height: 260px; font-family: var(--font); }
+  #prompt-out { min-height: 200px; font-size: var(--fs-xs); background: var(--surface2); }
+
+  .pc-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+
+  .pc-go {
+    padding: 14px 26px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: var(--fs-md);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .pc-go:hover { filter: brightness(1.08); }
+  .pc-go:disabled { opacity: .5; cursor: default; filter: none; }
+  .btn-rnd:disabled { opacity: .45; cursor: default; }
+
+  .pc-check { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); cursor: pointer; }
+  .pc-check input { width: 20px; height: 20px; accent-color: var(--accent); }
+
+  .pc-status { font-size: var(--fs-sm); color: var(--text2); min-height: 1.5em; }
+  .pc-status.err { color: var(--red); font-weight: 600; }
+  .progress-bar { margin-bottom: 0; }
+
+  #player { width: 100%; }
+  #player[hidden] { display: none; }
+
+  .pc-summary { font-size: var(--fs-xs); color: var(--text2); }
+  .pc-summary strong { color: var(--text); }
+  .pc-lines { list-style: none; display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow-y: auto; }
+  .pc-lines li {
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 6px 8px; border-radius: var(--radius);
+    font-size: var(--fs-xs); line-height: 1.45;
+  }
+  .pc-lines.ready li { cursor: pointer; }
+  .pc-lines.ready li:hover { background: var(--surface2); }
+  .pc-lines li.now { background: var(--accent-bg); }
+  .pc-chip {
+    flex-shrink: 0; min-width: 4.5em;
+    font-weight: 700; color: var(--spk);
+  }
+  .pc-time { flex-shrink: 0; color: var(--text3); font-family: var(--font-mono); font-size: .9em; }
+
+  details.pc-details > summary { cursor: pointer; font-weight: 600; color: var(--accent); font-size: var(--fs-sm); }
+  details.pc-details[open] > summary { margin-bottom: .8rem; }
+
+  .pc-warn {
+    background: var(--amber-bg); color: var(--text);
+    border-left: 4px solid var(--amber);
+    border-radius: var(--radius);
+    padding: .7rem .9rem;
+    font-size: var(--fs-xs);
+  }
+  .pc-warn strong { color: var(--amber); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none">
+      <rect x="15" y="5" width="10" height="18" rx="5" stroke="var(--purple)" stroke-width="2.6"/>
+      <path d="M10 18 a10 10 0 0 0 20 0 M20 28 v6 M14 34 h12" stroke="var(--purple)" stroke-width="2.6" stroke-linecap="round"/>
+      <rect x="3" y="14" width="2.6" height="10" rx="1.3" fill="var(--purple)" class="lp-grow"/>
+      <rect x="34.4" y="12" width="2.6" height="14" rx="1.3" fill="var(--purple)" class="lp-grow" style="animation-delay:-.8s"/>
+    </svg></div>
+  <div>
+    <h1>Studio podcast</h1>
+    <p>Dialogue à 1, 2 ou 3 voix de synthèse · Tout se passe dans le navigateur</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="pc-warn">
+    <strong>Première utilisation :</strong> chaque voix se télécharge une seule fois (de 30 à 75 Mo selon la voix), puis reste sur l'appareil.
+    Mieux vaut lancer ça sur le wifi de la maison plutôt qu'en classe. Ensuite, l'outil fonctionne même hors ligne.
+  </div>
+  <p style="height:var(--gap)"></p>
+
+  <!-- 1. INTERLOCUTEURS -->
+  <section class="pc-card">
+    <h2><span class="pc-num">1</span>Les voix</h2>
+    <div class="pc-row">
+      <span class="pc-note">Nombre de voix :</span>
+      <div class="shape-tabs" id="count-tabs">
+        <button class="shape-tab" data-color="blue" data-n="1"><span class="dot" style="background:var(--blue)"></span>1 voix</button>
+        <button class="shape-tab active" data-color="coral" data-n="2"><span class="dot" style="background:var(--coral)"></span>2 voix</button>
+        <button class="shape-tab" data-color="teal" data-n="3"><span class="dot" style="background:var(--teal)"></span>3 voix</button>
+      </div>
+    </div>
+    <div class="spk-grid" id="spk-grid"></div>
+  </section>
+
+  <!-- 2. SCRIPT -->
+  <section class="pc-card">
+    <h2><span class="pc-num">2</span>Le script</h2>
+    <p class="pc-note">Une réplique par ligne, sous la forme <code>Prénom: texte</code>. Les prénoms du script n'ont pas besoin d'être ceux des voix : le premier prénom rencontré prend la voix 1, le suivant la voix 2, etc. Une ligne sans prénom continue la réplique précédente.</p>
+
+    <details class="pc-details" id="prompt-box">
+      <summary>Faire écrire le script par une IA (ChatGPT, Claude, Mistral, Le Chat, Ollama…)</summary>
+      <div class="pc-grid2">
+        <div class="pc-field">
+          <label for="p-sujet">Sujet du podcast</label>
+          <input type="text" id="p-sujet" placeholder="ex. : le théorème de Pythagore sur un chantier">
+        </div>
+        <div class="pc-field">
+          <label for="p-public">Public</label>
+          <select id="p-public">
+            <option>élèves de 3e Prépa-métiers</option>
+            <option>élèves de CAP</option>
+            <option selected>élèves de 2nde Bac Pro</option>
+            <option>élèves de 1re et Terminale Bac Pro</option>
+            <option>grand public</option>
+            <option>collègues enseignants</option>
+          </select>
+        </div>
+        <div class="pc-field">
+          <label for="p-duree">Durée visée</label>
+          <select id="p-duree">
+            <option value="2">2 minutes</option>
+            <option value="3" selected>3 minutes</option>
+            <option value="5">5 minutes</option>
+            <option value="8">8 minutes</option>
+            <option value="12">12 minutes</option>
+          </select>
+        </div>
+        <div class="pc-field">
+          <label for="p-ton">Ton</label>
+          <select id="p-ton">
+            <option>détendu et bienveillant</option>
+            <option>dynamique et enthousiaste</option>
+            <option>sérieux et posé</option>
+            <option>plein d'humour, sans jamais se moquer</option>
+          </select>
+        </div>
+      </div>
+      <div class="pc-field">
+        <label for="p-points">Points à aborder, erreurs fréquentes, exemples à utiliser (facultatif)</label>
+        <textarea id="p-points" class="pc-text" rows="3" placeholder="ex. : vérifier un angle droit avec la règle 3-4-5, l'erreur d'additionner les côtés sans les mettre au carré…"></textarea>
+      </div>
+      <div class="pc-field">
+        <label for="prompt-out">Prompt à copier dans ton IA, puis colle sa réponse dans le cadre du script</label>
+        <textarea id="prompt-out" class="pc-text" readonly></textarea>
+      </div>
+      <div class="pc-row">
+        <button class="btn-rnd" id="btn-copy">📋 Copier le prompt</button>
+        <span class="pc-note" id="copy-msg"></span>
+      </div>
+    </details>
+
+    <div class="pc-row">
+      <button class="btn-rnd" id="btn-example">📄 Script d'exemple</button>
+      <button class="btn-rnd" id="btn-clear">🧹 Effacer</button>
+      <label class="pc-check"><input type="checkbox" id="opt-math" checked> Lire les symboles (² × = % √ π °C…)</label>
+    </div>
+    <textarea id="script" class="pc-text" spellcheck="true" placeholder="Léa: Bonjour à toutes et à tous, et bienvenue !&#10;Hugo: Salut Léa ! Aujourd'hui, on parle de…"></textarea>
+    <div class="pc-summary" id="summary"></div>
+  </section>
+
+  <!-- 3. RENDU -->
+  <section class="pc-card">
+    <h2><span class="pc-num">3</span>Le montage</h2>
+    <div class="pc-grid2">
+      <div class="pc-field">
+        <label for="opt-pause">Pause entre deux répliques <output id="out-pause"></output></label>
+        <input type="range" id="opt-pause" min="0.1" max="1.2" step="0.05" value="0.45">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label class="pc-check"><input type="checkbox" id="opt-natural" checked> Rythme naturel (pauses variées, réponses vives)</label>
+        <label class="pc-check"><input type="checkbox" id="opt-stereo" checked> Voix placées en stéréo</label>
+        <label class="pc-check"><input type="checkbox" id="opt-room" checked> Léger fond de studio</label>
+        <label class="pc-check"><input type="checkbox" id="opt-jingle" checked> Petit jingle au début et à la fin</label>
+      </div>
+    </div>
+    <div class="pc-row">
+      <button class="pc-go" id="btn-go">🎙️ Fabriquer le podcast</button>
+      <button class="btn-rnd" id="btn-stop" hidden>⏹ Arrêter</button>
+    </div>
+    <div class="progress-bar" id="prog" hidden><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="pc-status" id="status" aria-live="polite"></div>
+    <audio id="player" controls hidden></audio>
+    <div class="pc-row" id="exports" hidden>
+      <button class="btn-rnd" data-fmt="wav">⬇ WAV</button>
+      <button class="btn-rnd" data-fmt="mp3">⬇ MP3</button>
+      <button class="btn-rnd" data-fmt="m4a">⬇ M4A</button>
+      <span class="pc-note" id="export-msg"></span>
+    </div>
+    <ul class="pc-lines" id="lines"></ul>
+
+    <details class="pc-details">
+      <summary>Voix enregistrées sur cet appareil</summary>
+      <div class="pc-row">
+        <button class="btn-rnd" id="btn-store">🔄 Actualiser</button>
+        <button class="btn-rnd" id="btn-flush">🗑 Tout supprimer</button>
+      </div>
+      <p class="pc-note" id="store-info" style="margin-top:.6rem">—</p>
+    </details>
+  </section>
+
+</div>
+
+<footer class="lp-footer">
+  <a href="/">&larr; Tous les outils</a> &nbsp;&middot;&nbsp; Licence MIT &middot; &copy; 2026 Moise Muller &nbsp;&middot;&nbsp;
+  Voix <a href="https://github.com/OHF-Voice/piper1-gpl" target="_blank" rel="noopener">Piper</a> &nbsp;&middot;&nbsp;
+  <a href="https://classwiz-emulator.casio.com/WebApp/cw/index.html?model=EY006" target="_blank" rel="noopener">Calculatrice Casio fx-92</a>
+  &nbsp;&middot;&nbsp;
+  <span title="T : thème · P : projection · D : lecture facilitée · M : animations">Raccourcis : T &middot; P &middot; D &middot; M</span>
+</footer>
+
+<script>
+"use strict";
+(function () {
+
+  /* ====================================================================
+     CATALOGUE DES VOIX
+     Clé Piper = langue_RÉGION-nom-qualité. Les voix « medium » pèsent
+     environ 60 Mo, les « low » environ 30 Mo (plus légères, un peu moins
+     nettes). spk : noms lisibles des locuteurs d'une voix multi-locuteurs.
+  ==================================================================== */
+  var VOIX = [
+    { g: 'Français', key: 'fr_FR-siwis-medium', nom: 'Siwis (femme)', mo: 60 },
+    { g: 'Français', key: 'fr_FR-tom-medium', nom: 'Tom (homme)', mo: 60 },
+    { g: 'Français', key: 'fr_FR-upmc-medium', nom: 'UPMC : Jessica ou Pierre', mo: 75,
+      spk: { jessica: 'Jessica (femme)', pierre: 'Pierre (homme)' } },
+    { g: 'Français', key: 'fr_FR-gilles-low', nom: 'Gilles (homme, léger)', mo: 30 },
+    { g: 'Français', key: 'fr_FR-siwis-low', nom: 'Siwis (femme, léger)', mo: 30 },
+    { g: 'Français', key: 'fr_FR-mls-medium', nom: 'MLS : 125 voix variées', mo: 75 },
+    { g: 'English', key: 'en_GB-alba-medium', nom: 'Alba (GB, woman)', mo: 60 },
+    { g: 'English', key: 'en_GB-alan-medium', nom: 'Alan (GB, man)', mo: 60 },
+    { g: 'English', key: 'en_US-lessac-medium', nom: 'Lessac (US, woman)', mo: 60 },
+    { g: 'English', key: 'en_US-ryan-medium', nom: 'Ryan (US, man)', mo: 60 },
+    { g: 'Español', key: 'es_ES-sharvard-medium', nom: 'Sharvard : hombre o mujer', mo: 75 },
+    { g: 'Español', key: 'es_ES-davefx-medium', nom: 'Davefx (hombre)', mo: 60 },
+    { g: 'Español', key: 'es_MX-ald-medium', nom: 'Ald (México, hombre)', mo: 60 }
+  ];
+
+  var COULEURS = ['var(--blue)', 'var(--coral)', 'var(--teal)'];
+
+  var DEFAUT_SPK = [
+    { name: 'Léa',  voice: 'fr_FR-siwis-medium', sid: 0, speed: 1.0,  expr: 0.667, pan: -0.35 },
+    { name: 'Hugo', voice: 'fr_FR-tom-medium',   sid: 0, speed: 1.0,  expr: 0.667, pan: 0.35 },
+    { name: 'Inès', voice: 'fr_FR-upmc-medium',  sid: 0, speed: 1.05, expr: 0.667, pan: 0 }
+  ];
+
+  /* ====================================================================
+     SOURCES : /assets/piper/ si présent, sinon CDN
+  ==================================================================== */
+  var LOCAL = '/assets/piper/';
+  var CDN = {
+    'ort.wasm.min.js':      'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.wasm.min.js',
+    'ort-wasm-simd.wasm':   'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort-wasm-simd.wasm',
+    'ort-wasm.wasm':        'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort-wasm.wasm',
+    'piper_phonemize.js':   'https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.js',
+    'piper_phonemize.wasm': 'https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.wasm',
+    'piper_phonemize.data': 'https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.data',
+    'lame.min.js':          'https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js',
+    'mp4-muxer.js':         'https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.js'
+  };
+  var HF = 'https://huggingface.co/rhasspy/piper-voices/resolve/main/';
+  var CACHE_NAME = 'lp-podcast-v1';
+  var SR = 24000;            // fréquence du montage final
+  var localOK = null;        // /assets/piper/ disponible ?
+
+  async function probe(url) {
+    try {
+      var r = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      return r.ok;
+    } catch (e) { return false; }
+  }
+
+  async function libUrl(file) {
+    if (localOK === null) localOK = await probe(LOCAL + 'piper_phonemize.js');
+    return localOK ? LOCAL + file : CDN[file];
+  }
+
+  function voicePath(key) {
+    // fr_FR-siwis-medium -> fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx
+    var p = key.split('-');
+    var region = p[0], quality = p[p.length - 1], name = p.slice(1, -1).join('-');
+    return region.split('_')[0] + '/' + region + '/' + name + '/' + quality + '/' + key + '.onnx';
+  }
+
+  var voiceBase = {};
+  async function voiceUrl(key) {
+    if (voiceBase[key]) return voiceBase[key];
+    var url = HF + voicePath(key);
+    if (await probe(LOCAL + 'voices/' + key + '.onnx.json')) url = LOCAL + 'voices/' + key + '.onnx';
+    voiceBase[key] = url;
+    return url;
+  }
+
+  /* ====================================================================
+     TÉLÉCHARGEMENT AVEC CACHE (Cache API) ET PROGRESSION
+  ==================================================================== */
+  async function openCache() {
+    try { return await caches.open(CACHE_NAME); } catch (e) { return null; }
+  }
+
+  async function getBuf(url, onProg) {
+    var cache = await openCache();
+    if (cache) {
+      var hit = await cache.match(url);
+      if (hit) return await hit.arrayBuffer();
+    }
+    var res;
+    try { res = await fetch(url); }
+    catch (e) { throw new Error("Téléchargement impossible (réseau coupé ou site bloqué) : " + shortUrl(url)); }
+    if (!res.ok) throw new Error("Fichier introuvable (" + res.status + ") : " + shortUrl(url));
+    var total = +(res.headers.get('Content-Length') || 0);
+    var reader = res.body && res.body.getReader ? res.body.getReader() : null;
+    var blob;
+    if (reader) {
+      var chunks = [], loaded = 0;
+      while (true) {
+        var step = await reader.read();
+        if (step.done) break;
+        chunks.push(step.value);
+        loaded += step.value.length;
+        if (onProg) onProg(loaded, total);
+      }
+      blob = new Blob(chunks);
+    } else {
+      blob = await res.blob();
+    }
+    if (cache) {
+      try { await cache.put(url, new Response(blob, { headers: { 'Content-Type': 'application/octet-stream' } })); }
+      catch (e) { console.warn('[podcast] cache plein ?', e); }
+    }
+    return await blob.arrayBuffer();
+  }
+
+  function shortUrl(u) { return u.replace(/^https?:\/\//, '').slice(0, 90); }
+
+  async function loadScript(file, globalName) {
+    if (window[globalName]) return;
+    var buf = await getBuf(await libUrl(file));
+    var src = URL.createObjectURL(new Blob([buf], { type: 'text/javascript' }));
+    await new Promise(function (ok, ko) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = ok;
+      s.onerror = function () { ko(new Error('Script illisible : ' + file)); };
+      document.head.appendChild(s);
+    });
+    if (!window[globalName]) throw new Error('Script chargé mais vide : ' + file);
+  }
+
+  /* ====================================================================
+     MOTEUR PIPER
+  ==================================================================== */
+  var engine = { ready: false, phWasm: null, phData: null };
+  var voices = {};       // clé -> { cfg, session }
+  var cfgCache = {};     // clé -> config JSON (petit fichier)
+
+  async function initEngine(say) {
+    if (engine.ready) return;
+    say("Chargement du moteur de synthèse (une seule fois, ≈ 30 Mo)…");
+    await loadScript('ort.wasm.min.js', 'ort');
+    var simd = await getBuf(await libUrl('ort-wasm-simd.wasm'), function (l, t) { say("Moteur ONNX…", l, t); });
+    window.ort.env.wasm.numThreads = 1;
+    window.ort.env.wasm.proxy = false;
+    window.ort.env.wasm.wasmPaths = {
+      'ort-wasm-simd.wasm': URL.createObjectURL(new Blob([simd], { type: 'application/wasm' })),
+      'ort-wasm.wasm': await libUrl('ort-wasm.wasm')
+    };
+    await loadScript('piper_phonemize.js', 'createPiperPhonemize');
+    engine.phWasm = await getBuf(await libUrl('piper_phonemize.wasm'));
+    engine.phData = await getBuf(await libUrl('piper_phonemize.data'), function (l, t) { say("Dictionnaire de prononciation…", l, t); });
+    engine.ready = true;
+  }
+
+  async function getCfg(key) {
+    if (cfgCache[key]) return cfgCache[key];
+    var buf = await getBuf((await voiceUrl(key)) + '.json');
+    cfgCache[key] = JSON.parse(new TextDecoder().decode(buf));
+    return cfgCache[key];
+  }
+
+  async function getVoice(key, say) {
+    if (voices[key]) return voices[key];
+    var v = voiceInfo(key);
+    var cfg = await getCfg(key);
+    var model = await getBuf(await voiceUrl(key), function (l, t) {
+      say("Téléchargement de la voix " + v.nom + "…", l, t || v.mo * 1e6);
+    });
+    say("Préparation de la voix " + v.nom + "…");
+    var session = await window.ort.InferenceSession.create(model, { executionProviders: ['wasm'] });
+    voices[key] = { cfg: cfg, session: session };
+    return voices[key];
+  }
+
+  // Texte -> phonèmes (espeak-ng), plusieurs phrases d'un coup pour une langue.
+  function phonemize(texts, espeakVoice) {
+    return new Promise(function (ok, ko) {
+      var out = [];
+      window.createPiperPhonemize({
+        wasmBinary: engine.phWasm,
+        getPreloadedPackage: function () { return engine.phData.slice(0); },
+        print: function (d) {
+          try { out.push(JSON.parse(d).phonemes || []); } catch (e) { /* ligne parasite */ }
+        },
+        printErr: function (m) { console.warn('[espeak]', m); },
+        locateFile: function (u) { return u; }
+      }).then(function (mod) {
+        mod.callMain(['-l', espeakVoice, '--input', JSON.stringify(texts.map(function (t) { return { text: t }; })),
+                      '--espeak_data', '/espeak-ng-data']);
+        if (out.length !== texts.length) ko(new Error('Phonémisation incomplète (' + out.length + '/' + texts.length + ')'));
+        else ok(out);
+      }, ko);
+    });
+  }
+
+  // Phonèmes -> identifiants, avec la table propre à chaque voix.
+  function phonemeIds(phonemes, map) {
+    var pad = map['_'] || [0];
+    var ids = [].concat(map['^'] || [1], pad);
+    for (var i = 0; i < phonemes.length; i++) {
+      var m = map[phonemes[i]];
+      if (m) { ids.push.apply(ids, m); ids.push.apply(ids, pad); }
+    }
+    ids.push.apply(ids, map['$'] || [2]);
+    return ids;
+  }
+
+  async function infer(voice, ids, sid, speed, expr) {
+    var ort = window.ort, cfg = voice.cfg;
+    var inf = cfg.inference || {};
+    var feeds = {
+      input: new ort.Tensor('int64', BigInt64Array.from(ids.map(BigInt)), [1, ids.length]),
+      input_lengths: new ort.Tensor('int64', BigInt64Array.from([BigInt(ids.length)]), [1]),
+      scales: new ort.Tensor('float32', Float32Array.from([
+        expr, (inf.length_scale || 1) / speed, inf.noise_w || 0.8
+      ]), [3])
+    };
+    if ((cfg.num_speakers || 1) > 1) feeds.sid = new ort.Tensor('int64', BigInt64Array.from([BigInt(sid || 0)]), [1]);
+    var r = await voice.session.run(feeds);
+    return new Float32Array(r.output.data);
+  }
+
+  /* ====================================================================
+     TEXTE : nettoyage, découpage en phrases, lecture des symboles
+  ==================================================================== */
+  function cleanText(s, math) {
+    s = s.replace(/\[[^\]]*\]/g, ' ')            // [rires], [musique]
+         .replace(/\([^)]*\)/g, ' ')            // (en souriant)
+         .replace(/[*_`#]+/g, ' ')              // markdown
+         .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, ' ');
+    if (math) {
+      s = s.replace(/²/g, ' au carré ').replace(/³/g, ' au cube ')
+           .replace(/×/g, ' fois ').replace(/÷/g, ' divisé par ')
+           .replace(/≈/g, ' environ ').replace(/≠/g, ' différent de ')
+           .replace(/≤/g, ' inférieur ou égal à ').replace(/≥/g, ' supérieur ou égal à ')
+           .replace(/√/g, ' racine carrée de ').replace(/π/g, ' pi ')
+           .replace(/°\s?C\b/g, ' degrés Celsius ').replace(/°/g, ' degrés ')
+           .replace(/(\d)\s*%/g, '$1 pour cent')
+           .replace(/\s=\s/g, ' égale ').replace(/(\d)\s*=\s*(\d)/g, '$1 égale $2')
+           .replace(/(\d)\s*\+\s*(\d)/g, '$1 plus $2').replace(/\s\+\s/g, ' plus ')
+           .replace(/−/g, ' moins ')
+           .replace(/(\d)\s*\/\s*(\d)/g, '$1 sur $2')
+           .replace(/\bkm\/h\b/g, 'kilomètres heure');
+    }
+    return s.replace(/\s+/g, ' ').replace(/\s+([,.…])/g, '$1').trim();
+  }
+
+  function splitSentences(text) {
+    var parts = text.match(/[^.!?…]+[.!?…]+["»]?|[^.!?…]+$/g) || [text];
+    var out = [];
+    parts.forEach(function (p) {
+      p = p.trim();
+      if (!p) return;
+      // Les très longues phrases sont recoupées aux virgules (VITS n'aime pas l'interminable).
+      while (p.length > 320) {
+        var cut = p.lastIndexOf(',', 300);
+        if (cut < 80) cut = p.lastIndexOf(' ', 300);
+        if (cut < 80) cut = 300;
+        out.push(p.slice(0, cut + 1).trim());
+        p = p.slice(cut + 1).trim();
+      }
+      if (p) out.push(p);
+    });
+    return out;
+  }
+
+  function norm(s) {
+    return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  /* ====================================================================
+     LECTURE DU SCRIPT
+     Renvoie { items: [{ s, text }], mapping: [[nom du script, n° de voix]] }
+  ==================================================================== */
+  var RE_LINE = /^\s*[-•*]?\s*\**\s*([A-Za-zÀ-ÖØ-öø-ÿ0-9][A-Za-zÀ-ÖØ-öø-ÿ0-9' .-]{0,28}?)\s*\**\s*(?:\([^)]*\))?\s*\**\s*[:：]\s*\**\s*(.*)$/;
+
+  function parseScript(raw, spk, n, math) {
+    var lines = raw.split(/\r?\n/), rows = [];
+    lines.forEach(function (l) {
+      var t = l.trim();
+      if (!t || /^(#|---|===|```)/.test(t)) return;
+      if (/^[\[(].*[\])]$/.test(t)) return;           // ligne entière de didascalie
+      var m = t.match(RE_LINE);
+      var who = m ? m[1].trim() : '';
+      if (m && (/^[123]$/.test(who) || (who.split(/\s+/).length <= 3 && !/^\d+[.,]?\d*$/.test(who)))) {
+        rows.push({ who: who, text: m[2], line: t });
+      } else {
+        rows.push({ who: null, text: t });
+      }
+    });
+
+    // Correspondance prénom du script -> numéro de voix
+    var known = {};
+    for (var i = 0; i < n; i++) {
+      [norm(spk[i].name), String.fromCharCode(97 + i), String(i + 1), 'voix ' + (i + 1), 'intervenant ' + (i + 1),
+       'interlocuteur ' + (i + 1), 'locuteur ' + (i + 1), 'speaker ' + (i + 1), 'personne ' + (i + 1)]
+        .forEach(function (k) { if (k && !(k in known)) known[k] = i; });
+    }
+
+    // Un « Attention : … » isolé n'est pas un prénom : un nom inconnu doit
+    // revenir au moins deux fois pour être pris pour un interlocuteur.
+    var freq = {};
+    rows.forEach(function (r) { if (r.who) freq[norm(r.who)] = (freq[norm(r.who)] || 0) + 1; });
+    var nbNames = Object.keys(freq).length;
+    rows.forEach(function (r) {
+      if (r.who && !(norm(r.who) in known) && freq[norm(r.who)] < 2 && nbNames > 1) { r.who = null; r.text = r.line; }
+    });
+    var order = [], seen = {};
+    rows.forEach(function (r) {
+      if (r.who && !seen[norm(r.who)]) { seen[norm(r.who)] = true; order.push(r.who); }
+    });
+    var assign = {}, used = {};
+    order.forEach(function (w) { var k = norm(w); if (k in known) { assign[k] = known[k]; used[known[k]] = true; } });
+    var extra = 0;
+    order.forEach(function (w) {
+      var k = norm(w);
+      if (k in assign) return;
+      var free = -1;
+      for (var j = 0; j < n; j++) if (!used[j]) { free = j; break; }
+      if (free < 0) { free = extra % n; extra++; }
+      assign[k] = free; used[free] = true;
+    });
+
+    var items = [], prev = 0;
+    rows.forEach(function (r) {
+      var s = n === 1 ? 0 : (r.who ? assign[norm(r.who)] : prev);
+      var text = cleanText(r.text, math);
+      if (!/[A-Za-zÀ-ÿ0-9]/.test(text)) return;
+      items.push({ s: s, text: text });
+      prev = s;
+    });
+    var mapping = order.map(function (w) { return [w, n === 1 ? 0 : assign[norm(w)]]; });
+    return { items: items, mapping: mapping, overflow: extra > 0 };
+  }
+
+  /* ====================================================================
+     MONTAGE
+  ==================================================================== */
+  function mulberry(seed) {
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function isShort(text) { return text.split(/\s+/).length <= 4; }
+
+  // segs : [{ s, dur, text }] -> { starts: [...], total }
+  function buildTimeline(segs, o) {
+    var rnd = mulberry(1234);
+    var t = o.intro, starts = [], prevS = -1, prevText = '';
+    segs.forEach(function (sg, i) {
+      var gap = 0;
+      if (i > 0) {
+        gap = sg.s === prevS ? o.pause * 0.6 : o.pause;
+        if (o.natural) {
+          gap *= 0.7 + 0.6 * rnd();
+          if (/\?["»]?$/.test(prevText) && sg.s !== prevS) gap *= 0.75;
+          if (isShort(sg.text) && sg.s !== prevS) gap *= 0.5;   // « Exactement ! » fuse
+          if (isShort(prevText) && sg.s !== prevS) gap *= 0.7;
+        }
+      }
+      t += gap;
+      starts.push(t);
+      t += sg.dur;
+      prevS = sg.s; prevText = sg.text;
+    });
+    return { starts: starts, total: t + o.outro };
+  }
+
+  function trim(pcm, sr) {
+    var th = 0.012, a = 0, b = pcm.length - 1, m = Math.round(0.03 * sr);
+    while (a < b && Math.abs(pcm[a]) < th) a++;
+    while (b > a && Math.abs(pcm[b]) < th) b--;
+    return pcm.subarray(Math.max(0, a - m), Math.min(pcm.length, b + m));
+  }
+
+  function rms(pcm) {
+    var s = 0, n = 0;
+    for (var i = 0; i < pcm.length; i += 4) { s += pcm[i] * pcm[i]; n++; }
+    return Math.sqrt(s / Math.max(1, n));
+  }
+
+  function jingle(ctx, t0, up) {
+    var notes = up ? [523.25, 659.25, 783.99, 1046.5] : [1046.5, 783.99, 659.25, 523.25];
+    notes.forEach(function (f, i) {
+      var t = t0 + i * 0.13;
+      [[f, 'sine', 0.16], [f * 2, 'triangle', 0.035]].forEach(function (p) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = p[1]; o.frequency.value = p[0];
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(p[2], t + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0008, t + (i === 3 ? 1.4 : 0.6));
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t); o.stop(t + 1.5);
+      });
+    });
+  }
+
+  function roomNoise(ctx, total) {
+    var len = Math.round(2 * SR), buf = ctx.createBuffer(2, len, SR);
+    for (var c = 0; c < 2; c++) {
+      var d = buf.getChannelData(c), last = 0;
+      for (var i = 0; i < len; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
+    }
+    var src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = buf; src.loop = true;
+    g.gain.setValueAtTime(0, 0);
+    g.gain.linearRampToValueAtTime(0.03, 1);
+    g.gain.setValueAtTime(0.03, Math.max(1, total - 1.2));
+    g.gain.linearRampToValueAtTime(0, total);
+    src.connect(g); g.connect(ctx.destination);
+    src.start(0); src.stop(total);
+  }
+
+  async function mix(segs, opts) {
+    var tl = buildTimeline(segs, {
+      pause: opts.pause, natural: opts.natural,
+      intro: opts.jingle ? 1.9 : 0.4, outro: opts.jingle ? 2.2 : 0.6
+    });
+    var ctx = new OfflineAudioContext(2, Math.ceil(tl.total * SR), SR);
+    segs.forEach(function (sg, i) {
+      var b = ctx.createBuffer(1, sg.pcm.length, sg.sr);
+      b.copyToChannel(sg.pcm, 0);
+      var src = ctx.createBufferSource(); src.buffer = b;
+      var g = ctx.createGain();
+      g.gain.value = Math.min(4, 0.09 / Math.max(1e-4, rms(sg.pcm)));   // voix au même niveau
+      var p = ctx.createStereoPanner();
+      p.pan.value = opts.stereo ? sg.pan : 0;
+      src.connect(g); g.connect(p); p.connect(ctx.destination);
+      src.start(tl.starts[i]);
+    });
+    if (opts.room) roomNoise(ctx, tl.total);
+    if (opts.jingle) {
+      jingle(ctx, 0.15, true);
+      jingle(ctx, tl.total - 2.0, false);
+    }
+    var out = await ctx.startRendering();
+    // normalisation crête à -1 dB
+    var peak = 0;
+    for (var c = 0; c < 2; c++) {
+      var d = out.getChannelData(c);
+      for (var i = 0; i < d.length; i++) { var a = Math.abs(d[i]); if (a > peak) peak = a; }
+    }
+    var k = peak > 0 ? 0.89 / peak : 1;
+    for (c = 0; c < 2; c++) { d = out.getChannelData(c); for (i = 0; i < d.length; i++) d[i] *= k; }
+    return { buffer: out, starts: tl.starts };
+  }
+
+  /* ====================================================================
+     EXPORTS
+  ==================================================================== */
+  function toWav(buffer) {
+    var ch = buffer.numberOfChannels, n = buffer.length, sr = buffer.sampleRate;
+    var view = new DataView(new ArrayBuffer(44 + n * ch * 2));
+    function str(o, s) { for (var i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); }
+    str(0, 'RIFF'); view.setUint32(4, 36 + n * ch * 2, true); str(8, 'WAVE');
+    str(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+    view.setUint16(22, ch, true); view.setUint32(24, sr, true);
+    view.setUint32(28, sr * ch * 2, true); view.setUint16(32, ch * 2, true); view.setUint16(34, 16, true);
+    str(36, 'data'); view.setUint32(40, n * ch * 2, true);
+    var data = [], p = 44;
+    for (var c = 0; c < ch; c++) data.push(buffer.getChannelData(c));
+    for (var i = 0; i < n; i++) {
+      for (c = 0; c < ch; c++) {
+        var v = Math.max(-1, Math.min(1, data[c][i]));
+        view.setInt16(p, v < 0 ? v * 32768 : v * 32767, true); p += 2;
+      }
+    }
+    return new Blob([view.buffer], { type: 'audio/wav' });
+  }
+
+  function toInt16(f) {
+    var o = new Int16Array(f.length);
+    for (var i = 0; i < f.length; i++) { var v = Math.max(-1, Math.min(1, f[i])); o[i] = v < 0 ? v * 32768 : v * 32767; }
+    return o;
+  }
+
+  function tick() { return new Promise(function (r) { setTimeout(r, 0); }); }
+
+  async function toMp3(buffer, onProg) {
+    await loadScript('lame.min.js', 'lamejs');
+    var l = toInt16(buffer.getChannelData(0)), r = toInt16(buffer.getChannelData(1));
+    var enc = new window.lamejs.Mp3Encoder(2, buffer.sampleRate, 96), parts = [];
+    var BLOCK = 1152;
+    for (var i = 0; i < l.length; i += BLOCK) {
+      var b = enc.encodeBuffer(l.subarray(i, i + BLOCK), r.subarray(i, i + BLOCK));
+      if (b.length) parts.push(new Uint8Array(b));
+      if ((i / BLOCK) % 200 === 0) { onProg(i / l.length); await tick(); }
+    }
+    var end = enc.flush();
+    if (end.length) parts.push(new Uint8Array(end));
+    return new Blob(parts, { type: 'audio/mpeg' });
+  }
+
+  async function resample(buffer, rate) {
+    if (buffer.sampleRate === rate) return buffer;
+    var ctx = new OfflineAudioContext(buffer.numberOfChannels, Math.ceil(buffer.duration * rate), rate);
+    var s = ctx.createBufferSource(); s.buffer = buffer; s.connect(ctx.destination); s.start(0);
+    return await ctx.startRendering();
+  }
+
+  async function aacRate() {
+    if (!('AudioEncoder' in window)) return 0;
+    var rates = [SR, 44100, 48000];
+    for (var i = 0; i < rates.length; i++) {
+      try {
+        var s = await AudioEncoder.isConfigSupported({ codec: 'mp4a.40.2', sampleRate: rates[i], numberOfChannels: 2, bitrate: 128000 });
+        if (s.supported) return rates[i];
+      } catch (e) { /* essai suivant */ }
+    }
+    return 0;
+  }
+
+  async function toM4a(buffer, onProg) {
+    var rate = await aacRate();
+    if (!rate) throw new Error("Ce navigateur ne sait pas encoder en AAC (essaie Chrome, Edge ou Safari récents, ou prends le MP3).");
+    await loadScript('mp4-muxer.js', 'Mp4Muxer');
+    var b = await resample(buffer, rate);
+    var M = window.Mp4Muxer;
+    var muxer = new M.Muxer({
+      target: new M.ArrayBufferTarget(),
+      audio: { codec: 'aac', numberOfChannels: 2, sampleRate: rate },
+      fastStart: 'in-memory'
+    });
+    var failure = null;
+    var enc = new AudioEncoder({
+      output: function (chunk, meta) { muxer.addAudioChunk(chunk, meta); },
+      error: function (e) { failure = e; }
+    });
+    enc.configure({ codec: 'mp4a.40.2', sampleRate: rate, numberOfChannels: 2, bitrate: 128000 });
+    var L = b.getChannelData(0), R = b.getChannelData(1), N = 4096 * 4;
+    for (var i = 0; i < b.length; i += N) {
+      var n = Math.min(N, b.length - i), d = new Float32Array(n * 2);
+      d.set(L.subarray(i, i + n), 0); d.set(R.subarray(i, i + n), n);
+      enc.encode(new AudioData({ format: 'f32-planar', sampleRate: rate, numberOfFrames: n, numberOfChannels: 2,
+                                 timestamp: Math.round(i / rate * 1e6), data: d }));
+      if ((i / N) % 20 === 0) { onProg(i / b.length); await tick(); }
+      if (failure) throw failure;
+    }
+    await enc.flush();
+    enc.close();
+    if (failure) throw failure;
+    muxer.finalize();
+    return new Blob([muxer.target.buffer], { type: 'audio/mp4' });
+  }
+
+  function download(blob, name) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
+  }
+
+  /* ====================================================================
+     ÉTAT ET INTERFACE
+  ==================================================================== */
+  var $ = function (id) { return document.getElementById(id); };
+  var STORE = 'lp-podcast';
+  var state = { n: 2, spk: JSON.parse(JSON.stringify(DEFAUT_SPK)) };
+  var segCache = new Map();   // clé de réplique -> { pcm, sr }
+  var last = null;            // dernier rendu { buffer, starts, items }
+  var busy = false, stopAsked = false;
+
+  function voiceInfo(key) {
+    for (var i = 0; i < VOIX.length; i++) if (VOIX[i].key === key) return VOIX[i];
+    return { key: key, nom: key, mo: 60 };
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORE, JSON.stringify({
+        n: state.n, spk: state.spk, script: $('script').value,
+        pause: $('opt-pause').value, natural: $('opt-natural').checked, stereo: $('opt-stereo').checked,
+        room: $('opt-room').checked, jingle: $('opt-jingle').checked, math: $('opt-math').checked,
+        sujet: $('p-sujet').value, publc: $('p-public').value, duree: $('p-duree').value,
+        ton: $('p-ton').value, points: $('p-points').value
+      }));
+    } catch (e) { /* navigation privée */ }
+  }
+
+  function restore() {
+    try {
+      var d = JSON.parse(localStorage.getItem(STORE) || 'null');
+      if (!d) return;
+      if (d.n) state.n = d.n;
+      if (d.spk && d.spk.length === 3) state.spk = d.spk;
+      $('script').value = d.script || '';
+      if (d.pause) $('opt-pause').value = d.pause;
+      ['natural', 'stereo', 'room', 'jingle', 'math'].forEach(function (k) {
+        if (typeof d[k] === 'boolean') $('opt-' + k).checked = d[k];
+      });
+      $('p-sujet').value = d.sujet || '';
+      if (d.publc) $('p-public').value = d.publc;
+      if (d.duree) $('p-duree').value = d.duree;
+      if (d.ton) $('p-ton').value = d.ton;
+      $('p-points').value = d.points || '';
+    } catch (e) { /* données abîmées : on repart des défauts */ }
+  }
+
+  function voiceOptions(sel) {
+    var html = '', g = '';
+    VOIX.forEach(function (v) {
+      if (v.g !== g) { if (g) html += '</optgroup>'; g = v.g; html += '<optgroup label="' + g + '">'; }
+      html += '<option value="' + v.key + '"' + (v.key === sel ? ' selected' : '') + '>' + v.nom + ' · ≈ ' + v.mo + ' Mo</option>';
+    });
+    return html + '</optgroup>';
+  }
+
+  function fmt2(x) { return (+x).toFixed(2).replace('.', ','); }
+
+  function buildSpeakers() {
+    var grid = $('spk-grid');
+    grid.innerHTML = '';
+    state.spk.forEach(function (s, i) {
+      var c = document.createElement('div');
+      c.className = 'spk-card';
+      c.style.setProperty('--spk', COULEURS[i]);
+      c.innerHTML =
+        '<div class="spk-title">Voix ' + (i + 1) + '</div>' +
+        '<div class="pc-field"><label>Prénom</label><input type="text" data-k="name" value=""></div>' +
+        '<div class="pc-field"><label>Voix</label><select data-k="voice">' + voiceOptions(s.voice) + '</select></div>' +
+        '<div class="pc-field" data-sidbox hidden><label>Locuteur</label><select data-k="sid"></select></div>' +
+        '<div class="pc-field"><label>Débit <output data-o="speed"></output></label>' +
+          '<input type="range" data-k="speed" min="0.75" max="1.3" step="0.05"></div>' +
+        '<div class="pc-field"><label>Expressivité <output data-o="expr"></output></label>' +
+          '<input type="range" data-k="expr" min="0.3" max="1" step="0.05"></div>' +
+        '<div class="pc-field"><label>Place dans la stéréo <output data-o="pan"></output></label>' +
+          '<input type="range" data-k="pan" min="-1" max="1" step="0.05"></div>' +
+        '<div class="pc-row"><button class="btn-rnd" data-test>▶ Écouter cette voix</button><span class="pc-note" data-msg></span></div>';
+      grid.appendChild(c);
+      c.querySelector('[data-k="name"]').value = s.name;
+      ['speed', 'expr', 'pan'].forEach(function (k) { c.querySelector('[data-k="' + k + '"]').value = s[k]; });
+      refreshOutputs(c, s);
+      c.addEventListener('input', function (e) {
+        var k = e.target.getAttribute('data-k');
+        if (!k) return;
+        if (k === 'name') s.name = e.target.value;
+        else if (k === 'voice') { s.voice = e.target.value; s.sid = 0; fillSid(c, s); }
+        else if (k === 'sid') s.sid = +e.target.value;
+        else s[k] = +e.target.value;
+        refreshOutputs(c, s);
+        save(); updateSummary(); updatePrompt();
+      });
+      c.querySelector('[data-test]').addEventListener('click', function () { testVoice(i, c); });
+      fillSid(c, s);
+    });
+    showCount();
+  }
+
+  function refreshOutputs(c, s) {
+    c.querySelector('[data-o="speed"]').textContent = '×' + fmt2(s.speed);
+    c.querySelector('[data-o="expr"]').textContent = s.expr < 0.5 ? 'posée' : s.expr > 0.8 ? 'vivante' : 'normale';
+    c.querySelector('[data-o="pan"]').textContent = Math.abs(s.pan) < 0.08 ? 'centre' :
+      (s.pan < 0 ? 'gauche ' : 'droite ') + Math.round(Math.abs(s.pan) * 100) + ' %';
+  }
+
+  // Les voix à plusieurs locuteurs : on lit leur fiche (quelques ko) pour lister les choix.
+  async function fillSid(c, s) {
+    var box = c.querySelector('[data-sidbox]'), sel = c.querySelector('[data-k="sid"]');
+    var v = voiceInfo(s.voice);
+    box.hidden = true;
+    var known = /upmc|sharvard|mls-medium|vctk|libritts|arctic|l2arctic/.test(s.voice);
+    if (!known) return;
+    try {
+      var cfg = await getCfg(s.voice);
+      if (s.voice !== c.querySelector('[data-k="voice"]').value) return;
+      var map = cfg.speaker_id_map || {}, keys = Object.keys(map);
+      if (keys.length < 2) return;
+      keys.sort(function (a, b) { return map[a] - map[b]; });
+      sel.innerHTML = keys.map(function (k) {
+        var label = v.spk && v.spk[k] ? v.spk[k] : 'Locuteur ' + (map[k] + 1) + ' (' + k + ')';
+        return '<option value="' + map[k] + '"' + (map[k] === s.sid ? ' selected' : '') + '>' + label + '</option>';
+      }).join('');
+      box.hidden = false;
+    } catch (e) {
+      c.querySelector('[data-msg]').textContent = 'Liste des locuteurs indisponible hors ligne.';
+    }
+  }
+
+  function showCount() {
+    var cards = $('spk-grid').children;
+    for (var i = 0; i < cards.length; i++) cards[i].hidden = i >= state.n;
+    var tabs = $('count-tabs').querySelectorAll('.shape-tab');
+    for (i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', +tabs[i].getAttribute('data-n') === state.n);
+  }
+
+  function say(msg, loaded, total) {
+    var st = $('status');
+    st.classList.remove('err');
+    if (loaded != null && total) {
+      var pct = Math.min(100, Math.round(loaded / total * 100));
+      st.textContent = msg + ' ' + pct + ' % (' + Math.round(loaded / 1e6) + ' / ' + Math.round(total / 1e6) + ' Mo)';
+    } else {
+      st.textContent = msg;
+    }
+  }
+
+  function setProg(f) {
+    $('prog').hidden = f == null;
+    if (f != null) $('prog-fill').style.width = Math.round(f * 100) + '%';
+  }
+
+  function fail(e) {
+    console.error('[podcast]', e);
+    var st = $('status');
+    st.textContent = 'Problème : ' + (e && e.message ? e.message : e);
+    st.classList.add('err');
+  }
+
+  /* ---------- synthèse d'une réplique (avec cache) ---------- */
+  function segKey(s, text) { return [s.voice, s.sid, s.speed, s.expr, text].join('|'); }
+
+  async function synthItems(items, sayFn, progFn) {
+    // 1. voix nécessaires
+    var keys = [];
+    items.forEach(function (it) { var k = state.spk[it.s].voice; if (keys.indexOf(k) < 0) keys.push(k); });
+    for (var i = 0; i < keys.length; i++) await getVoice(keys[i], sayFn);
+
+    // 2. phonèmes de toutes les phrases encore inconnues, groupées par langue
+    var todo = items.filter(function (it) { return !segCache.has(segKey(state.spk[it.s], it.text)); });
+    var byLang = {}, phon = {};
+    todo.forEach(function (it) {
+      var lang = voices[state.spk[it.s].voice].cfg.espeak.voice;
+      (byLang[lang] = byLang[lang] || []);
+      splitSentences(it.text).forEach(function (p) { if (byLang[lang].indexOf(p) < 0) byLang[lang].push(p); });
+    });
+    for (var lang in byLang) {
+      sayFn("Analyse de la prononciation…");
+      var res = await phonemize(byLang[lang], lang);
+      byLang[lang].forEach(function (p, j) { phon[lang + '|' + p] = res[j]; });
+    }
+
+    // 3. synthèse
+    var segs = [];
+    for (i = 0; i < items.length; i++) {
+      if (stopAsked) throw new Error('Arrêté.');
+      var it = items[i], s = state.spk[it.s], key = segKey(s, it.text);
+      var seg = segCache.get(key);
+      if (!seg) {
+        sayFn('Synthèse de la réplique ' + (i + 1) + ' sur ' + items.length + '…');
+        var v = voices[s.voice], sr = v.cfg.audio.sample_rate, l2 = v.cfg.espeak.voice;
+        var parts = [], len = 0, gapLen = Math.round(0.22 * sr / s.speed);
+        var sents = splitSentences(it.text);
+        for (var j = 0; j < sents.length; j++) {
+          var ph = phon[l2 + '|' + sents[j]];
+          if (!ph || !ph.length) continue;
+          var pcm = trim(await infer(v, phonemeIds(ph, v.cfg.phoneme_id_map), s.sid, s.speed, s.expr), sr);
+          if (parts.length) { parts.push(new Float32Array(gapLen)); len += gapLen; }
+          parts.push(pcm); len += pcm.length;
+        }
+        var all = new Float32Array(Math.max(1, len)), o = 0;
+        parts.forEach(function (p) { all.set(p, o); o += p.length; });
+        seg = { pcm: all, sr: sr };
+        segCache.set(key, seg);
+        await tick();
+      }
+      segs.push({ s: it.s, text: it.text, pcm: seg.pcm, sr: seg.sr, dur: seg.pcm.length / seg.sr, pan: s.pan });
+      if (progFn) progFn((i + 1) / items.length);
+    }
+    return segs;
+  }
+
+  async function testVoice(i, card) {
+    if (busy) return;
+    var msg = card.querySelector('[data-msg]'), s = state.spk[i];
+    busy = true; lockUI(true);
+    try {
+      await initEngine(function (m, l, t) { msg.textContent = m + (t ? ' ' + Math.round(l / t * 100) + ' %' : ''); });
+      var lang = /^en/.test(s.voice) ? 'en' : /^es/.test(s.voice) ? 'es' : 'fr';
+      var phrase = { fr: "Bonjour, je m'appelle " + s.name + ". Voici ma voix pour le podcast.",
+                     en: "Hello, my name is " + s.name + ". This is my podcast voice.",
+                     es: "Hola, me llamo " + s.name + ". Esta es mi voz para el pódcast." }[lang];
+      var segs = await synthItems([{ s: i, text: phrase }], function (m, l, t) {
+        msg.textContent = m + (t ? ' ' + Math.round(l / t * 100) + ' %' : '');
+      });
+      msg.textContent = '';
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var b = ctx.createBuffer(1, segs[0].pcm.length, segs[0].sr);
+      b.copyToChannel(segs[0].pcm, 0);
+      var src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start();
+      src.onended = function () { ctx.close(); };
+    } catch (e) {
+      msg.textContent = 'Problème : ' + (e.message || e);
+    } finally { busy = false; lockUI(false); }
+  }
+
+  function lockUI(on) {
+    $('btn-go').disabled = on;
+    $('btn-stop').hidden = !on;
+    var b = document.querySelectorAll('[data-test], #exports button');
+    for (var i = 0; i < b.length; i++) b[i].disabled = on;
+  }
+
+  /* ---------- résumé du script ---------- */
+  function currentParse() {
+    return parseScript($('script').value, state.spk, state.n, $('opt-math').checked);
+  }
+
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function mmss(t) { var m = Math.floor(t / 60), s = Math.round(t % 60); if (s === 60) { m++; s = 0; } return m + ':' + (s < 10 ? '0' : '') + s; }
+
+  function updateSummary() {
+    var p = currentParse(), sum = $('summary');
+    if (!p.items.length) { sum.textContent = ''; renderLines([], null); return; }
+    var words = 0, sec = 0;
+    p.items.forEach(function (it) {
+      var w = it.text.split(/\s+/).length; words += w;
+      sec += w / 2.6 / state.spk[it.s].speed;
+    });
+    sec += p.items.length * +$('opt-pause').value;
+    var map = p.mapping.filter(function (m) { return norm(m[0]) !== norm(state.spk[m[1]].name); })
+      .map(function (m) { return '<strong>' + esc(m[0]) + '</strong> → voix ' + (m[1] + 1) + ' (' + esc(state.spk[m[1]].name) + ')'; });
+    sum.innerHTML = '<strong>' + p.items.length + '</strong> répliques · ' + words + ' mots · durée estimée ≈ <strong>' + mmss(sec) + '</strong>' +
+      (map.length ? ' · ' + map.join(', ') : '') +
+      (p.overflow ? ' · <span style="color:var(--red)">plus de prénoms que de voix : certains partagent une voix</span>' : '');
+    if (!last || last.text !== $('script').value) renderLines(p.items, null);
+  }
+
+  function renderLines(items, starts) {
+    var ul = $('lines');
+    ul.classList.toggle('ready', !!starts);
+    ul.innerHTML = items.map(function (it, i) {
+      return '<li data-i="' + i + '" style="--spk:' + COULEURS[it.s] + '">' +
+        (starts ? '<span class="pc-time">' + mmss(starts[i]) + '</span>' : '') +
+        '<span class="pc-chip">' + esc(state.spk[it.s].name || 'Voix ' + (it.s + 1)) + '</span><span>' + esc(it.text) + '</span></li>';
+    }).join('');
+  }
+
+  /* ---------- prompt pour l'IA ---------- */
+  function updatePrompt() {
+    var n = state.n, nm = state.spk.slice(0, n).map(function (s) { return s.name || 'Voix'; });
+    var roles = n === 1
+      ? ['- ' + nm[0] + " : narrateur ou narratrice unique, qui s'adresse directement à l'auditeur comme dans une chronique radio."]
+      : ['- ' + nm[0] + ' : anime l\'émission, pose les questions, reformule et relance.',
+         '- ' + nm[1] + ' : connaît bien le sujet, explique simplement avec des exemples concrets du quotidien et du monde professionnel.'];
+    if (n === 3) roles.push('- ' + nm[2] + ' : élève curieux ou curieuse, pose les questions que se posent les auditeurs, se trompe parfois et se fait corriger avec bienveillance.');
+    var sujet = $('p-sujet').value.trim() || '[SUJET À PRÉCISER]';
+    var min = +$('p-duree').value;
+    var pts = $('p-points').value.trim();
+    var txt =
+      'Écris le script d\'un podcast en français d\'environ ' + min + ' minutes (environ ' + (min * 150) + ' mots) sur le sujet : « ' + sujet + ' ».\n' +
+      'Public : ' + $('p-public').value + '. Ton : ' + $('p-ton').value + '.\n\n' +
+      (n === 1 ? 'Une seule voix :\n' : 'Interlocuteurs (' + n + ') :\n') + roles.join('\n') + '\n\n' +
+      (pts ? 'À aborder absolument : ' + pts + '\n\n' : '') +
+      'Le texte sera lu par une synthèse vocale. Respecte STRICTEMENT ce format :\n' +
+      '- Une réplique par ligne, sous la forme   Prénom: texte' + (n === 1 ? '   (toujours le même prénom : ' + nm[0] + ')' : '') + '\n' +
+      '- Aucun titre, aucun markdown, aucun emoji, aucune didascalie ni indication entre parenthèses ou crochets.\n' +
+      '- Écris les nombres, unités et formules comme on les prononce (« trois virgule cinq centimètres », « a au carré plus b au carré »).\n' +
+      '- Phrases courtes et naturelles. ' + (n > 1 ? 'Alterne souvent les prises de parole, avec de vraies réactions (« Ah oui ! », « D\'accord », « Exactement », « Attends, je ne suis pas sûr de comprendre… »), comme une vraie conversation et non un exposé découpé.\n' : 'Varie le rythme, interpelle l\'auditeur, pose des questions rhétoriques.\n') +
+      '- Commence par une courte accroche, termine par un résumé en trois idées clés et une phrase de conclusion.\n' +
+      '- Vérifie l\'exactitude de tout ce qui est affirmé.\n' +
+      'Réponds uniquement avec le script, sans rien avant ni après.';
+    $('prompt-out').value = txt;
+  }
+
+  function exampleScript() {
+    var n = state.n, a = state.spk[0].name, b = state.spk[1].name, c = state.spk[2].name;
+    if (n === 1) return [
+      a + ": Bonjour à toutes et à tous, et bienvenue dans Maths de chantier !",
+      a + ": Aujourd'hui, une question toute simple : comment un maçon vérifie-t-il qu'un angle est bien droit, sans équerre géante ?",
+      a + ": Il utilise une vieille astuce : la règle du trois, quatre, cinq.",
+      a + ": On mesure trois mètres sur un mur, quatre mètres sur l'autre. Si la diagonale fait exactement cinq mètres, l'angle est droit.",
+      a + ": Pourquoi ? Parce que trois au carré plus quatre au carré, ça fait neuf plus seize, donc vingt-cinq. Et vingt-cinq, c'est cinq au carré.",
+      a + ": C'est le théorème de Pythagore, utilisé à l'envers : on parle de sa réciproque.",
+      a + ": À retenir : un, on mesure. Deux, on met au carré. Trois, on compare. À bientôt !"
+    ].join('\n');
+    var l = [
+      a + ": Bonjour à toutes et à tous, et bienvenue dans Maths de chantier ! Avec moi aujourd'hui, " + b + ".",
+      b + ": Salut " + a + " ! Salut tout le monde.",
+      a + ": Alors " + b + ", question du jour : comment un maçon vérifie-t-il qu'un angle est bien droit, sans équerre géante ?",
+      b + ": Avec une astuce très ancienne : la règle du trois, quatre, cinq.",
+      a + ": Trois, quatre, cinq ? Explique-nous.",
+      b + ": On mesure trois mètres le long d'un mur, quatre mètres le long de l'autre. Puis on mesure la diagonale entre les deux points.",
+      a + ": Et si elle fait cinq mètres…",
+      b + ": Exactement ! Alors l'angle est droit."
+    ];
+    if (n === 3) l.push(
+      c + ": Attendez, pourquoi ça marche ? On ne fait pas juste trois plus quatre ?",
+      b + ": Bonne question ! Non : trois plus quatre, ça fait sept, pas cinq. Il faut mettre au carré.",
+      c + ": Ah d'accord. Trois au carré, neuf. Quatre au carré, seize.",
+      b + ": Neuf plus seize, vingt-cinq. Et vingt-cinq, c'est cinq au carré."
+    );
+    else l.push(b + ": Parce que trois au carré plus quatre au carré, ça fait neuf plus seize, donc vingt-cinq. Et vingt-cinq, c'est cinq au carré.");
+    l.push(
+      a + ": C'est donc le théorème de Pythagore !",
+      b + ": Oui, utilisé à l'envers. On parle de sa réciproque.",
+      a + ": À retenir : un, on mesure. Deux, on met au carré. Trois, on compare. Merci " + b + ", et à bientôt !"
+    );
+    return l.join('\n');
+  }
+
+  /* ---------- fabrication ---------- */
+  async function generate() {
+    if (busy) return;
+    var p = currentParse();
+    if (!p.items.length) { fail(new Error('Le script est vide.')); return; }
+    busy = true; stopAsked = false; lockUI(true);
+    $('player').hidden = true; $('exports').hidden = true; $('export-msg').textContent = '';
+    setProg(0);
+    var t0 = performance.now();
+    try {
+      await initEngine(say);
+      var segs = await synthItems(p.items, say, function (f) { setProg(f * 0.92); });
+      say('Montage…');
+      var m = await mix(segs, {
+        pause: +$('opt-pause').value, natural: $('opt-natural').checked, stereo: $('opt-stereo').checked,
+        room: $('opt-room').checked, jingle: $('opt-jingle').checked
+      });
+      setProg(1);
+      last = { buffer: m.buffer, starts: m.starts, items: p.items, text: $('script').value };
+      var pl = $('player');
+      if (pl.src) URL.revokeObjectURL(pl.src);
+      pl.src = URL.createObjectURL(toWav(m.buffer));
+      pl.hidden = false; $('exports').hidden = false;
+      aacRate().then(function (r) {
+        var b = document.querySelector('[data-fmt="m4a"]');
+        b.hidden = !r;
+        if (!r) $('export-msg').textContent = "(M4A : encodeur AAC absent de ce navigateur, prends le MP3)";
+      });
+      renderLines(p.items, m.starts);
+      say('Podcast prêt : ' + mmss(m.buffer.duration) + ' (fabriqué en ' + Math.round((performance.now() - t0) / 1000) + ' s). Clique sur une réplique pour y aller.');
+    } catch (e) {
+      fail(e);
+    } finally {
+      busy = false; lockUI(false);
+      setTimeout(function () { if (!busy) setProg(null); }, 800);
+    }
+  }
+
+  function fileName(ext) {
+    var base = norm($('p-sujet').value || 'podcast').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'podcast';
+    var d = new Date();
+    return base + '-' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '.' + ext;
+  }
+
+  async function exportAs(fmt) {
+    if (!last || busy) return;
+    var msg = $('export-msg');
+    busy = true; lockUI(true); $('btn-stop').hidden = true;
+    try {
+      var blob;
+      if (fmt === 'wav') blob = toWav(last.buffer);
+      else if (fmt === 'mp3') blob = await toMp3(last.buffer, function (f) { msg.textContent = 'Encodage MP3… ' + Math.round(f * 100) + ' %'; });
+      else blob = await toM4a(last.buffer, function (f) { msg.textContent = 'Encodage M4A… ' + Math.round(f * 100) + ' %'; });
+      download(blob, fileName(fmt));
+      msg.textContent = fmt.toUpperCase() + ' : ' + (blob.size / 1e6).toFixed(1).replace('.', ',') + ' Mo';
+    } catch (e) {
+      msg.textContent = 'Problème : ' + (e.message || e);
+    } finally { busy = false; lockUI(false); }
+  }
+
+  /* ---------- voix stockées ---------- */
+  async function storeInfo() {
+    var info = $('store-info');
+    var cache = await openCache();
+    if (!cache) { info.textContent = "Stockage indisponible (navigation privée ?) : les voix seront retéléchargées à chaque visite."; return; }
+    var reqs = await cache.keys(), names = [], total = 0;
+    for (var i = 0; i < reqs.length; i++) {
+      var u = reqs[i].url;
+      if (/\.onnx$/.test(u)) {
+        var r = await cache.match(reqs[i]), b = await r.blob();
+        total += b.size;
+        var key = u.split('/').pop().replace('.onnx', '');
+        names.push(voiceInfo(key).nom);
+      }
+    }
+    var est = '';
+    try { var e = await navigator.storage.estimate(); est = ' · espace libre ≈ ' + Math.round((e.quota - e.usage) / 1e9) + ' Go'; } catch (err) { /* */ }
+    info.textContent = names.length
+      ? names.length + ' voix (' + Math.round(total / 1e6) + ' Mo) : ' + names.join(', ') + est
+      : 'Aucune voix enregistrée pour l\'instant.' + est;
+  }
+
+  /* ---------- branchements ---------- */
+  function wire() {
+    $('count-tabs').addEventListener('click', function (e) {
+      var b = e.target.closest('.shape-tab');
+      if (!b) return;
+      state.n = +b.getAttribute('data-n');
+      showCount(); save(); updateSummary(); updatePrompt();
+    });
+    $('script').addEventListener('input', function () { save(); updateSummary(); });
+    ['opt-pause', 'opt-natural', 'opt-stereo', 'opt-room', 'opt-jingle', 'opt-math'].forEach(function (id) {
+      $(id).addEventListener('input', function () {
+        $('out-pause').textContent = fmt2($('opt-pause').value) + ' s';
+        save(); updateSummary();
+      });
+    });
+    $('out-pause').textContent = fmt2($('opt-pause').value) + ' s';
+    ['p-sujet', 'p-public', 'p-duree', 'p-ton', 'p-points'].forEach(function (id) {
+      $(id).addEventListener('input', function () { save(); updatePrompt(); });
+    });
+    $('btn-copy').addEventListener('click', async function () {
+      var t = $('prompt-out');
+      try { await navigator.clipboard.writeText(t.value); }
+      catch (e) { t.select(); document.execCommand('copy'); }
+      $('copy-msg').textContent = 'Copié ! Colle-le dans ton IA, puis colle sa réponse ci-dessous.';
+      setTimeout(function () { $('copy-msg').textContent = ''; }, 5000);
+    });
+    $('btn-example').addEventListener('click', function () {
+      if ($('script').value.trim() && !confirmReplace()) return;
+      $('script').value = exampleScript();
+      save(); updateSummary();
+    });
+    $('btn-clear').addEventListener('click', function () {
+      if ($('script').value.trim() && !confirmReplace()) return;
+      $('script').value = ''; save(); updateSummary();
+    });
+    $('btn-go').addEventListener('click', generate);
+    $('btn-stop').addEventListener('click', function () { stopAsked = true; say('Arrêt en cours…'); });
+    $('exports').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-fmt]');
+      if (b) exportAs(b.getAttribute('data-fmt'));
+    });
+    $('lines').addEventListener('click', function (e) {
+      var li = e.target.closest('li');
+      if (!li || !last || !$('lines').classList.contains('ready')) return;
+      var pl = $('player');
+      pl.currentTime = Math.max(0, last.starts[+li.getAttribute('data-i')] - 0.1);
+      pl.play();
+    });
+    $('player').addEventListener('timeupdate', function () {
+      if (!last) return;
+      var t = $('player').currentTime, k = -1;
+      for (var i = 0; i < last.starts.length; i++) if (last.starts[i] <= t + 0.05) k = i;
+      var lis = $('lines').children;
+      for (i = 0; i < lis.length; i++) lis[i].classList.toggle('now', i === k);
+    });
+    $('btn-store').addEventListener('click', storeInfo);
+    $('btn-flush').addEventListener('click', async function () {
+      try { await caches.delete(CACHE_NAME); } catch (e) { /* */ }
+      voices = {}; cfgCache = {}; engine.ready = false; segCache.clear();
+      storeInfo();
+    });
+    $('prompt-box').addEventListener('toggle', updatePrompt);
+  }
+
+  // Petite confirmation sans boîte de dialogue bloquante : deuxième clic dans les 3 s.
+  var armed = 0;
+  function confirmReplace() {
+    var now = Date.now();
+    if (now - armed < 3000) { armed = 0; return true; }
+    armed = now;
+    say('Le script actuel sera remplacé : clique une seconde fois pour confirmer.');
+    return false;
+  }
+
+  restore();
+  buildSpeakers();
+  wire();
+  updatePrompt();
+  updateSummary();
+
+  // Pour les tests et la console
+  window.LP_PODCAST = { parseScript: parseScript, cleanText: cleanText, splitSentences: splitSentences,
+                        buildTimeline: buildTimeline, phonemeIds: phonemeIds, toWav: toWav, state: state };
+
+})();
+</script>
+</body>
+</html>
