@@ -165,6 +165,19 @@ SOFTWARE.
     .cb-bilan .lib { display: none; }
     .cb-bilan td.nom { white-space: normal; }
   }
+  /* Teinte de fond : bleutée = combustion complète, orangée = incomplète */
+  .cb-teinte-complete   { background-image: linear-gradient(rgba(47,127,214,.13), rgba(47,127,214,.13)); }
+  .cb-teinte-incomplete { background-image: linear-gradient(rgba(242,140,30,.17), rgba(242,140,30,.17)); }
+
+  /* Paillasse des tests (explorateur et défi) */
+  .cb-banc { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+  .cb-banc svg { width: 100%; max-width: 300px; height: auto; background: var(--sketch-bg); border-radius: var(--radius); }
+  .cb-banc-obs { font-size: var(--fs-sm); font-weight: 400; color: var(--text); text-align: center; line-height: 1.45; min-height: 4.4em; max-width: 520px; }
+  .cb-banc .cb-btn { font-size: var(--fs-xs); padding: 9px 13px; }
+  .cb-banc .cb-btn.fait { border-color: var(--teal); color: var(--teal); background: var(--teal-bg); }
+  .cb-apparait { animation: cb-app 1.1s ease-out both; }
+  @keyframes cb-app { from { opacity: 0; } to { opacity: 1; } }
+  .cb-tests td { text-align: left; line-height: 1.4; }
   .cb-masses { text-align: left; max-width: 560px; margin: 0 auto; font-weight: 400; }
 
   /* Le champ du moteur ne sert que de relais pour la famille « équilibrer » */
@@ -203,6 +216,7 @@ SOFTWARE.
       <div class="shape-tabs">
         <button class="shape-tab active" data-color="amber" onclick="setPan('reaction',this)"><span class="dot" style="background:var(--amber)"></span>Réaction animée</button>
         <button class="shape-tab" data-color="blue" onclick="setPan('molecules',this)"><span class="dot" style="background:var(--blue)"></span>Les molécules</button>
+        <button class="shape-tab" data-color="teal" onclick="setPan('tests',this)"><span class="dot" style="background:var(--teal)"></span>Tests des produits</button>
       </div>
       <button class="btn-rnd" onclick="hasardReaction()">&#127922; Autre combustible</button>
     </div>
@@ -248,6 +262,25 @@ SOFTWARE.
       </div>
     </div>
 
+    <!-- TESTS DES PRODUITS -->
+    <div id="panel-tests" class="panel">
+      <div class="sketch-card">
+        <span class="shape-badge" style="background:var(--teal-bg);color:var(--teal)" id="t-badge">Identifier un gaz</span>
+        <div class="cb-banc" id="banc-tx"></div>
+      </div>
+      <div class="controls-card">
+        <p class="section-label">Gaz à tester</p>
+        <div class="cb-pills" id="t-ech"></div>
+        <p class="section-label">Les trois tests à connaître</p>
+        <table class="cb-bilan cb-tests" id="t-table" style="max-width:none"></table>
+        <div class="formula-box">
+          <code>produits de la combustion &rarr; tests</code>
+          <div class="formula-detail">Combustion complète d'un hydrocarbure : l'eau de chaux se trouble (il y a du CO<sub>2</sub>) et le sulfate de cuivre anhydre bleuit (il y a de l'eau).</div>
+        </div>
+        <div class="error-box"><strong>Sécurité :</strong> lunettes de protection, cheveux attachés. L'eau de chaux est irritante pour les yeux.</div>
+      </div>
+    </div>
+
     <!-- LES MOLECULES -->
     <div id="panel-molecules" class="panel">
       <div class="controls-card">
@@ -272,7 +305,7 @@ SOFTWARE.
        sont construits par lp-defi.js. -->
   <div id="mode-defi">
     <div class="defi-card">
-      <div id="defi-plus-badge" class="defi-mode-badge">&#128274; DÉFI &#8314; — Rappels et comptage masqués</div>
+      <div id="defi-plus-badge" class="defi-mode-badge">&#128274; DÉFI &#8314; — Rappels, comptage et couleur de fond masqués</div>
       <div class="defi-header">
         <div class="defi-title" id="defi-mode-title">Mode défi — Combustion</div>
         <div class="defi-score" id="defi-score">0 / 0 correct</div>
@@ -569,7 +602,7 @@ function eqHTML(r, coefs, opt) {
   for (i = 0; i < t.length; i++) {
     if (i === r.R.length) s += ' → ';
     else if (i > 0) s += ' + ';
-    if (opt.blancs) c = '… ';
+    if (opt.blancs) c = '\u2026 ';
     else if (opt.trou === i) c = '<span class="cb-trou">?</span> ';
     else c = (coefs[i] === 1) ? '' : coefs[i] + ' ';
     s += c + ESPECES[t[i][0]].html;
@@ -723,15 +756,21 @@ function poser(a, b, k) {
   }
 }
 
+var PALETTE = {
+  complete:   { z: '#EEF4FA', za: '#D6E8F8', b: '#185FA5' },
+  incomplete: { z: '#FBF2E6', za: '#F8DDBC', b: '#A4570A' }
+};
+function teinteDe(r) { return r.type === 'complete' ? 'complete' : 'incomplete'; }
+
 function marquerPhase(ph) {
-  var i, t, z;
+  var i, t, z, P = PALETTE[teinteDe(X.r)];
   X.phase = ph;
   for (i = 0; i < 3; i++) {
     t = el('xt-' + i); z = el('xz-' + i);
-    if (t) t.setAttribute('fill', i === ph ? '#854F0B' : '#8D8981');
+    if (t) t.setAttribute('fill', i === ph ? P.b : '#8D8981');
     if (z) {
-      z.setAttribute('fill', i === ph ? '#FAEEDA' : '#F5F4F0');
-      z.setAttribute('stroke', i === ph ? '#854F0B' : '#D8D6CE');
+      z.setAttribute('fill', i === ph ? P.za : P.z);
+      z.setAttribute('stroke', i === ph ? P.b : '#D8D6CE');
     }
   }
   var r = X.r, s = solutionDe(r), t2 = termesDe(r), noms = [], j;
@@ -831,6 +870,11 @@ function majExplo() {
   el('x-type').innerHTML = h;
 
   el('x-badge').textContent = nomReaction(r);
+  var carte = document.querySelector('#panel-reaction .sketch-card');
+  carte.classList.toggle('cb-teinte-complete', r.type === 'complete');
+  carte.classList.toggle('cb-teinte-incomplete', r.type !== 'complete');
+  el('x-badge').style.background = (r.type === 'complete') ? 'var(--blue-bg)' : 'var(--amber-bg)';
+  el('x-badge').style.color = (r.type === 'complete') ? 'var(--blue)' : 'var(--amber)';
   el('x-info').innerHTML = TYPES[r.type].info;
   el('x-eq').innerHTML = eqHTML(r);
   var noms = [];
@@ -873,6 +917,161 @@ function remplirGalerie() {
        + '<div class="c">' + compositionTexte(E) + '</div></div>';
   }
   el('m-galerie').innerHTML = h;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   TESTS DES PRODUITS — paillasse interactive (explorateur ET défi)
+   Trois tests : bûchette incandescente (O2), eau de chaux (CO2), sulfate
+   de cuivre anhydre (eau). Textes : PREMIER JET À RELIRE.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+var ECHANTILLONS = {
+  o2:     { label: 'Dioxygène O<sub>2</sub>', nom: 'du dioxygène O<sub>2</sub>', buchette: true,  chaux: false, cuivre: false },
+  co2:    { label: 'Dioxyde de carbone CO<sub>2</sub>', nom: 'du dioxyde de carbone CO<sub>2</sub>', buchette: false, chaux: true,  cuivre: false },
+  h2o:    { label: 'Vapeur d\u2019eau H<sub>2</sub>O', nom: 'de la vapeur d\u2019eau H<sub>2</sub>O', buchette: false, chaux: false, cuivre: true },
+  fumees: { label: 'Gaz d\u2019une combustion complète', nom: 'un mélange de CO<sub>2</sub> et de vapeur d\u2019eau (gaz de combustion)', buchette: false, chaux: true, cuivre: true }
+};
+var ORDRE_ECH = ['o2', 'co2', 'h2o', 'fumees'];
+
+var TESTS = {
+  buchette: { nom: 'Bûchette incandescente', court: 'Bûchette', cible: 'le dioxygène O<sub>2</sub>', formule: 'O<sub>2</sub>',
+              pos: 'La bûchette se rallume : la flamme est ravivée.', neg: 'La bûchette ne se rallume pas : elle s\u2019éteint.',
+              cPos: 'Le gaz contient du dioxygène.', cNeg: 'Ce gaz n\u2019est pas du dioxygène.',
+              fPos: 'se rallume', fNeg: 's\u2019éteint' },
+  chaux:    { nom: 'Eau de chaux', court: 'Eau de chaux', cible: 'le dioxyde de carbone CO<sub>2</sub>', formule: 'CO<sub>2</sub>',
+              pos: 'L\u2019eau de chaux se trouble : un précipité blanc apparaît.', neg: 'L\u2019eau de chaux reste limpide.',
+              cPos: 'Le gaz contient du dioxyde de carbone.', cNeg: 'Le gaz ne contient pas de dioxyde de carbone.',
+              fPos: 'se trouble', fNeg: 'reste limpide' },
+  cuivre:   { nom: 'Sulfate de cuivre anhydre', court: 'Sulfate de cuivre', cible: 'l\u2019eau H<sub>2</sub>O', formule: 'H<sub>2</sub>O',
+              pos: 'Le sulfate de cuivre anhydre, blanc, devient bleu.', neg: 'Le sulfate de cuivre anhydre reste blanc.',
+              cPos: 'Le gaz contient de l\u2019eau.', cNeg: 'Le gaz ne contient pas d\u2019eau.',
+              fPos: 'devient bleu', fNeg: 'reste blanc' }
+};
+var ORDRE_TESTS = ['buchette', 'chaux', 'cuivre'];
+
+function petitTexte(x, y, t, gras) {
+  return '<text x="' + x + '" y="' + y + '" text-anchor="middle" font-family="Arial, sans-serif" font-size="11"'
+       + (gras ? ' font-weight="700"' : '') + ' fill="#55534E">' + t + '</text>';
+}
+
+/* Dessin d'un test. etat : 'avant', 'pos' ou 'neg'. Le résultat est aussi
+   écrit en toutes lettres : lisible en noir et blanc. */
+function figTest(test, etat, etiquette) {
+  var s = '';
+  if (test === 'buchette') {
+    s += '<path d="M62 52 V138 Q62 150 74 150 H126 Q138 150 138 138 V52" fill="#EEF4FA" stroke="#55534E" stroke-width="2.5"/>'
+       + petitTexte(100, 132, etiquette || 'gaz')
+       + '<line x1="160" y1="12" x2="104" y2="94" stroke="#9A6B3A" stroke-width="5" stroke-linecap="round"/>';
+    if (etat === 'pos') {
+      s += '<g class="cb-apparait"><path d="M104 98 C90 84 95 66 104 50 C113 66 118 84 104 98 Z" fill="#F2A31E"/>'
+         + '<path d="M104 96 C98 87 100 78 104 70 C108 78 110 87 104 96 Z" fill="#F9E08A"/></g>'
+         + petitTexte(36, 30, 'flamme', true) + petitTexte(36, 43, 'ravivée', true);
+    } else if (etat === 'neg') {
+      s += '<g class="cb-apparait"><circle cx="104" cy="94" r="4.5" fill="#55534E"/>'
+         + '<path d="M104 86 C97 78 111 70 104 60 C99 53 108 48 104 42" fill="none" stroke="#8D8981" stroke-width="2" stroke-linecap="round"/></g>'
+         + petitTexte(36, 30, 'éteinte', true);
+    } else {
+      s += '<circle cx="104" cy="94" r="8" fill="#F2A31E" opacity=".35"/><circle cx="104" cy="94" r="4.5" fill="#E8591A"/>'
+         + petitTexte(36, 30, 'braise');
+    }
+    return s;
+  }
+  if (test === 'chaux') {
+    var trouble = (etat === 'pos');
+    s += '<path d="M82 66 V122 Q82 140 100 140 Q118 140 118 122 V66 Z" fill="' + (trouble ? '#ECEBE2' : '#D4ECFA') + '"'
+       + (etat === 'avant' ? '' : ' class="cb-apparait"') + '/>';
+    if (trouble) {
+      s += '<g class="cb-apparait" fill="#FFFFFF" stroke="#8D8981" stroke-width=".8">'
+         + '<circle cx="92" cy="96" r="3"/><circle cx="106" cy="88" r="2.6"/><circle cx="99" cy="110" r="3.2"/>'
+         + '<circle cx="110" cy="104" r="2.4"/><circle cx="90" cy="120" r="2.6"/><circle cx="104" cy="126" r="3"/>'
+         + '<circle cx="112" cy="120" r="2.2"/><circle cx="96" cy="78" r="2.2"/></g>';
+    }
+    s += '<path d="M80 16 V122 Q80 142 100 142 Q120 142 120 122 V16" fill="none" stroke="#55534E" stroke-width="2.5"/>'
+       + '<path d="M164 30 H100 V100" fill="none" stroke="#8D8981" stroke-width="3" stroke-linejoin="round"/>'
+       + '<circle cx="100" cy="108" r="2.5" fill="none" stroke="#8D8981"/><circle cx="105" cy="116" r="1.8" fill="none" stroke="#8D8981"/>'
+       + petitTexte(164, 22, etiquette || 'gaz')
+       + petitTexte(40, 100, etat === 'avant' ? 'eau de' : (trouble ? 'trouble' : 'limpide'), etat !== 'avant')
+       + (etat === 'avant' ? petitTexte(40, 113, 'chaux') : '');
+    return s;
+  }
+  var bleu = (etat === 'pos');
+  s += '<path d="M48 110 Q100 152 152 110 Z" fill="#E6E4DC" stroke="#55534E" stroke-width="2.5"/>'
+     + '<path d="M68 110 Q100 74 132 110 Z" fill="' + (bleu ? '#2F7FD6' : '#FBFBF6') + '" stroke="#8D8981" stroke-width="1.5"'
+     + (etat === 'avant' ? '' : ' class="cb-apparait"') + '/>'
+     + '<path d="M100 26 q-7 11 0 16 q7 -5 0 -16 Z" fill="#9CC9F0" stroke="#5E9BD1" stroke-width="1"/>'
+     + '<path d="M84 40 q-5 8 0 12 q5 -4 0 -12 Z" fill="#9CC9F0" stroke="#5E9BD1" stroke-width="1"/>'
+     + '<path d="M116 40 q-5 8 0 12 q5 -4 0 -12 Z" fill="#9CC9F0" stroke="#5E9BD1" stroke-width="1"/>'
+     + petitTexte(100, 16, etiquette || 'gaz')
+     + petitTexte(100, 100, etat === 'avant' ? 'blanc' : (bleu ? 'BLEU' : 'blanc'), etat !== 'avant').replace('#55534E', bleu ? '#FFFFFF' : '#55534E');
+  return s;
+}
+
+var BANCS = {};
+
+function bancHTML(id) {
+  var h = '<svg id="banc-svg-' + id + '" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Paillasse de test"></svg>'
+        + '<div class="cb-lecture">', i, t;
+  for (i = 0; i < ORDRE_TESTS.length; i++) {
+    t = ORDRE_TESTS[i];
+    h += '<button type="button" class="cb-btn" id="banc-btn-' + id + '-' + t + '" onclick="bancTest(\'' + id + '\',\'' + t + '\')">'
+       + TESTS[t].court + '</button>';
+  }
+  return h + '</div><div class="cb-banc-obs" id="banc-obs-' + id + '" role="status" aria-live="polite"></div>';
+}
+
+/* cache : le gaz est inconnu (défi) : on montre l'observation, pas la conclusion. */
+function bancInit(id, ech, cache) {
+  BANCS[id] = { ech: ech, cache: !!cache, jeton: 0, faits: {} };
+  var svg = el('banc-svg-' + id), i;
+  if (!svg) return;
+  svg.innerHTML = figTest('buchette', 'avant', cache ? 'gaz inconnu' : 'gaz');
+  for (i = 0; i < ORDRE_TESTS.length; i++) {
+    var b = el('banc-btn-' + id + '-' + ORDRE_TESTS[i]);
+    if (b) b.classList.remove('fait');
+  }
+  el('banc-obs-' + id).innerHTML = cache
+    ? 'Clique sur un test pour le réaliser. Tu peux faire les trois.'
+    : 'Clique sur un test pour le réaliser sur ce gaz.';
+}
+
+function bancTest(id, test) {
+  var B = BANCS[id];
+  if (!B || !el('banc-svg-' + id)) return;
+  var T = TESTS[test], positif = ECHANTILLONS[B.ech][test], j = ++B.jeton;
+  var etiq = B.cache ? 'gaz inconnu' : 'gaz';
+  el('banc-svg-' + id).innerHTML = figTest(test, 'avant', etiq);
+  el('banc-obs-' + id).innerHTML = '<b>' + T.nom + '</b> : test en cours\u2026';
+  setTimeout(function () {
+    if (j !== B.jeton || !el('banc-svg-' + id)) return;
+    el('banc-svg-' + id).innerHTML = figTest(test, positif ? 'pos' : 'neg', etiq);
+    el('banc-obs-' + id).innerHTML = '<b>' + T.nom + '</b> : ' + (positif ? T.pos : T.neg)
+      + (B.cache ? '' : '<br><b>Conclusion :</b> ' + (positif ? T.cPos : T.cNeg));
+    B.faits[test] = true;
+    var b = el('banc-btn-' + id + '-' + test);
+    if (b) b.classList.add('fait');
+  }, animFigee() ? 150 : 650);
+}
+
+function choisirEch(k) {
+  var h = '', i;
+  for (i = 0; i < ORDRE_ECH.length; i++) {
+    h += '<button type="button" class="cb-pill' + (ORDRE_ECH[i] === k ? ' on' : '') + '" onclick="choisirEch(\'' + ORDRE_ECH[i] + '\')">'
+       + ECHANTILLONS[ORDRE_ECH[i]].label + '</button>';
+  }
+  el('t-ech').innerHTML = h;
+  el('t-badge').innerHTML = 'Gaz testé : ' + ECHANTILLONS[k].label;
+  bancInit('tx', k, false);
+}
+
+function remplirTests() {
+  var h = '<tr><th>Test</th><th>Met en évidence</th><th>Si le test est positif</th></tr>', i, T;
+  for (i = 0; i < ORDRE_TESTS.length; i++) {
+    T = TESTS[ORDRE_TESTS[i]];
+    h += '<tr><td class="nom" style="white-space:normal">' + T.nom + '</td><td>' + T.cible + '</td><td>' + T.pos + '</td></tr>';
+  }
+  el('t-table').innerHTML = h;
+  el('banc-tx').innerHTML = bancHTML('tx');
+  choisirEch('fumees');
 }
 
 function setPan(id, btn) {
@@ -1133,7 +1332,7 @@ function genCompleter() {
   }
   return {
     type: 'nombre', svg: svg, figure: function () { return svg; },
-    enonce: 'Trouve le coefficient manquant.',
+    enonce: 'Trouve le coefficient manquant.', teinte: teinteDe(r),
     cotes: '<span class="cb-equation">' + eqHTML(r, s, { trou: k }) + '</span>',
     label: '? =', unite: '', reponse: s[k], tol: 0,
     reponseTexte: String(s[k]),
@@ -1152,7 +1351,7 @@ function genEquilibrer() {
   var s = solutionDe(r);
   return {
     type: 'texte', svg: '',
-    reac: r,
+    reac: r, teinte: teinteDe(r),
     enonce: 'Équilibre l\u2019équation de la ' + nomReaction(r).toLowerCase() + '.',
     cotes: widgetHTML(r),
     label: 'Coefficients',
@@ -1229,7 +1428,7 @@ function genValider() {
     type: 'choix', svg: svg, figure: function () { return svg; },
     enonce: 'Un élève a écrit cette équation pour la ' + nomReaction(r).toLowerCase() + '. Qu\u2019en penses-tu ?',
     cotes: '<span class="cb-equation">' + html + '</span>',
-    choix: choix, reponse: cas, reponseTexte: rep,
+    choix: choix, reponse: cas, reponseTexte: rep, teinte: 'complete',
     ficheCotes: 'Un élève a écrit :<br><b>' + html + '</b><br>Est-elle correcte ? Sinon, quelle est l\u2019erreur ?',
     ficheReponse: rep + (cas === 'ok' ? '' : ' &nbsp;→ ' + eqHTML(r)),
     rappel: 'Une équation est correcte si chaque formule est respectée ET s\u2019il y a autant d\u2019atomes de chaque sorte '
@@ -1276,7 +1475,7 @@ var QCM_NATURE = [
     d: 'Si l\u2019arrivée d\u2019air est mal réglée, la combustion devient incomplète et forme du CO, gaz mortel.' },
   { q: 'Dans une combustion, quel est le comburant ?', f: 'neutre',
     ok: 'Le dioxygène O<sub>2</sub> de l\u2019air',
-    ko: ['Le combustible (bois, gaz, essence…)', 'Le dioxyde de carbone CO<sub>2</sub>', 'L\u2019eau H<sub>2</sub>O'],
+    ko: ['Le combustible (bois, gaz, essence\u2026)', 'Le dioxyde de carbone CO<sub>2</sub>', 'L\u2019eau H<sub>2</sub>O'],
     d: 'Le combustible brûle ; le comburant, le dioxygène de l\u2019air, lui permet de brûler.' },
   { q: 'Quel produit de la combustion complète est un gaz à effet de serre ?', f: 'bleue',
     ok: 'Le dioxyde de carbone CO<sub>2</sub>',
@@ -1354,7 +1553,7 @@ function genMasse() {
     type: 'nombre', svg: svg, figure: function () { return svg; },
     enonce: 'Calcule la masse ' + de(nomK) + '.',
     cotes: '<div class="cb-masses">' + texte + '</div>',
-    label: 'm =', unite: 'g', reponse: m[k], tol: 0,
+    label: 'm =', unite: 'g', reponse: m[k], tol: 0, teinte: 'complete',
     reponseTexte: m[k] + ' g',
     ficheCotes: texte + '<br>Calcule la masse ' + de(nomK) + '.',
     rappel: 'Lavoisier : « Rien ne se perd, rien ne se crée, tout se transforme. » '
@@ -1382,7 +1581,7 @@ function genRejet() {
     type: 'nombre', svg: svg, figure: function () { return svg; },
     enonce: question,
     cotes: '<div class="cb-masses">' + donnee + '</div>',
-    label: 'm(CO₂) =', unite: 'kg', reponse: rep, tol: 0.05,
+    label: 'm(CO₂) =', unite: 'kg', reponse: rep, tol: 0.05, teinte: 'complete',
     reponseTexte: fnb(rep) + ' kg',
     ficheCotes: donnee + '<br>' + question,
     rappel: 'C\u2019est une situation de proportionnalité : masse de CO<sub>2</sub> = masse de combustible × masse de CO<sub>2</sub> rejetée par kilogramme.',
@@ -1391,12 +1590,90 @@ function genRejet() {
   };
 }
 
+/* ─── Famille 9 — Tests des produits (Ca1, C2) ────────────────────────── */
+
+var RAPPEL_TESTS = 'Le dioxygène O<sub>2</sub> ravive une bûchette incandescente. Le dioxyde de carbone CO<sub>2</sub> trouble l\u2019eau de chaux. '
+                 + 'L\u2019eau H<sub>2</sub>O fait passer le sulfate de cuivre anhydre du blanc au bleu.';
+
+function genTests() {
+  var tirage = Math.random(), i, t, T, choix = [];
+
+  if (tirage < 0.5) {
+    /* Variante A : gaz inconnu, l'élève réalise lui-même les tests. */
+    var k = auHasard(ORDRE_ECH), E = ECHANTILLONS[k], lignes = [], premier = null;
+    for (i = 0; i < ORDRE_ECH.length; i++) {
+      choix.push({ val: ORDRE_ECH[i], label: ECHANTILLONS[ORDRE_ECH[i]].nom.charAt(0).toUpperCase() + ECHANTILLONS[ORDRE_ECH[i]].nom.slice(1) });
+    }
+    melange(choix);
+    for (i = 0; i < ORDRE_TESTS.length; i++) {
+      t = ORDRE_TESTS[i]; T = TESTS[t];
+      lignes.push(T.nom.toLowerCase() + ' : ' + (E[t] ? T.fPos : T.fNeg));
+      if (E[t] && !premier) premier = t;
+    }
+    return {
+      type: 'choix', svg: '', labo: k,
+      enonce: 'Un gaz inconnu est enfermé dans le flacon. Réalise les tests, puis identifie-le.',
+      cotes: '<div class="cb-banc" id="banc-td">' + bancHTML('td') + '</div>',
+      choix: choix, reponse: k, reponseTexte: E.nom,
+      ficheSvg: figTest(premier, 'pos', 'gaz inconnu'),
+      ficheCotes: 'Tests sur un gaz inconnu :<span style="font-size:10pt;font-weight:400"><br>' + lignes.join('<br>') + '</span><br>Quel est ce gaz ?',
+      ficheReponse: E.nom,
+      rappel: RAPPEL_TESTS,
+      hint: 'Refais les trois tests et note chaque résultat. Un test positif révèle un gaz ; un test négatif en élimine un.',
+      detail: 'Résultats : ' + lignes.join(' ; ') + '. C\u2019est donc ' + E.nom + '.'
+    };
+  }
+
+  t = auHasard(ORDRE_TESTS); T = TESTS[t];
+  if (tirage < 0.75) {
+    /* Variante B : quel test choisir ? */
+    for (i = 0; i < ORDRE_TESTS.length; i++) choix.push({ val: ORDRE_TESTS[i], label: TESTS[ORDRE_TESTS[i]].nom });
+    choix.push({ val: 'thermo', label: 'Thermomètre' });
+    melange(choix);
+    var neutre = figEspeces(reaction('ch4'));
+    return {
+      type: 'choix', svg: '',
+      enonce: 'Quel test permet de mettre en évidence ' + T.cible + ' ?',
+      choix: choix, reponse: t, reponseTexte: T.nom,
+      ficheSvg: neutre,
+      ficheCotes: 'Quel test permet de mettre en évidence ' + T.cible + ' ? Qu\u2019observe-t-on ?',
+      ficheReponse: T.nom + ' : ' + T.pos,
+      rappel: RAPPEL_TESTS,
+      hint: 'Pense au TP : qu\u2019as-tu utilisé pour savoir si la buée était de l\u2019eau ? pour savoir si le gaz était du CO<sub>2</sub> ?',
+      detail: T.nom + '. ' + T.pos + ' ' + T.cPos
+    };
+  }
+
+  /* Variante C : on montre le résultat d'un test positif, on demande ce qu'il prouve. */
+  var especes = [['O2', 'Du dioxygène O<sub>2</sub>', 'buchette'], ['CO2', 'Du dioxyde de carbone CO<sub>2</sub>', 'chaux'],
+                 ['H2O', 'De l\u2019eau H<sub>2</sub>O', 'cuivre'], ['CO', 'Du monoxyde de carbone CO', '']];
+  var bonne = '', bonneTexte = '';
+  for (i = 0; i < especes.length; i++) {
+    choix.push({ val: especes[i][0], label: especes[i][1] });
+    if (especes[i][2] === t) { bonne = especes[i][0]; bonneTexte = especes[i][1]; }
+  }
+  melange(choix);
+  var svg = figTest(t, 'pos', 'gaz');
+  return {
+    type: 'choix', svg: svg, figure: function () { return svg; },
+    enonce: 'Que met en évidence ce test ?',
+    cotes: T.nom + '. ' + T.pos,
+    choix: choix, reponse: bonne, reponseTexte: bonneTexte,
+    ficheCotes: T.nom + ' : ' + (t === 'buchette' ? 'la bûchette se rallume.' : (t === 'chaux' ? 'l\u2019eau de chaux se trouble.' : 'il devient bleu.'))
+              + '<br>Que met en évidence ce test ?',
+    ficheReponse: bonneTexte,
+    rappel: RAPPEL_TESTS,
+    hint: 'Chaque test ne reconnaît qu\u2019une seule espèce. Aucun de ces trois tests ne détecte le monoxyde de carbone.',
+    detail: T.pos + ' ' + T.cPos
+  };
+}
+
 /* ─── Table des familles ──────────────────────────────────────────────── */
 
 var FAMILLES = [
   { value: 'formule',    label: 'Modèle et formule',     couleur: 'blue',   comp: 'C1', gen: genFormule,
     ficheAide: 'noir = C, blanc = H, rouge = O ; l\u2019indice compte les atomes.' },
-  { value: 'compter',    label: 'Compter les atomes',    couleur: 'teal',   comp: 'C1', gen: genCompter,
+  { value: 'compter',    label: 'Compter les atomes',    couleur: 'blue',   comp: 'C1', gen: genCompter,
     ficheAide: 'nombre d\u2019atomes = coefficient × indice.' },
   { value: 'completer',  label: 'Coefficient manquant',  couleur: 'green',  comp: 'C3', gen: genCompleter,
     ficheAide: 'autant d\u2019atomes de chaque sorte avant et après la flèche.' },
@@ -1409,7 +1686,9 @@ var FAMILLES = [
   { value: 'masse',      label: 'Conservation de la masse', couleur: 'purple', comp: 'C3', gen: genMasse,
     ficheAide: 'masse des réactifs = masse des produits.' },
   { value: 'rejet',      label: 'Masse de CO₂',     couleur: 'amber2', comp: 'C3', gen: genRejet,
-    ficheAide: 'proportionnalité : masse × rejet par kilogramme.' }
+    ficheAide: 'proportionnalité : masse × rejet par kilogramme.' },
+  { value: 'tests',      label: 'Tests des produits',    couleur: 'teal',   comp: 'C2', gen: genTests,
+    ficheAide: 'O₂ ravive la bûchette ; CO₂ trouble l\u2019eau de chaux ; l\u2019eau bleuit le sulfate de cuivre anhydre.' }
 ];
 
 /* ═════════════════════════════════════════════════════════════════════════
@@ -1469,6 +1748,12 @@ function preparerQuestion() {
   var estEq = (q.fam === 'equilibrer');
   el('defi-reponse').classList.toggle('cb-relais', estEq);
   el('defi-svg').style.display = q.svg ? '' : 'none';
+  /* Teinte de fond : seulement en mode défi (en Défi ⁺ ce serait un indice),
+     et seulement pour les familles où le type de combustion est annoncé. */
+  var teinte = (currentMode === 'defi') ? q.teinte : null;
+  el('defi-figure').classList.toggle('cb-teinte-complete', teinte === 'complete');
+  el('defi-figure').classList.toggle('cb-teinte-incomplete', teinte === 'incomplete');
+  if (q.fam === 'tests' && q.labo) bancInit('td', q.labo, true);
   if (estEq) {
     EQ.r = q.reac;
     EQ.fige = false;
@@ -1592,6 +1877,7 @@ function setMode(m, btn) {
    ═════════════════════════════════════════════════════════════════════════ */
 
 remplirGalerie();
+remplirTests();
 majExplo();
 defi.demarrer();
 
