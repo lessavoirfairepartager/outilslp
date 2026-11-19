@@ -800,14 +800,43 @@ html[data-theme="dark"] .btn-check { color: #14130f; }
 .modal-bg {
   position: fixed; inset: 0; background: rgba(20,19,15,.55);
   display: none; align-items: center; justify-content: center;
-  padding: 1rem; z-index: 200;
+  padding: 1rem;
+  /* Au-dessus de la barre d'outils flottante (9999), qui masquait le titre
+     sur smartphone. */
+  z-index: 10000;
 }
 .modal-bg.show { display: flex; }
 
+/* Sur petit écran, en paysage ou en grande police, la boîte ne dépasse
+   jamais la hauteur visible : elle défile, et la barre des boutons reste
+   collée en bas, donc « Générer la fiche » est toujours accessible.
+   100vh d'abord pour les vieux navigateurs, puis 100dvh qui tient compte de
+   la barre d'adresse mobile. */
 .modal {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 1.5rem;
+  border-radius: var(--radius-lg); padding: 1.5rem 1.5rem 0;
   max-width: 540px; width: 100%; box-shadow: 0 10px 34px rgba(0,0,0,.3);
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.modal .modal-actions {
+  position: sticky; bottom: 0; z-index: 1;
+  background: var(--surface);
+  margin: 0 -1.5rem; padding: 12px 1.5rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 520px), (max-height: 700px) {
+  .modal { padding: 1rem 1rem 0; }
+  .modal .modal-actions { margin: 0 -1rem; padding: 10px 1rem 1rem; }
+  .modal-actions { flex-wrap: nowrap; }
+  .modal-actions button { padding: 10px 12px; flex: 1 1 auto; }
+  .modal h2 { margin-bottom: 4px; }
+  .modal p  { margin-bottom: 10px; line-height: 1.45; }
+  .modal-checks { gap: 6px; }
+  .modal-checks label { padding: 8px 11px; }
+  .dist-info, .modal-option { margin-bottom: 10px; }
 }
 .modal h2 { font-size: var(--fs-lg); margin-bottom: 8px; }
 .modal p  { font-size: var(--fs-xs); color: var(--text2); margin-bottom: 14px; line-height: 1.6; }
